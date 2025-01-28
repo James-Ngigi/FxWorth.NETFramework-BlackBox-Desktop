@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35222.181
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxWorth", "FxWorth\FxWorth.csproj", "{26154E53-34D1-4F50-8626-D4CD65051B14}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxApi", "FxApi\FxApi.csproj", "{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{26154E53-34D1-4F50-8626-D4CD65051B14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{26154E53-34D1-4F50-8626-D4CD65051B14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{26154E53-34D1-4F50-8626-D4CD65051B14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26154E53-34D1-4F50-8626-D4CD65051B14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5D49B1C3-43F7-4171-8E21-C6205443A8D9}
+	EndGlobalSection
+EndGlobal
