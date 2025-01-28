@@ -271,7 +271,6 @@ namespace FxWorth
                         logger.Info("<=> Internet latency exceeded threshold. Pausing trades & stopwatch.");
                         sw.Stop();
                     }
-
                     if (isTrading && // Only show if currently trading
                         OwnedForms.Length == 0 &&
                         WindowState != FormWindowState.Minimized &&
@@ -293,7 +292,6 @@ namespace FxWorth
                         logger.Info("<=> Internet latency back within threshold. Resuming trades & stopwatch.");
                         sw.Start();
                     }
-
                     if (OwnedForms.Length > 0 && OwnedForms[0] is No_Internet)
                     {
                         OwnedForms[0].Close();
@@ -412,7 +410,7 @@ namespace FxWorth
 
                     if (key == null)
                     {
-                        continue; //skip
+                        continue;
                     }
 
                     var client = storage.Clients[key];
@@ -709,7 +707,6 @@ namespace FxWorth
             storage.Phase1RecoveryTradesTarget = (int)Stake_TXT2.Value;
             hierarchyNavigator = new HierarchyNavigator(parameters.AmountToBeRecoverd, parameters, phase1Parameters, phase2Parameters, customLayerConfigs, (int)Stake_TXT2.Value, storage);
 
-
             storage.SetTradingParameters(parameters);
             storage.StartAll();
 
@@ -743,7 +740,6 @@ namespace FxWorth
                 sw.Reset();
                 sw.Start();
             }
-
 
             foreach (DataGridViewRow row in dataGridView1.Rows)
             {
@@ -823,7 +819,6 @@ namespace FxWorth
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
             PowerManager.AllowSleep();
         }
-
 
         private void Pause_BTN_Click(object sender, EventArgs e)
         {

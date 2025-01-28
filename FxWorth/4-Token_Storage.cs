@@ -30,11 +30,11 @@ namespace FxWorth
         private bool isTradingGloballyAllowed = true;
 
         // The maximum number of API tokens (and therefore, trading accounts) that the application can manage.
-        public static int MaxTokensCount = 10;
+        public static int MaxTokensCount = 70;
 
         // Latency threshold (in milliseconds) above which the internet connection is considered slow.
         // Trading attempts are blocked if the latency exceeds this value.
-        private static int slowInternetConst = 750;
+        private static int slowInternetConst = 550;
 
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
 
@@ -54,11 +54,11 @@ namespace FxWorth
         private Dictionary<Credentials, AuthClient> clients = new Dictionary<Credentials, AuthClient>();
 
         // A `PingClient` instance used to measure and monitor the latency to the Deriv API server.
-        private PingClient pinger = new PingClient(new Credentials() { AppId = "40065" });
+        private PingClient pinger = new PingClient(new Credentials() { AppId = "65920" });
 
         // A `MarketDataClient` instance used to subscribe to market data (e.g., price quotes, candlesticks) for selected symbols.
-        // new Credentials() { AppId = "40065" } : The App ID used to authenticate with the Deriv API.
-        private MarketDataClient marketDataClient = new MarketDataClient(new Credentials() { AppId = "40065" });
+        // new Credentials() { AppId = "65920" } : The App ID used to authenticate with the Deriv API.
+        private MarketDataClient marketDataClient = new MarketDataClient(new Credentials() { AppId = "65920" });
 
         // Event raised when the state of any managed `AuthClient` changes (e.g., connection status, balance updates).
         public EventHandler<EventArgs> ClientsStateChanged;
