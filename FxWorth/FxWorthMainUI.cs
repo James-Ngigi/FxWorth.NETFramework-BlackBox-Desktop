@@ -1,18 +1,17 @@
-﻿using System;
+﻿using FxApi;
+using FxApi.Connection;
+using FxWorth.Hierarchy;
+using Newtonsoft.Json;
+using NLog;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
-using FxApi;
-using FxWorth.Hierarchy;
-using FxApi.Connection;
-using Newtonsoft.Json;
-using NLog;
-using static FxWorth.Hierarchy.HierarchyNavigator;
 using static FxApi.AuthClient;
+using static FxWorth.Hierarchy.HierarchyNavigator;
 
 namespace FxWorth
 {
@@ -241,7 +240,7 @@ namespace FxWorth
             Max_Drawdown_TXT2.Value = layout.Phase2Parameters.MaxDrawdown;
 
             // Null check for backward compatibility.
-            if (layout.CustomLayerConfigs != null) 
+            if (layout.CustomLayerConfigs != null)
             {
                 customLayerConfigs = layout.CustomLayerConfigs;
             }

@@ -30,11 +30,11 @@ namespace FxWorth
         private bool isTradingGloballyAllowed = true;
 
         // The maximum number of API tokens (and therefore, trading accounts) that the application can manage.
-        public static int MaxTokensCount = 70;
+        public static int MaxTokensCount = 50;
 
         // Latency threshold (in milliseconds) above which the internet connection is considered slow.
         // Trading attempts are blocked if the latency exceeds this value.
-        private static int slowInternetConst = 550;
+        private static int slowInternetConst = 650;
 
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
 
@@ -160,7 +160,7 @@ namespace FxWorth
                 if (!previousClientStates.TryGetValue(pair.Key, out previousState))
                 {
                     previousClientStates[pair.Key] = currentState;
-                    ClientsStateChanged?.Raise(pair.Value, EventArgs.Empty); // Raise event for initial state
+                    ClientsStateChanged?.Raise(pair.Value, EventArgs.Empty);
                     continue;
                 }
 
