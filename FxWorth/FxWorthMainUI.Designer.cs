@@ -839,7 +839,7 @@
             this.Column3.MinimumWidth = 8;
             this.Column3.Name = "Column3";
             this.Column3.ReadOnly = true;
-            this.Column3.ToolTipText = "Account ID";
+            this.Column3.ToolTipText = "Application ID";
             this.Column3.Width = 107;
             // 
             // Column4
@@ -1562,12 +1562,6 @@
         private System.Windows.Forms.NumericUpDown Max_Depth_TXT;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Button Custom_Layer_Config_BTN;
-        private System.Windows.Forms.DataGridViewCheckBoxColumn Column1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column3;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column4;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column5;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Status;
         private System.Windows.Forms.DataGridViewTextBoxColumn Token;
         private System.Windows.Forms.DataGridViewTextBoxColumn Id;
         private System.Windows.Forms.DataGridViewTextBoxColumn State;
@@ -1576,6 +1570,12 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Profit;
         private System.Windows.Forms.Label Stake_LBL2;
         private System.Windows.Forms.NumericUpDown Stake_TXT2;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn Column1;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column3;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column4;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column5;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Status;
     }
 }
 
