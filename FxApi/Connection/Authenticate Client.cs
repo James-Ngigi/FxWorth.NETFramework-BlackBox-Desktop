@@ -103,7 +103,7 @@ namespace FxApi
         /// <param name="duration">The duration of the trade.</param>
         /// <param name="durationUnit">The unit of time for the trade duration (e.g., "Ticks", "Seconds", "Minutes").</param>
         /// <param name="stake">The stake amount for the trade.</param>
-        /// <param name="barrier">The price barrier offset for the trade.</param>
+        /// <param name="barrier">The price barrier offset for the trade.(Currently depricate to accomodate hierarchy trades)</param>
         /// </summary>
         public void Buy(string symbol, int duration, string durationUnit, decimal stake)
         {

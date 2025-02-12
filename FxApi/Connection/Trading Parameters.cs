@@ -26,6 +26,7 @@ namespace FxApi.Connection
 
         /// <summary>
         /// The formatted barrier value used for the "Buy" (Higher) contract, including the positive sign. 
+        /// TempBarrier check to determine its place in the trade model.
         /// Example: "+1.50".
         /// </summary>
         public string BuyBarrier => string.Format(CultureInfo.InvariantCulture, "{0:+#0.0#;-#0.0#;0}", TempBarrier != 0 ? TempBarrier : Barrier);
@@ -204,7 +205,7 @@ namespace FxApi.Connection
                 }
             }
 
-            // Reset the temporary barrier after each trade
+            // Reset TempBarrier to 0 after each trade to ensure it doesn't interfere with subsequent trades outside the hierarchy
             TempBarrier = 0;
 
             // Format the transaction time
