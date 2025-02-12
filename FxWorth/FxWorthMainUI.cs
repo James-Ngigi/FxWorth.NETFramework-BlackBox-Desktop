@@ -333,19 +333,14 @@ namespace FxWorth
                 if (storage.isHierarchyMode)
                 {
                     var client = storage.Clients.FirstOrDefault(x => x.Value.GetToken() == model.Token).Value;
+
                     if (client != null)
                     {
-                        if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && storage.hierarchyNavigator == null)
-                        {
-                            storage.hierarchyNavigator = new HierarchyNavigator(client.TradingParameters.AmountToBeRecoverd, client.TradingParameters, storage.phase1Parameters, storage.phase2Parameters, storage.customLayerConfigs, storage.Phase1RecoveryTradesTarget, storage);
-                            storage.currentLevelId = "1.1";
-                        }
-
                         HierarchyLevel currentLevel = storage.hierarchyNavigator?.GetCurrentLevel();
 
                         if (currentLevel != null)
                         {
-                            if (!client.TradingParameters.IsRecoveryMode)
+                            if (!client.TradingParameters.IsRecoveryMode) // Current level recovered
                             {
                                 storage.hierarchyNavigator.MoveToNextLevel(client);
 
@@ -353,6 +348,9 @@ namespace FxWorth
                                 {
                                     storage.isHierarchyMode = false;
                                     storage.hierarchyClient = null;
+                                    client.TradingParameters.PreviousProfit = storage.storedMlpForRootLevelReturn;
+                                    storage.storedMlpForRootLevelReturn = 0;
+
                                     logger.Info("Returned to root level trading.");
                                 }
                                 else
@@ -361,17 +359,17 @@ namespace FxWorth
                                     logger.Info($"Moved to next level: {storage.hierarchyNavigator.currentLevelId}");
                                 }
                             }
-                            else
+                            else // Current level not recovered, update HierarchyLevel properties
                             {
                                 currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
 
-                                decimal maxDrawdown = currentLevel.CustomMaxDrawdown ?? storage.phase2Parameters.MaxDrawdown;
-
+                                decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
                                 if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
-                                    int recoveryTradesTarget = currentLevel.RecoveryTradesTarget ?? storage.Phase1RecoveryTradesTarget;
-                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, recoveryTradesTarget);
+                                    // Use the *current level's* InitialStake for the new layer
+                                    decimal initialStake = currentLevel.InitialStake;
+                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStake);
 
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
                                     storage.hierarchyNavigator.currentLevelId = nextLevelId;
@@ -380,10 +378,10 @@ namespace FxWorth
                                 }
                             }
                         }
-                        else if (storage.isHierarchyMode && client.TradingParameters.IsRecoveryMode) // Log and handle the error appropriately
+                        else if (storage.isHierarchyMode && client.TradingParameters.IsRecoveryMode)
                         {
                             logger.Error("Current level is null in hierarchy mode, but IsRecoveryMode is true. This should not happen.");
-                            // To add error handling logic here, e.g., reset hierarchy mode, reset trading parameters
+                            // Handle this error appropriately, e.g., reset hierarchy mode, reset trading parameters, etc.
                         }
                     }
                 }
@@ -703,8 +701,8 @@ namespace FxWorth
             };
 
             storage.SetHierarchyParameters(phase1Parameters, phase2Parameters, customLayerConfigs);
-            storage.Phase1RecoveryTradesTarget = (int)Stake_TXT2.Value;
-            hierarchyNavigator = new HierarchyNavigator(parameters.AmountToBeRecoverd, parameters, phase1Parameters, phase2Parameters, customLayerConfigs, (int)Stake_TXT2.Value, storage);
+            decimal initialStakeLayer1 = Stake_TXT2.Value;
+            hierarchyNavigator = new HierarchyNavigator(parameters.AmountToBeRecoverd, parameters, phase1Parameters, phase2Parameters, customLayerConfigs, initialStakeLayer1, storage);
 
             storage.SetTradingParameters(parameters);
             storage.StartAll();
@@ -995,10 +993,10 @@ namespace FxWorth
 
             // Pass values to the Layer_Configuration dialog
             layerConfigForm.BarrierOffset = Barrier_Offset_TXT2.Value;
-            layerConfigForm.MartingaleLevel = Martingale_Level_TXT2.Value;
-            layerConfigForm.HierarchyLevels = Hierarchy_Levels_TXT.Value;
+            layerConfigForm.MartingaleLevel = (int)Martingale_Level_TXT2.Value;
+            layerConfigForm.HierarchyLevels = (int)Hierarchy_Levels_TXT.Value;
             layerConfigForm.MaxDrawdown = Max_Drawdown_TXT2.Value;
-            layerConfigForm.RecoveryTradesTarget = (int)Stake_TXT2.Value;
+            layerConfigForm.InitialStake = (int)Stake_TXT2.Value;
 
             List<int> layerOptions = new List<int>();
             for (int i = 2; i <= Max_Depth_TXT.Value; i++)
@@ -1019,10 +1017,10 @@ namespace FxWorth
                     // Log the retrieved configuration (including RecoveryTradesTarget)
                     logger.Info($"Custom configuration loaded for Layer {config.LayerNumber}:");
                     logger.Info($"Hierarchy Levels: {config.HierarchyLevels}");
-                    logger.Info($"Martingale Level: {config.CustomMartingaleLevel}");
-                    logger.Info($"Max Drawdown: {config.CustomMaxDrawdown}");
-                    logger.Info($"Barrier Offset: {config.CustomBarrierOffset}");
-                    logger.Info($"Aggression level: {config.RecoveryTradesTarget}");
+                    logger.Info($"Martingale Level: {config.MartingaleLevel}");
+                    logger.Info($"Max Drawdown: {config.MaxDrawdown}");
+                    logger.Info($"Barrier Offset: {config.BarrierOffset}");
+                    logger.Info($"Initial stake: {config.InitialStake}");
                 }
                 else
                 {

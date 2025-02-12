@@ -30,8 +30,8 @@ namespace FxWorth
             // Initialize controls with potentially null values
             Stake_TXT3.Value = InitialStake.HasValue ? InitialStake.Value : 1;
             Martingale_Level_TXT3.Value = MartingaleLevel.HasValue ? MartingaleLevel.Value : 1;
-            Max_Drawdown_TXT3.Value = MaxDrawdown.HasValue ? MaxDrawdown.Value : 1000;
-            Barrier_Offset_TXT3.Value = BarrierOffset.HasValue ? BarrierOffset.Value : 30;
+            Max_Drawdown_TXT3.Value = MaxDrawdown.HasValue ? MaxDrawdown.Value : 1000;  //Default value of 1000
+            Barrier_Offset_TXT3.Value = BarrierOffset.HasValue ? BarrierOffset.Value : 0;
             Hierarchy_Levels_TXT2.Value = HierarchyLevels.HasValue ? HierarchyLevels.Value : 2;
 
         }

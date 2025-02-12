@@ -102,6 +102,8 @@ namespace FxWorth
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
         public int Phase1RecoveryTradesTarget { get; set; }
+        public decimal InitialStakeLayer1 { get; set; }
+        private System.Timers.Timer hierarchyMonitorTimer;
 
 
         public void SetHierarchyParameters(PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs)
@@ -134,6 +136,10 @@ namespace FxWorth
             clientStateCheckTimer = new Timer(12000); // Set the interval to 12 seconds (12000 milliseconds)
             clientStateCheckTimer.Elapsed += ClientStateCheckTimer_Elapsed;
             clientStateCheckTimer.Start();
+            hierarchyMonitorTimer = new System.Timers.Timer(2400); // Check every 2.4 seconds
+            hierarchyMonitorTimer.Elapsed += (sender, e) => MonitorHierarchyMode();
+            hierarchyMonitorTimer.AutoReset = true;
+            hierarchyMonitorTimer.Start();
 
             // If the credentials file exists, load and process the credentials.
             if (File.Exists(path))
@@ -215,6 +221,12 @@ namespace FxWorth
 
             // Stop the MarketDataClient to unsubscribe from market data because the application is closing.
             marketDataClient.Stop();
+
+            if (hierarchyMonitorTimer != null)
+            {
+                hierarchyMonitorTimer.Stop();
+                hierarchyMonitorTimer.Dispose();
+            }
 
             clientStateCheckTimer.Stop();
             clientStateCheckTimer.Dispose();
@@ -356,6 +368,28 @@ namespace FxWorth
             return new MarketDataParameters { Rsi = rsi, Symbol = symbol };
         }
 
+        private void MonitorHierarchyMode()
+        {
+            if (!isHierarchyMode || hierarchyNavigator == null || hierarchyClient == null)
+            {
+                return;
+            }
+
+            // Use the GetLayer1TotalAmountToBeRecovered method to get the total for Layer 1
+            if (hierarchyNavigator.GetLayer1TotalAmountToBeRecovered() >= 0)
+            {
+                isHierarchyMode = false;
+                logger.Info("<=> Exiting Hierarchy Mode. Returning to root level trading.");
+
+                hierarchyClient.TradingParameters.IsRecoveryMode = false;
+                hierarchyClient.TradingParameters.DynamicStake = hierarchyClient.TradingParameters.Stake;
+                hierarchyClient.TradingParameters.AmountToBeRecoverd = 0;
+                hierarchyClient.TradingParameters.recoveryResults.Clear();
+
+                hierarchyClient = null;
+            }
+        }
+
         /* ---------------------------------------------------------------------------------------------- */
 
         /// <summary>
@@ -420,13 +454,14 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (value.TradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && !isHierarchyMode)
+                    if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && !isHierarchyMode)
                     {
                         isHierarchyMode = true;
                         hierarchyClient = value;
 
-                        hierarchyNavigator = new HierarchyNavigator(value.TradingParameters.AmountToBeRecoverd, tradingParameters, phase1Parameters, phase2Parameters, customLayerConfigs, Phase1RecoveryTradesTarget, this);
-                        currentLevelId = "1.1";
+                        hierarchyNavigator = new HierarchyNavigator(value.TradingParameters.AmountToBeRecoverd, tradingParameters, phase1Parameters, phase2Parameters, customLayerConfigs, InitialStakeLayer1, this); // Pass initialStakeLayer1 and TokenStorage instance
+                        hierarchyNavigator.LoadLevelTradingParameters("1.1", value, tradingParameters);
+                        tradingParameters.DynamicStake = tradingParameters.Stake; // Reset DynamicStake
                     }
 
                     if (isHierarchyMode)

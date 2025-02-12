@@ -18,15 +18,16 @@ namespace FxWorth.Hierarchy
         private PhaseParameters phase1Params;
         private PhaseParameters phase2Params;
         private readonly TokenStorage storage;
+        private decimal initialStakeLayer1;
 
-        public HierarchyNavigator(decimal amountToBeRecovered, TradingParameters tradingParameters, PhaseParameters phase1Params, 
-        PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs, TokenStorage storage)
+        public HierarchyNavigator(decimal amountToBeRecovered, TradingParameters tradingParameters, PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1, TokenStorage storage)
         {
             this.hierarchyLevelsCount = tradingParameters.HierarchyLevels;
             this.maxHierarchyDepth = tradingParameters.MaxHierarchyDepth;
             this.phase1Params = phase1Params;
             this.phase2Params = phase2Params;
             this.storage = storage;
+            this.initialStakeLayer1 = initialStakeLayer1;
 
             hierarchyLevels = new Dictionary<string, HierarchyLevel>();
             levelOrder = new List<string>();
@@ -39,16 +40,15 @@ namespace FxWorth.Hierarchy
 
         private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs)
         {
-            decimal initialStakeLayer1 = Stake_TXT2.Value; // Get initial stake for Layer 1 from UI
+            // No need to calculate initialStakeLayer1 here; it's passed to the constructor
             CreateLayer(1, amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
 
             for (int i = 2; i <= maxHierarchyDepth; i++)
             {
                 if (ExistsCustomConfigForLayer(i, customLayerConfigs))
                 {
-                    // For layers beyond 1, use the InitialStake from the first level of the previous layer if it exists, otherwise use the Phase 2 InitialStake
-                    decimal initialStakeForLayer = hierarchyLevels.TryGetValue($"{i - 1}.1", out var previousLayerLevel) ? previousLayerLevel.InitialStake : Stake_TXT2.Value;
-
+                    // Use InitialStake from the first level of the previous layer if it exists, otherwise use initialStakeLayer1
+                    decimal initialStakeForLayer = hierarchyLevels.TryGetValue($"{i - 1}.1", out var previousLayerLevel) ? previousLayerLevel.InitialStake : initialStakeLayer1;
                     CreateLayer(i, amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeForLayer);
                 }
             }
@@ -57,37 +57,30 @@ namespace FxWorth.Hierarchy
         }
 
 
-        public void CreateLayer(int layerNumber, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, int recoveryTradesTarget)
+        public void CreateLayer(int layerNumber, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
         {
             CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, customLayerConfigs);
 
-            int hierarchyLevelsForLayer = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount); // Ensure at least 2 levels
+            int hierarchyLevelsForLayer = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
             decimal amountPerLevel = amountToBeRecovered / hierarchyLevelsForLayer;
 
             for (int i = 1; i <= hierarchyLevelsForLayer; i++)
             {
                 string levelId = $"{layerNumber}.{i}";
 
-                // Calculate InitialStake for each level independently
-                int levelRecoveryTradesTarget = customConfig?.RecoveryTradesTarget ?? recoveryTradesTarget;
-                decimal levelInitialStake = CalculateInitialStake(amountPerLevel, tradingParameters.Stake, tradingParameters.PreviousProfit, levelRecoveryTradesTarget);
+                int? martingaleLevel = customConfig?.MartingaleLevel ?? phase2Params.MartingaleLevel;
+                decimal? maxDrawdown = customConfig?.MaxDrawdown ?? phase2Params.MaxDrawdown;
+                decimal? barrierOffset = customConfig?.BarrierOffset ?? phase2Params.Barrier;
 
-
-                int? martingaleLevel = customConfig?.CustomMartingaleLevel ?? phase2Params.MartingaleLevel;
-                decimal? maxDrawdown = customConfig?.CustomMaxDrawdown ?? phase2Params.MaxDrawdown;
-                decimal? barrierOffset = customConfig?.CustomBarrierOffset ?? phase2Params.Barrier;
-
-
-                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, levelInitialStake, martingaleLevel, maxDrawdown, barrierOffset);
+                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, initialStake, martingaleLevel, maxDrawdown, barrierOffset); // Use initialStake
                 hierarchyLevels[levelId] = newLevel;
                 levelOrder.Add(levelId);
 
-                decimal levelMaxDrawdown = customConfig?.CustomMaxDrawdown ?? phase2Params.MaxDrawdown;
+                decimal levelMaxDrawdown = customConfig?.MaxDrawdown ?? phase2Params.MaxDrawdown;
 
-                // Use level-specific maxDrawdown and recoveryTradesTarget for nested layer creation
                 if (amountPerLevel > levelMaxDrawdown && layerNumber < maxHierarchyDepth)
                 {
-                    CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, levelRecoveryTradesTarget); // Pass recoveryTradesTarget
+                    CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, initialStake); // Pass initialStake
                 }
             }
         }
@@ -95,11 +88,11 @@ namespace FxWorth.Hierarchy
         public class HierarchyLevel
         {
             public string LevelId { get; set; }
-            public decimal AmountToBeRecovered { get; set; }
-            public decimal InitialStake { get; set; }
-            public int? MartingaleLevel { get; set; }
+            public decimal AmountToBeRecovered { get; set; }    
+            public decimal InitialStake { get; set; }   
+            public int? MartingaleLevel { get; set; }   
             public decimal? MaxDrawdown { get; set; }
-            public decimal? BarrierOffset { get; set; }
+            public decimal? BarrierOffset { get; set; } 
 
 
             public HierarchyLevel(string levelId, decimal amountToBeRecovered, decimal initialStake, int? martingaleLevel, decimal? maxDrawdown, decimal? barrierOffset)
@@ -150,10 +143,9 @@ namespace FxWorth.Hierarchy
             CustomLayerConfig customConfig = GetCustomConfigForLayer(int.Parse(levelId.Split('.')[0]), storage.customLayerConfigs); // Get custom config for the current layer
 
             // Prioritize custom parameters, then level parameters, then phase 2, then phase 1
-            tradingParameters.MartingaleLevel = customConfig?.CustomMartingaleLevel ?? level.MartingaleLevel ?? (levelId.StartsWith("1.") ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
-            tradingParameters.MaxDrawdown = customConfig?.CustomMaxDrawdown ?? level.MaxDrawdown ?? (levelId.StartsWith("1.") ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
-            tradingParameters.Barrier = customConfig?.CustomBarrierOffset ?? level.BarrierOffset ?? (levelId.StartsWith("1.") ? phase2Params.Barrier : phase1Params.Barrier);
-            tradingParameters.RecoveryTradesTarget = customConfig?.RecoveryTradesTarget ?? level.RecoveryTradesTarget ?? tradingParameters.RecoveryTradesTarget;
+            tradingParameters.MartingaleLevel = customConfig?.MartingaleLevel ?? level.MartingaleLevel ?? (levelId.StartsWith("1.") ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
+            tradingParameters.MaxDrawdown = customConfig?.MaxDrawdown ?? level.MaxDrawdown ?? (levelId.StartsWith("1.") ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
+            tradingParameters.Barrier = customConfig?.BarrierOffset ?? level.BarrierOffset ?? (levelId.StartsWith("1.") ? phase2Params.Barrier : phase1Params.Barrier);
             tradingParameters.TempBarrier = level.BarrierOffset ?? tradingParameters.Barrier;
             tradingParameters.AmountToBeRecoverd = level.AmountToBeRecovered;
 
@@ -220,15 +212,22 @@ namespace FxWorth.Hierarchy
             return customLayerConfigs.ContainsKey(layerNumber);
         }
 
+        public decimal GetLayer1TotalAmountToBeRecovered()
+        {
+            decimal total = 0;
+            foreach (var level in hierarchyLevels.Values)
+            {
+                if (level.LevelId.StartsWith("1."))
+                {
+                    total += level.AmountToBeRecovered;
+                }
+            }
+            return total;
+        }
+
         private AuthClient GetClientForCurrentTrade(string token)
         {
             return storage.Clients.FirstOrDefault(x => x.Value.GetToken() == token).Value;
-        }
-
-        private decimal CalculateInitialStake(decimal amountToRecover, decimal baseStake, decimal previousProfit, int recoveryTradesTarget)
-        {
-            decimal targetProfitPerTrade = amountToRecover / recoveryTradesTarget;
-            return Math.Round(targetProfitPerTrade * baseStake / previousProfit, 2);
         }
     }
 }
