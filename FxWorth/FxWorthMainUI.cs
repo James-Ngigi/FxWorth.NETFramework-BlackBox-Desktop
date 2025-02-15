@@ -365,7 +365,6 @@ namespace FxWorth
                                 if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
-                                    // Use the *current level's* InitialStake for the new layer
                                     decimal initialStake = currentLevel.InitialStake;
                                     storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStake);
 
@@ -497,16 +496,9 @@ namespace FxWorth
                 Minimize_Notification.ShowBalloonTip(80);
             }
         }
-
         private void Notification_Icon_Click(object sender, EventArgs e)
         {
 
-        }
-
-        private void FxWorth_Load(object sender, EventArgs e)
-        {
-            Minimize_Notification.BalloonTipText = "Assessing & making moves in the background.";
-            Minimize_Notification.BalloonTipTitle = "Keeping It Slick";
         }
 
         private void panel6_Paint(object sender, PaintEventArgs e)
@@ -517,6 +509,12 @@ namespace FxWorth
         private void label1_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void FxWorth_Load(object sender, EventArgs e)
+        {
+            Minimize_Notification.BalloonTipText = "Assessing & making moves in the background.";
+            Minimize_Notification.BalloonTipTitle = "Keeping It Slick";
         }
 
         private void OnFormClosing(object sender, FormClosingEventArgs e)
@@ -665,8 +663,7 @@ namespace FxWorth
                 return;
             }
 
-            decimal initialStakeLayer1 = Stake_TXT2.Value; // Get the value from the UI control
-            logger.Info($"Initial stake for Layer 1 (from UI): {initialStakeLayer1}"); // Temporary logging statement
+            decimal initialStakeLayer1 = Stake_TXT2.Value;
 
             phase1Parameters = new PhaseParameters
             {

@@ -104,7 +104,6 @@ namespace FxApi.Connection
         /// Temporarily overrides the Barrier property when in hierarchy mode.
         public decimal TempBarrier { get; set; }
 
-        /// In how many trades do you want to recover the losses? (The higher the value, the less aggressive the recovery system will be)
         public int InitialStake4Layer1  { get; set; }
 
 
