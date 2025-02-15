@@ -19,7 +19,7 @@ namespace FxWorth.Hierarchy
         private PhaseParameters phase2Params;
         private readonly TokenStorage storage;
         public bool IsInHierarchyMode { get; private set; } = false;
-        private int layer1CompletedLevels = 0; // Counter for completed levels in Layer 1
+        private int layer1CompletedLevels = 0;
 
 
         public HierarchyNavigator(decimal amountToBeRecovered, TradingParameters tradingParameters, PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1, TokenStorage storage)
