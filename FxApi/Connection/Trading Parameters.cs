@@ -193,6 +193,7 @@ namespace FxApi.Connection
 
                 // Calculate the total profit achieved during the recovery attempt.
                 decimal recoveryProfit = mlp + recoveryResults.Sum();
+
                 // If the recovery profit meets or exceeds the target, or if all recovery attempts have been used, exit recovery mode.
                 if (recoveryProfit >= AmountToBeRecoverd || RecoveryAttemptsLeft == 0)
                 {
