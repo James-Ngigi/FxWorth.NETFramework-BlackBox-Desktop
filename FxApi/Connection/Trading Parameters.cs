@@ -184,10 +184,11 @@ namespace FxApi.Connection
             {
                 // Add the profit to the recoveryResults list.
                 recoveryResults.Add(mlp);
+
                 // Update the amount to be recovered.
                 AmountToBeRecoverd = -recoveryResults.Sum();
-                // Decrement the remaining recovery attempts counter.
 
+                // Decrement the remaining recovery attempts counter.
                 RecoveryAttemptsLeft--;
 
                 // Calculate the total profit achieved during the recovery attempt.
