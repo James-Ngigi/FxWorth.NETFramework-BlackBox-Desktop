@@ -105,7 +105,7 @@ namespace FxApi.Connection
         public decimal TempBarrier { get; set; }
 
         /// In how many trades do you want to recover the losses? (The higher the value, the less aggressive the recovery system will be)
-        public int RecoveryTradesTarget { get; set; }
+        public int InitialStake4Layer1  { get; set; }
 
 
         /*------------------------------------------------------------------------------------------------------------------------*/
