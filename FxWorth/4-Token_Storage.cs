@@ -95,13 +95,11 @@ namespace FxWorth
         public string currentLevelId;
         public AuthClient hierarchyClient;
         public bool isHierarchyMode;
-        public decimal storedMlpForRootLevelReturn;
         public PhaseParameters phase1Parameters;
         public PhaseParameters phase2Parameters;
-        public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0; // Handle null navigator
+        public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
-        public int Phase1RecoveryTradesTarget { get; set; }
         public decimal InitialStakeLayer1 { get; set; }
         private System.Timers.Timer hierarchyMonitorTimer;
 

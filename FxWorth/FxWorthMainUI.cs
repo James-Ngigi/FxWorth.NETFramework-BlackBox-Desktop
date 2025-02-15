@@ -230,7 +230,7 @@ namespace FxWorth
             Take_Profit_TXT.Value = layout.TradingParameters.TakeProfit;
             Max_Drawdown_TXT1.Value = layout.TradingParameters.MaxDrawdown;
             Martingale_Level_TXT.Value = layout.TradingParameters.MartingaleLevel;
-            Stake_TXT2.Value = layout.TradingParameters.RecoveryTradesTarget;
+            Stake_TXT2.Value = layout.TradingParameters.InitialStake4Layer1;
             Hierarchy_Levels_TXT.Value = layout.TradingParameters.HierarchyLevels;
             Max_Depth_TXT.Value = layout.TradingParameters.MaxHierarchyDepth;
 
@@ -348,8 +348,6 @@ namespace FxWorth
                                 {
                                     storage.isHierarchyMode = false;
                                     storage.hierarchyClient = null;
-                                    client.TradingParameters.PreviousProfit = storage.storedMlpForRootLevelReturn;
-                                    storage.storedMlpForRootLevelReturn = 0;
 
                                     logger.Info("Returned to root level trading.");
                                 }
@@ -367,7 +365,6 @@ namespace FxWorth
                                 if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
-                                    // Use the *current level's* InitialStake for the new layer
                                     decimal initialStake = currentLevel.InitialStake;
                                     storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStake);
 
@@ -499,16 +496,9 @@ namespace FxWorth
                 Minimize_Notification.ShowBalloonTip(80);
             }
         }
-
         private void Notification_Icon_Click(object sender, EventArgs e)
         {
 
-        }
-
-        private void FxWorth_Load(object sender, EventArgs e)
-        {
-            Minimize_Notification.BalloonTipText = "Assessing & making moves in the background.";
-            Minimize_Notification.BalloonTipTitle = "Keeping It Slick";
         }
 
         private void panel6_Paint(object sender, PaintEventArgs e)
@@ -519,6 +509,12 @@ namespace FxWorth
         private void label1_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void FxWorth_Load(object sender, EventArgs e)
+        {
+            Minimize_Notification.BalloonTipText = "Assessing & making moves in the background.";
+            Minimize_Notification.BalloonTipTitle = "Keeping It Slick";
         }
 
         private void OnFormClosing(object sender, FormClosingEventArgs e)
@@ -667,6 +663,8 @@ namespace FxWorth
                 return;
             }
 
+            decimal initialStakeLayer1 = Stake_TXT2.Value;
+
             phase1Parameters = new PhaseParameters
             {
                 Barrier = Barrier_Offset_TXT.Value,
@@ -696,13 +694,12 @@ namespace FxWorth
                 MartingaleLevel = (int)Martingale_Level_TXT.Value,
                 DynamicStake = Stake_TXT.Value,
                 HierarchyLevels = (int)Hierarchy_Levels_TXT.Value,
-                MaxHierarchyDepth = (int)Max_Depth_TXT.Value,
-                RecoveryTradesTarget = (int)Stake_TXT2.Value
+                MaxHierarchyDepth = (int)Max_Depth_TXT.Value
             };
 
             storage.SetHierarchyParameters(phase1Parameters, phase2Parameters, customLayerConfigs);
-            decimal initialStakeLayer1 = Stake_TXT2.Value;
-            hierarchyNavigator = new HierarchyNavigator(parameters.AmountToBeRecoverd, parameters, phase1Parameters, phase2Parameters, customLayerConfigs, initialStakeLayer1, storage);
+            storage.InitialStakeLayer1 = initialStakeLayer1;
+            hierarchyNavigator = new HierarchyNavigator(parameters.AmountToBeRecoverd, parameters, phase1Parameters, phase2Parameters, customLayerConfigs, storage.InitialStakeLayer1, storage);
 
             storage.SetTradingParameters(parameters);
             storage.StartAll();
@@ -1014,7 +1011,6 @@ namespace FxWorth
                 {
                     CustomLayerConfig config = customLayerConfigs[selectedLayer];
 
-                    // Log the retrieved configuration (including RecoveryTradesTarget)
                     logger.Info($"Custom configuration loaded for Layer {config.LayerNumber}:");
                     logger.Info($"Hierarchy Levels: {config.HierarchyLevels}");
                     logger.Info($"Martingale Level: {config.MartingaleLevel}");
