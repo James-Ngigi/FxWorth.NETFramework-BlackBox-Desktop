@@ -12,13 +12,15 @@ namespace FxWorth.Hierarchy
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private Dictionary<string, HierarchyLevel> hierarchyLevels;
         private List<string> levelOrder;
-        public string currentLevelId;
+        public string currentLevelId { get; set; }
         private int hierarchyLevelsCount;
-        public int maxHierarchyDepth;
+        public int maxHierarchyDepth { get; private set; }
         private PhaseParameters phase1Params;
         private PhaseParameters phase2Params;
         private readonly TokenStorage storage;
-        private decimal initialStakeLayer1;
+        public bool IsInHierarchyMode { get; private set; } = false;
+        private int layer1CompletedLevels = 0; // Counter for completed levels in Layer 1
+
 
         public HierarchyNavigator(decimal amountToBeRecovered, TradingParameters tradingParameters, PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1, TokenStorage storage)
         {
@@ -27,20 +29,20 @@ namespace FxWorth.Hierarchy
             this.phase1Params = phase1Params;
             this.phase2Params = phase2Params;
             this.storage = storage;
-            this.initialStakeLayer1 = initialStakeLayer1;
 
             hierarchyLevels = new Dictionary<string, HierarchyLevel>();
             levelOrder = new List<string>();
 
             if (amountToBeRecovered > phase1Params.MaxDrawdown)
             {
-                CreateHierarchy(amountToBeRecovered, tradingParameters, customLayerConfigs);
+                CreateHierarchy(amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
             }
         }
 
-        private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs)
+        private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1)
         {
-            // No need to calculate initialStakeLayer1 here; it's passed to the constructor
+            IsInHierarchyMode = true; // Enter hierarchy mode
+
             CreateLayer(1, amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
 
             for (int i = 2; i <= maxHierarchyDepth; i++)
@@ -110,6 +112,12 @@ namespace FxWorth.Hierarchy
         {
             logger.Info($"Exiting Level: {currentLevelId}");
 
+            // Increment completed levels counter if the completed level is in Layer 1
+            if (currentLevelId.StartsWith("1."))
+            {
+                layer1CompletedLevels++;
+            }
+
             string nextLevelId = GenerateNextLevelId(currentLevelId, hierarchyLevelsCount);
 
             if (nextLevelId != null)
@@ -120,13 +128,32 @@ namespace FxWorth.Hierarchy
             }
             else
             {
-                if (currentLevelId.Split('.').Length == 2)
+                // No more levels in this layer. Check if we're back at the root level
+                if (currentLevelId.Split('.').Length == 2) // We were in Layer 1
                 {
-                    currentLevelId = "0";
-                    logger.Info("Layer 1 recovered. Returning to root level.");
+                    // Check if all levels in Layer 1 are completed
+                    if (layer1CompletedLevels >= hierarchyLevelsCount)
+                    {
+                        currentLevelId = "0"; // Return to root level
+                        IsInHierarchyMode = false; // Exit hierarchy mode
+                        layer1CompletedLevels = 0; // Reset the counter
+                        logger.Info("Layer 1 recovered. Returning to root level.");
+                    }
+                    else
+                    {
+                        // Move up to the parent level (for nested layers)
+                        string parentLevelId = GenerateParentLevelId(currentLevelId);
+                        currentLevelId = parentLevelId;
+                        LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);
+                        logger.Info($"Moving up to parent level: {currentLevelId}");
+
+                        MoveToNextLevel(client); // Recursive call
+                    }
+
                 }
                 else
                 {
+                    // Move up to the parent level (for nested layers)
                     string parentLevelId = GenerateParentLevelId(currentLevelId);
                     currentLevelId = parentLevelId;
                     LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);

@@ -108,7 +108,7 @@ namespace FxWorth
             storage = new TokenStorage("tokens.json");
             storage.ClientsStateChanged += ClientsStateChanged;
             storage.InternetSpeedChanged += OnInternetSpeedChanged;
-            storage.TradeUpdated += OnTradeUpdate;
+            /// storage.TradeUpdated += OnTradeUpdate;
             storage.AuthFailed += OnAuthFailed;
             phase1Parameters = new PhaseParameters();
             phase2Parameters = new PhaseParameters();
@@ -117,6 +117,7 @@ namespace FxWorth
             updateTimer.Interval = 300; // 1/3 of a second
             updateTimer.Tick += (s, args) => ClientsStateChanged(storage, EventArgs.Empty);
             updateTimer.Start();
+            storage.TradeUpdated += Storage_TradeUpdated;
 
             foreach (var kvp in storage.Clients)
             {
@@ -149,6 +150,100 @@ namespace FxWorth
                 ctr.ContextMenuStrip = Cut_Copy_Paste_CMS;
                 numerics.Add(ctr);
             }
+        }
+
+        private void Storage_TradeUpdated(object sender, TradeEventArgs e)
+        {
+            this.InvokeIfRequired(() =>
+            {
+                TradeModel model = e.Model;
+
+                dataGridView2.SuspendLayout();
+                try
+                {
+                    var existingRow = dataGridView2.Rows
+                        .Cast<DataGridViewRow>()
+                        .FirstOrDefault(r => r.Cells[0].Value?.ToString() == model.Token && (int)r.Cells[1].Value == model.Id);
+
+                    if (existingRow != null)
+                    {
+                        existingRow.Cells[2].Value = model.TradeState;
+                        existingRow.Cells[4].Value = model.TradeResult;
+                        existingRow.Cells[5].Value = model.Profit;
+                    }
+                    else
+                    {
+                        int newRowIndex = dataGridView2.Rows.Add(model.Token, model.Id, model.TradeState, model.Stake, null, null);
+                        dataGridView2.FirstDisplayedScrollingRowIndex = newRowIndex;
+                    }
+                }
+                finally
+                {
+                    dataGridView2.ResumeLayout(true);
+                }
+
+                if (storage.IsHierarchyMode)
+                {
+                    var client = e.Client; // Access the client directly from the event args
+
+                    if (client != null)
+                    {
+                        HierarchyLevel currentLevel = storage.hierarchyNavigator.GetCurrentLevel();
+
+                        if (currentLevel != null)
+                        {
+                            if (!client.TradingParameters.IsRecoveryMode) // Level recovered
+                            {
+                                storage.hierarchyNavigator.MoveToNextLevel(client);
+
+                                if (storage.hierarchyNavigator.currentLevelId == "0") // Back to root level
+                                {
+                                    // isHierarchyMode is already set to false in HierarchyNavigator
+                                    logger.Info("Returned to root level trading.");
+                                }
+                                else
+                                {
+                                    storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                    logger.Info($"Moved to next level: {storage.hierarchyNavigator.currentLevelId}");
+                                }
+                            }
+                            else // Level not recovered, update HierarchyLevel properties
+                            {
+                                currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
+
+                                decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
+                                if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
+                                {
+                                    int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
+
+                                    // Use InitialStake from UI for new layer
+                                    decimal initialStakeForNextLayer;
+                                    if (nextLayer == 2)
+                                    {
+                                        initialStakeForNextLayer = storage.customLayerConfigs.ContainsKey(nextLayer) ?
+                                            (storage.customLayerConfigs[nextLayer].InitialStake ?? storage.InitialStakeLayer1) :
+                                            storage.InitialStakeLayer1;
+                                    }
+                                    else
+                                    {
+                                        initialStakeForNextLayer = storage.customLayerConfigs.ContainsKey(nextLayer) ?
+                                            (storage.customLayerConfigs[nextLayer].InitialStake ?? currentLevel.InitialStake) :
+                                            currentLevel.InitialStake;
+                                    }
+
+
+                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
+
+                                    string nextLevelId = $"{currentLevel.LevelId}.1";
+                                    storage.hierarchyNavigator.currentLevelId = nextLevelId;
+                                    storage.hierarchyNavigator.LoadLevelTradingParameters(nextLevelId, client, client.TradingParameters);
+                                    logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // Event handler for the StatusChanged event
@@ -295,91 +390,6 @@ namespace FxWorth
                     {
                         OwnedForms[0].Close();
                         lastNoInternetShown = DateTime.MinValue;
-                    }
-                }
-            });
-        }
-
-        private void OnTradeUpdate(object sender, TradeEventArgs e)
-        {
-            this.InvokeIfRequired(() =>
-            {
-                TradeModel model = e.Model;
-
-                dataGridView2.SuspendLayout();
-                try
-                {
-                    var existingRow = dataGridView2.Rows
-                        .Cast<DataGridViewRow>()
-                        .FirstOrDefault(r => r.Cells[0].Value?.ToString() == model.Token && (int)r.Cells[1].Value == model.Id);
-
-                    if (existingRow != null)
-                    {
-                        existingRow.Cells[2].Value = model.TradeState;
-                        existingRow.Cells[4].Value = model.TradeResult;
-                        existingRow.Cells[5].Value = model.Profit;
-                    }
-                    else
-                    {
-                        int newRowIndex = dataGridView2.Rows.Add(model.Token, model.Id, model.TradeState, model.Stake, null, null);
-                        dataGridView2.FirstDisplayedScrollingRowIndex = newRowIndex;
-                    }
-                }
-                finally
-                {
-                    dataGridView2.ResumeLayout(true);
-                }
-
-                if (storage.isHierarchyMode)
-                {
-                    var client = storage.Clients.FirstOrDefault(x => x.Value.GetToken() == model.Token).Value;
-
-                    if (client != null)
-                    {
-                        HierarchyLevel currentLevel = storage.hierarchyNavigator?.GetCurrentLevel();
-
-                        if (currentLevel != null)
-                        {
-                            if (!client.TradingParameters.IsRecoveryMode) // Current level recovered
-                            {
-                                storage.hierarchyNavigator.MoveToNextLevel(client);
-
-                                if (storage.hierarchyNavigator.currentLevelId == "0")
-                                {
-                                    storage.isHierarchyMode = false;
-                                    storage.hierarchyClient = null;
-
-                                    logger.Info("Returned to root level trading.");
-                                }
-                                else
-                                {
-                                    storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
-                                    logger.Info($"Moved to next level: {storage.hierarchyNavigator.currentLevelId}");
-                                }
-                            }
-                            else // Current level not recovered, update HierarchyLevel properties
-                            {
-                                currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
-
-                                decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
-                                if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
-                                {
-                                    int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
-                                    decimal initialStake = currentLevel.InitialStake;
-                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStake);
-
-                                    string nextLevelId = $"{currentLevel.LevelId}.1";
-                                    storage.hierarchyNavigator.currentLevelId = nextLevelId;
-                                    storage.hierarchyNavigator.LoadLevelTradingParameters(nextLevelId, client, client.TradingParameters);
-                                    logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
-                                }
-                            }
-                        }
-                        else if (storage.isHierarchyMode && client.TradingParameters.IsRecoveryMode)
-                        {
-                            logger.Error("Current level is null in hierarchy mode, but IsRecoveryMode is true. This should not happen.");
-                            // Handle this error appropriately, e.g., reset hierarchy mode, reset trading parameters, etc.
-                        }
                     }
                 }
             });
