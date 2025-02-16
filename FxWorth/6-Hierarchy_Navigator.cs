@@ -12,13 +12,15 @@ namespace FxWorth.Hierarchy
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private Dictionary<string, HierarchyLevel> hierarchyLevels;
         private List<string> levelOrder;
-        public string currentLevelId;
+        public string currentLevelId { get; set; }
         private int hierarchyLevelsCount;
-        public int maxHierarchyDepth;
+        public int maxHierarchyDepth { get; private set; }
         private PhaseParameters phase1Params;
         private PhaseParameters phase2Params;
         private readonly TokenStorage storage;
-        private decimal initialStakeLayer1;
+        public bool IsInHierarchyMode { get; private set; } = false;
+        internal int layer1CompletedLevels = 0;
+
 
         public HierarchyNavigator(decimal amountToBeRecovered, TradingParameters tradingParameters, PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1, TokenStorage storage)
         {
@@ -27,20 +29,20 @@ namespace FxWorth.Hierarchy
             this.phase1Params = phase1Params;
             this.phase2Params = phase2Params;
             this.storage = storage;
-            this.initialStakeLayer1 = initialStakeLayer1;
 
             hierarchyLevels = new Dictionary<string, HierarchyLevel>();
             levelOrder = new List<string>();
 
             if (amountToBeRecovered > phase1Params.MaxDrawdown)
             {
-                CreateHierarchy(amountToBeRecovered, tradingParameters, customLayerConfigs);
+                CreateHierarchy(amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
             }
         }
 
-        private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs)
+        private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1)
         {
-            // No need to calculate initialStakeLayer1 here; it's passed to the constructor
+            IsInHierarchyMode = true; // Enter hierarchy mode
+
             CreateLayer(1, amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
 
             for (int i = 2; i <= maxHierarchyDepth; i++)
@@ -72,7 +74,31 @@ namespace FxWorth.Hierarchy
                 decimal? maxDrawdown = customConfig?.MaxDrawdown ?? phase2Params.MaxDrawdown;
                 decimal? barrierOffset = customConfig?.BarrierOffset ?? phase2Params.Barrier;
 
-                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, initialStake, martingaleLevel, maxDrawdown, barrierOffset); // Use initialStake
+                // Calculate initialStake based on custom config, previous layer, or initialStakeLayer1
+                decimal levelInitialStake;
+                if (customConfig?.InitialStake != null)
+                {
+                    levelInitialStake = customConfig.InitialStake.Value;
+                }
+                else if (layerNumber > 1)
+                {
+                    // Get the first level of the previous layer
+                    if (hierarchyLevels.TryGetValue($"{layerNumber - 1}.1", out var previousLayerLevel))
+                    {
+                        levelInitialStake = previousLayerLevel.InitialStake;
+                    }
+                    else
+                    {
+                        // Fallback to initialStakeLayer1 if previous layer's first level doesn't exist
+                        levelInitialStake = initialStake;
+                    }
+                }
+                else
+                {
+                    levelInitialStake = initialStake; // Use the passed initialStake for layer 1
+                }
+
+                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, levelInitialStake, martingaleLevel, maxDrawdown, barrierOffset);
                 hierarchyLevels[levelId] = newLevel;
                 levelOrder.Add(levelId);
 
@@ -80,7 +106,7 @@ namespace FxWorth.Hierarchy
 
                 if (amountPerLevel > levelMaxDrawdown && layerNumber < maxHierarchyDepth)
                 {
-                    CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, initialStake); // Pass initialStake
+                    CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, levelInitialStake); // Use calculated initialStake
                 }
             }
         }
@@ -88,11 +114,12 @@ namespace FxWorth.Hierarchy
         public class HierarchyLevel
         {
             public string LevelId { get; set; }
-            public decimal AmountToBeRecovered { get; set; }    
-            public decimal InitialStake { get; set; }   
-            public int? MartingaleLevel { get; set; }   
+            public decimal AmountToBeRecovered { get; set; }
+            public decimal InitialStake { get; set; }
+            public int? MartingaleLevel { get; set; }
             public decimal? MaxDrawdown { get; set; }
-            public decimal? BarrierOffset { get; set; } 
+            public decimal? BarrierOffset { get; set; }
+            public List<decimal> recoveryResults { get; set; } = new List<decimal>(); // Add recoveryResults here
 
 
             public HierarchyLevel(string levelId, decimal amountToBeRecovered, decimal initialStake, int? martingaleLevel, decimal? maxDrawdown, decimal? barrierOffset)
@@ -110,37 +137,52 @@ namespace FxWorth.Hierarchy
         {
             logger.Info($"Exiting Level: {currentLevelId}");
 
-            string nextLevelId = GenerateNextLevelId(currentLevelId, hierarchyLevelsCount);
+            string[] parts = currentLevelId.Split('.');
+            int currentLayer = parts.Length;
+            int currentLevelNumber = int.Parse(parts.Last());
 
-            if (nextLevelId != null)
+            if (currentLevelNumber < hierarchyLevelsCount)
             {
-                currentLevelId = nextLevelId;
+                currentLevelNumber++;
+                parts[parts.Length - 1] = currentLevelNumber.ToString();
+                currentLevelId = string.Join(".", parts);
                 LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);
                 logger.Info($"Entering Level: {currentLevelId}");
+                return;
             }
-            else
+
+            if (currentLayer == 1)
             {
-                if (currentLevelId.Split('.').Length == 2)
+                layer1CompletedLevels++;
+                if (layer1CompletedLevels >= hierarchyLevelsCount)
                 {
+                    IsInHierarchyMode = false;
                     currentLevelId = "0";
-                    logger.Info("Layer 1 recovered. Returning to root level.");
+                    layer1CompletedLevels = 0;
+                    logger.Info("Layer 1 recovered. Returning to root level trading.");
+                    return;
                 }
                 else
                 {
-                    string parentLevelId = GenerateParentLevelId(currentLevelId);
-                    currentLevelId = parentLevelId;
+                    currentLevelNumber = layer1CompletedLevels + 1;
+                    currentLevelId = $"1.{currentLevelNumber}";
                     LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);
-                    logger.Info($"Moving up to parent level: {currentLevelId}");
-
-                    MoveToNextLevel(client); // Recursive call
+                    logger.Info($"Entering Level: {currentLevelId}");
+                    return;
                 }
             }
+
+            parts = parts.Take(parts.Length - 1).ToArray(); 
+            currentLevelId = string.Join(".", parts);
+            LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);
+            logger.Info($"Moving up to parent level: {currentLevelId}");
         }
+
 
         public void LoadLevelTradingParameters(string levelId, AuthClient client, TradingParameters tradingParameters)
         {
             HierarchyLevel level = hierarchyLevels[levelId];
-            CustomLayerConfig customConfig = GetCustomConfigForLayer(int.Parse(levelId.Split('.')[0]), storage.customLayerConfigs); // Get custom config for the current layer
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(int.Parse(levelId.Split('.')[0]), storage.customLayerConfigs);
 
             // Prioritize custom parameters, then level parameters, then phase 2, then phase 1
             tradingParameters.MartingaleLevel = customConfig?.MartingaleLevel ?? level.MartingaleLevel ?? (levelId.StartsWith("1.") ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
@@ -152,24 +194,6 @@ namespace FxWorth.Hierarchy
             if (tradingParameters.DynamicStake == 0 || tradingParameters.DynamicStake == tradingParameters.Stake)
             {
                 tradingParameters.DynamicStake = level.InitialStake;
-            }
-        }
-
-
-        private string GenerateNextLevelId(string currentLevelId, int hierarchyLevelsForLayer)
-        {
-            string[] parts = currentLevelId.Split('.');
-            int currentLayer = parts.Length - 1;
-            int currentLevelNumber = int.Parse(parts[currentLayer]);
-
-            if (currentLevelNumber < hierarchyLevelsForLayer)
-            {
-                parts[currentLayer] = (currentLevelNumber + 1).ToString();
-                return string.Join(".", parts);
-            }
-            else
-            {
-                return null;
             }
         }
 
@@ -191,12 +215,6 @@ namespace FxWorth.Hierarchy
                 return null;
             }
         }
-
-        private string GenerateParentLevelId(string currentLevelId)
-        {
-            return string.Join(".", currentLevelId.Split('.').Take(currentLevelId.Split('.').Length - 1));
-        }
-
 
         private CustomLayerConfig GetCustomConfigForLayer(int layerNumber, Dictionary<int, CustomLayerConfig> customLayerConfigs)
         {
@@ -223,11 +241,6 @@ namespace FxWorth.Hierarchy
                 }
             }
             return total;
-        }
-
-        private AuthClient GetClientForCurrentTrade(string token)
-        {
-            return storage.Clients.FirstOrDefault(x => x.Value.GetToken() == token).Value;
         }
     }
 }

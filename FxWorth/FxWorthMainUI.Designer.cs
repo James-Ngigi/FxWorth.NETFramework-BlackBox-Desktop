@@ -404,7 +404,13 @@
             // 
             // Stake_TXT2
             // 
+            this.Stake_TXT2.DecimalPlaces = 2;
             this.Stake_TXT2.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Stake_TXT2.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            131072});
             this.Stake_TXT2.Location = new System.Drawing.Point(214, 210);
             this.Stake_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Stake_TXT2.Maximum = new decimal(new int[] {
@@ -1013,7 +1019,7 @@
             0,
             0});
             this.Stake_TXT.Minimum = new decimal(new int[] {
-            8,
+            4,
             0,
             0,
             65536});

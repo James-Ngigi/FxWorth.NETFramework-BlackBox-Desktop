@@ -87,6 +87,8 @@ namespace FxWorth
         // This is typically the first online client in the `clients` dictionary.
         private AuthClient eventingClinet;
 
+        public bool IsHierarchyMode => hierarchyNavigator != null && hierarchyNavigator.IsInHierarchyMode;
+
         // Lock object for TradeUpdated event
         private readonly object tradeUpdateLock = new object();
 
@@ -94,14 +96,12 @@ namespace FxWorth
         public Dictionary<string, HierarchyLevel> hierarchyLevels = new Dictionary<string, HierarchyLevel>();
         public string currentLevelId;
         public AuthClient hierarchyClient;
-        public bool isHierarchyMode;
         public PhaseParameters phase1Parameters;
         public PhaseParameters phase2Parameters;
         public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
         public decimal InitialStakeLayer1 { get; set; }
-        private System.Timers.Timer hierarchyMonitorTimer;
 
 
         public void SetHierarchyParameters(PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs)
@@ -134,10 +134,6 @@ namespace FxWorth
             clientStateCheckTimer = new Timer(12000); // Set the interval to 12 seconds (12000 milliseconds)
             clientStateCheckTimer.Elapsed += ClientStateCheckTimer_Elapsed;
             clientStateCheckTimer.Start();
-            hierarchyMonitorTimer = new System.Timers.Timer(2400); // Check every 2.4 seconds
-            hierarchyMonitorTimer.Elapsed += (sender, e) => MonitorHierarchyMode();
-            hierarchyMonitorTimer.AutoReset = true;
-            hierarchyMonitorTimer.Start();
 
             // If the credentials file exists, load and process the credentials.
             if (File.Exists(path))
@@ -219,12 +215,6 @@ namespace FxWorth
 
             // Stop the MarketDataClient to unsubscribe from market data because the application is closing.
             marketDataClient.Stop();
-
-            if (hierarchyMonitorTimer != null)
-            {
-                hierarchyMonitorTimer.Stop();
-                hierarchyMonitorTimer.Dispose();
-            }
 
             clientStateCheckTimer.Stop();
             clientStateCheckTimer.Dispose();
@@ -366,27 +356,7 @@ namespace FxWorth
             return new MarketDataParameters { Rsi = rsi, Symbol = symbol };
         }
 
-        private void MonitorHierarchyMode()
-        {
-            if (!isHierarchyMode || hierarchyNavigator == null || hierarchyClient == null)
-            {
-                return;
-            }
 
-            // Use the GetLayer1TotalAmountToBeRecovered method to get the total for Layer 1
-            if (hierarchyNavigator.GetLayer1TotalAmountToBeRecovered() >= 0)
-            {
-                isHierarchyMode = false;
-                logger.Info("<=> Exiting Hierarchy Mode. Returning to root level trading.");
-
-                hierarchyClient.TradingParameters.IsRecoveryMode = false;
-                hierarchyClient.TradingParameters.DynamicStake = hierarchyClient.TradingParameters.Stake;
-                hierarchyClient.TradingParameters.AmountToBeRecoverd = 0;
-                hierarchyClient.TradingParameters.recoveryResults.Clear();
-
-                hierarchyClient = null;
-            }
-        }
 
         /* ---------------------------------------------------------------------------------------------- */
 
@@ -452,17 +422,17 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && !isHierarchyMode)
+                    if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
-                        isHierarchyMode = true;
                         hierarchyClient = value;
 
-                        hierarchyNavigator = new HierarchyNavigator(value.TradingParameters.AmountToBeRecoverd, tradingParameters, phase1Parameters, phase2Parameters, customLayerConfigs, InitialStakeLayer1, this); // Pass initialStakeLayer1 and TokenStorage instance
-                        hierarchyNavigator.LoadLevelTradingParameters("1.1", value, tradingParameters);
-                        tradingParameters.DynamicStake = tradingParameters.Stake; // Reset DynamicStake
+                        hierarchyNavigator = new HierarchyNavigator(tradingParameters.AmountToBeRecoverd, tradingParameters, phase1Parameters, phase2Parameters, customLayerConfigs, InitialStakeLayer1, this);
+                        currentLevelId = "1.1";
+                        hierarchyNavigator.LoadLevelTradingParameters(currentLevelId, value, tradingParameters);
+                        tradingParameters.DynamicStake = tradingParameters.Stake;
                     }
 
-                    if (isHierarchyMode)
+                    if (IsHierarchyMode)
                     {
                         HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
 
@@ -474,20 +444,20 @@ namespace FxWorth
 
                             Task.Factory.StartNew(() =>
                             {
-                                value.Buy(tradingParameters.Symbol.symbol, tradingParameters.Duration, tradingParameters.DurationType, tradingParameters.DynamicStake);
+                                value.Buy(tradingParameters.Symbol.symbol, tradingParameters.Duration,
+                                    tradingParameters.DurationType, tradingParameters.DynamicStake);
                             });
 
                             Task.Factory.StartNew(() =>
                             {
-                                value.Sell(tradingParameters.Symbol.symbol, tradingParameters.Duration, tradingParameters.DurationType, tradingParameters.DynamicStake);
+                                value.Sell(tradingParameters.Symbol.symbol, tradingParameters.Duration,
+                                    tradingParameters.DurationType, tradingParameters.DynamicStake);
                             });
                         }
                         else
                         {
                             logger.Error("Current level is null in hierarchy mode.");
-                            isHierarchyMode = false;
-                            hierarchyClient = null;
-                            // Consider adding logic to reset trading parameters or handle the error appropriately
+                            // Handle error appropriately
                         }
                     }
                     else
@@ -504,7 +474,7 @@ namespace FxWorth
 
                         if (value.Balance < 2 * tradingParameters.DynamicStake)
                         {
-                            logger.Warn($"<=> Margin call for Client ID: {pair.Key.Name}. Available balance ({value.Balance}) is insufficient to cover the required stake {2*tradingParameters.DynamicStake}). Trading paused for this account.");
+                            logger.Warn($"<=> Margin call for Client ID: {pair.Key.Name}. Available balance ({value.Balance}) is insufficient to cover the required stake {2 * tradingParameters.DynamicStake}). Trading paused for this account.");
                             continue;
                         }
 
@@ -697,7 +667,7 @@ namespace FxWorth
                 // Clone the trading parameters to avoid modifying the original object.
                 value.TradingParameters = (TradingParameters)parameters.Clone();
                 // Initialize a new list for recovery results for each account.
-                value.TradingParameters.recoveryResults = new List<decimal>();
+                // value.TradingParameters.recoveryResults = new List<decimal>();
             }
         }
     }

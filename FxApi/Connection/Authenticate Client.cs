@@ -580,8 +580,7 @@ namespace FxApi
             {
                 if (int.TryParse(Credentials.AppId, out int appId))
                 {
-                    // Pass stored contract ID, transaction time, and parsed AppId to Process
-                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime);
+                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime, new List<decimal>()); // Pass a dummy empty list.
                 }
                 else
                 {
@@ -603,7 +602,7 @@ namespace FxApi
             }
 
             // Raise the TradeChanged event to notify listeners about the trade update.
-            TradeChanged?.Raise(this, new TradeEventArgs(model));
+            TradeChanged?.Raise(this, new TradeEventArgs(model, this));
             StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
         }
     }
@@ -918,14 +917,16 @@ namespace FxApi
     {
         // The updated trade model.
         public TradeModel Model { get; }
+        public AuthClient Client { get; }
 
         /// <summary>
         /// Constructor for `TradeEventArgs`.
         /// <param name="model">The updated trade model.</param>
         /// </summary>
-        public TradeEventArgs(TradeModel model)
+        public TradeEventArgs(TradeModel model, AuthClient client)
         {
             Model = model;
+            Client = client;
         }
     }
 
