@@ -580,8 +580,7 @@ namespace FxApi
             {
                 if (int.TryParse(Credentials.AppId, out int appId))
                 {
-                    // Pass stored contract ID, transaction time, and parsed AppId to Process
-                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime);
+                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime, new List<decimal>()); // Pass a dummy empty list.
                 }
                 else
                 {

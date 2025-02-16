@@ -12,7 +12,7 @@ namespace FxApi.Connection
     /// based on the Martingale recovery system. It provides a mechanism for processing trade outcomes, 
     /// adjusting stake amounts, and entering or exiting recovery mode as needed.
     /// </summary>
-    
+
     public class TradingParameters : ICloneable
     {
         /// Logger for recording trading parameters and actions.
@@ -95,13 +95,10 @@ namespace FxApi.Connection
         /// The number of remaining recovery attempts in the current Martingale recovery cycle.
         public int RecoveryAttemptsLeft { get; set; }
 
-        /// A list that stores the outcomes (profits or losses) of all trades within the current Martingale recovery attempt.
-        public List<decimal> recoveryResults = new List<decimal>();
-
         /// Temporarily overrides the Barrier property when in hierarchy mode.
         public decimal TempBarrier { get; set; }
 
-        public int InitialStake4Layer1  { get; set; }
+        public int InitialStake4Layer1 { get; set; }
 
 
         /*------------------------------------------------------------------------------------------------------------------------*/
@@ -112,8 +109,9 @@ namespace FxApi.Connection
         /// and updating relevant parameters based on the Godfathers recovery system.
         /// <param name="mlp">The actual profit or loss of the completed trade (Most Recent Profit/Loss).</param>
         /// <param name="estimate">An estimated profit value, typically used when `mlp` is zero to determine the initial stake for recovery.</param>
+        /// <param name="recoveryResults">The list of recovery results for the *current level*.</param>
         /// </summary>
-        public void Process(decimal mlp, decimal estimate, int appId, long contractId, int transactionTime)
+        public void Process(decimal mlp, decimal estimate, int appId, long contractId, int transactionTime, List<decimal> recoveryResults)
         {
             // If not in recovery mode and the trade was profitable, update the PreviousProfit.
             if (!IsRecoveryMode && mlp > 0)
@@ -216,7 +214,7 @@ namespace FxApi.Connection
         public override string ToString()
         {
             // Format the trading parameters as a string, including all relevant values.
-            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(recoveryResults)}: {string.Join(";", recoveryResults)}";
+            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}";
         }
 
         /// <summary>

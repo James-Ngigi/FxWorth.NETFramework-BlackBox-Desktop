@@ -192,6 +192,9 @@ namespace FxWorth
 
                         if (currentLevel != null)
                         {
+                            // Pass the current level's recoveryResults to Process
+                            client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0, currentLevel.recoveryResults);
+
                             if (!client.TradingParameters.IsRecoveryMode)
                             {
                                 storage.hierarchyNavigator.MoveToNextLevel(client);

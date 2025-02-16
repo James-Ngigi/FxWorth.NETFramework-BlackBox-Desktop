@@ -356,7 +356,7 @@ namespace FxWorth
             return new MarketDataParameters { Rsi = rsi, Symbol = symbol };
         }
 
-        
+
 
         /* ---------------------------------------------------------------------------------------------- */
 
@@ -422,7 +422,7 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && !IsHierarchyMode)
+                    if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
 
@@ -474,7 +474,7 @@ namespace FxWorth
 
                         if (value.Balance < 2 * tradingParameters.DynamicStake)
                         {
-                            logger.Warn($"<=> Margin call for Client ID: {pair.Key.Name}. Available balance ({value.Balance}) is insufficient to cover the required stake {2*tradingParameters.DynamicStake}). Trading paused for this account.");
+                            logger.Warn($"<=> Margin call for Client ID: {pair.Key.Name}. Available balance ({value.Balance}) is insufficient to cover the required stake {2 * tradingParameters.DynamicStake}). Trading paused for this account.");
                             continue;
                         }
 
@@ -667,7 +667,7 @@ namespace FxWorth
                 // Clone the trading parameters to avoid modifying the original object.
                 value.TradingParameters = (TradingParameters)parameters.Clone();
                 // Initialize a new list for recovery results for each account.
-                value.TradingParameters.recoveryResults = new List<decimal>();
+                // value.TradingParameters.recoveryResults = new List<decimal>();
             }
         }
     }
