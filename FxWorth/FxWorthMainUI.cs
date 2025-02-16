@@ -40,7 +40,7 @@ namespace FxWorth
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x02000000;  // WS_EX_COMPOSITED setting ebabled.
+                cp.ExStyle |= 0x02000000;  // WS_EX_COMPOSITED setting enabled.
                 return cp;
             }
         }
@@ -184,7 +184,7 @@ namespace FxWorth
 
                 if (storage.IsHierarchyMode)
                 {
-                    var client = e.Client; // Access the client directly from the event args
+                    var client = e.Client;
 
                     if (client != null)
                     {
@@ -192,13 +192,12 @@ namespace FxWorth
 
                         if (currentLevel != null)
                         {
-                            if (!client.TradingParameters.IsRecoveryMode) // Level recovered
+                            if (!client.TradingParameters.IsRecoveryMode)
                             {
                                 storage.hierarchyNavigator.MoveToNextLevel(client);
 
-                                if (storage.hierarchyNavigator.currentLevelId == "0") // Back to root level
+                                if (storage.hierarchyNavigator.currentLevelId == "0")
                                 {
-                                    // isHierarchyMode is already set to false in HierarchyNavigator
                                     logger.Info("Returned to root level trading.");
                                 }
                                 else
@@ -207,7 +206,7 @@ namespace FxWorth
                                     logger.Info($"Moved to next level: {storage.hierarchyNavigator.currentLevelId}");
                                 }
                             }
-                            else // Level not recovered, update HierarchyLevel properties
+                            else
                             {
                                 currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
 
@@ -216,7 +215,6 @@ namespace FxWorth
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
 
-                                    // Use InitialStake from UI for new layer
                                     decimal initialStakeForNextLayer;
                                     if (nextLayer == 2)
                                     {
@@ -246,12 +244,10 @@ namespace FxWorth
             });
         }
 
-        // Event handler for the StatusChanged event
         private void Client_StatusChanged(object sender, StatusChangedEventArgs e)
         {
             this.InvokeIfRequired(() =>
             {
-                // Find the corresponding row in dataGridView1
                 foreach (DataGridViewRow row in dataGridView1.Rows)
                 {
 

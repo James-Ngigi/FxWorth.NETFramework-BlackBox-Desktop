@@ -74,7 +74,7 @@ namespace FxWorth.Hierarchy
                 decimal? maxDrawdown = customConfig?.MaxDrawdown ?? phase2Params.MaxDrawdown;
                 decimal? barrierOffset = customConfig?.BarrierOffset ?? phase2Params.Barrier;
 
-                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, initialStake, martingaleLevel, maxDrawdown, barrierOffset); // Use initialStake
+                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, initialStake, martingaleLevel, maxDrawdown, barrierOffset);
                 hierarchyLevels[levelId] = newLevel;
                 levelOrder.Add(levelId);
 
@@ -82,7 +82,7 @@ namespace FxWorth.Hierarchy
 
                 if (amountPerLevel > levelMaxDrawdown && layerNumber < maxHierarchyDepth)
                 {
-                    CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, initialStake); // Pass initialStake
+                    CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, initialStake);
                 }
             }
         }
@@ -129,14 +129,14 @@ namespace FxWorth.Hierarchy
             else
             {
                 // No more levels in this layer. Check if we're back at the root level
-                if (currentLevelId.Split('.').Length == 2) // We were in Layer 1
+                if (currentLevelId.Split('.').Length == 2)
                 {
                     // Check if all levels in Layer 1 are completed
                     if (layer1CompletedLevels >= hierarchyLevelsCount)
                     {
-                        currentLevelId = "0"; // Return to root level
-                        IsInHierarchyMode = false; // Exit hierarchy mode
-                        layer1CompletedLevels = 0; // Reset the counter
+                        currentLevelId = "0";
+                        IsInHierarchyMode = false;
+                        layer1CompletedLevels = 0; 
                         logger.Info("Layer 1 recovered. Returning to root level.");
                     }
                     else
