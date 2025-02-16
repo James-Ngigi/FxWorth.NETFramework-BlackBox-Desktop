@@ -83,9 +83,6 @@ namespace FxApi.Connection
         /// A flag indicating whether the system is currently in Martingale recovery mode.
         public bool IsRecoveryMode { get; set; }
 
-        /// A temporary variable used to adjust the `MartingaleLevel` dynamically when the calculated `DynamicStake` exceeds `MaximumStake`.
-        public int NewMartingaleLevel { get; set; }
-
         /// The total amount of losses to be recovered during the current Martingale recovery attempt.
         public decimal AmountToBeRecoverd { get; set; }
 
@@ -219,7 +216,7 @@ namespace FxApi.Connection
         public override string ToString()
         {
             // Format the trading parameters as a string, including all relevant values.
-            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(NewMartingaleLevel)}: {NewMartingaleLevel}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(recoveryResults)}: {string.Join(";", recoveryResults)}";
+            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(recoveryResults)}: {string.Join(";", recoveryResults)}";
         }
 
         /// <summary>
