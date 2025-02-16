@@ -128,8 +128,8 @@ namespace FxWorth.Hierarchy
             }
             else
             {
-                // No more levels in this layer. Check if we're back at the root level
-                if (currentLevelId.Split('.').Length == 2)
+                
+                if (currentLevelId.Split('.').Length == 2) // Check for nested layers
                 {
                     // Check if all levels in Layer 1 are completed
                     if (layer1CompletedLevels >= hierarchyLevelsCount)
