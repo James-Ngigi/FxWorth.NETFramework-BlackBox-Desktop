@@ -4,8 +4,8 @@ using FxApi.Connection;
 using System.Collections.Generic;
 using FxWorth.Hierarchy;
 using FxApi;
-using FxWorth;
 using System.IO;
+using FxWorth;
 
 namespace FxUnitTests // Changed namespace
 {
@@ -60,7 +60,7 @@ namespace FxUnitTests // Changed namespace
             _mockClient.Setup(x => x.TradingParameters).Returns(_tradingParameters); // Return _tradingParameters
 
             // Initialize _navigator here, so it's available for all tests.
-            _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
+            //_navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
 
         }
 
@@ -69,6 +69,7 @@ namespace FxUnitTests // Changed namespace
         public void MoveToNextLevel_ShouldMoveToNextLevelInSameLayer()
         {
             // Arrange
+            var _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
             _navigator.currentLevelId = "1.1";
 
             // Act
@@ -83,6 +84,7 @@ namespace FxUnitTests // Changed namespace
         {
             // Arrange
             // Create a navigator that will create a hierarchy (amountToBeRecovered > phase1Params.MaxDrawdown)
+            var _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
             _navigator.currentLevelId = "2.3"; // Start on Layer 2, last Level
 
             // Act
@@ -98,11 +100,14 @@ namespace FxUnitTests // Changed namespace
         {
             // Arrange
             // Create a navigator that will create a hierarchy.
-            _navigator.currentLevelId = "1.3"; // Last level in layer 1 (assuming HierarchyLevels = 3)
-            _navigator.layer1CompletedLevels = 2; // Set to 2, so the next increment will trigger exit.
+            var _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
+            //_navigator.currentLevelId = "1.3"; // Last level in layer 1 (assuming HierarchyLevels = 3)
+            //_navigator.layer1CompletedLevels = 2; // Set to 2, so the next increment will trigger exit.
 
             // Act
-            _navigator.MoveToNextLevel(_mockClient.Object);
+            _navigator.MoveToNextLevel(_mockClient.Object); // 1.1 -> 1.2
+            _navigator.MoveToNextLevel(_mockClient.Object); // 1.2 -> 1.3
+            _navigator.MoveToNextLevel(_mockClient.Object); // 1.3 -> Exit
 
             // Assert
             Assert.That(_navigator.IsInHierarchyMode, Is.False);
@@ -113,6 +118,7 @@ namespace FxUnitTests // Changed namespace
         public void MoveToNextLevel_ShouldMoveToNextLevelInLayer1_WhenNotAllLevelsComplete()
         {
             // Arrange
+            var _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
             _navigator.currentLevelId = "1.2"; // Not the last level
             // layer1CompletedLevels is initialized to 0
 
@@ -128,6 +134,7 @@ namespace FxUnitTests // Changed namespace
         public void MoveToNextLevel_ShouldIncrementLayer1CompletedLevels()
         {
             // Arrange
+            var _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
             _navigator.currentLevelId = "1.1";
 
             // Act
@@ -146,7 +153,8 @@ namespace FxUnitTests // Changed namespace
         [Test]
         public void CreateHierarchy_EntersHierarchyMode()
         {
-            // Arrange is already handled in setup
+            // Arrange
+            var _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
 
             // Assert
             Assert.That(_navigator.IsInHierarchyMode, Is.True);
@@ -157,7 +165,7 @@ namespace FxUnitTests // Changed namespace
         {
             // Arrange
             // amountToBeRecovered (500) is less than phase1Params.MaxDrawdown (1000)
-            var navigator = new HierarchyNavigator(500, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, new TokenStorage("dummy.json"));
+            var navigator = new HierarchyNavigator(500, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
 
             // Assert
             Assert.That(navigator.IsInHierarchyMode, Is.False);
@@ -167,26 +175,31 @@ namespace FxUnitTests // Changed namespace
         public void MoveToNextLevel_ShouldMoveToParentLevel_FromNestedLayer()
         {
             // Arrange
-            _navigator.currentLevelId = "1.2.3.1"; // Nested level
+            // We need to manually create the hierarchy here, because we're testing a *specific* level ID.
+            var navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
+            navigator.CreateLayer(2, 1000, _tradingParameters, _customLayerConfigs, 10); // Create layer 2
+            navigator.CreateLayer(3, 500, _tradingParameters, _customLayerConfigs, 10); // Create layer 3
+            navigator.currentLevelId = "1.2.3.1"; // Nested level
 
             // Act
-            _navigator.MoveToNextLevel(_mockClient.Object);
+            navigator.MoveToNextLevel(_mockClient.Object);
 
             // Assert
-            Assert.That(_navigator.currentLevelId, Is.EqualTo("1.2.3")); // Should move up to parent
+            Assert.That(navigator.currentLevelId, Is.EqualTo("1.2.3")); // Should move up to parent
         }
 
         [Test]
         public void MoveToNextLevel_ShouldMoveToParentLevel_FromNestedLayer2()
         {
             // Arrange
-            _navigator.currentLevelId = "1.2.3.3"; // Nested level
+            var navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
+            navigator.currentLevelId = "1.2.3.3"; // Nested level, last level in layer 3
 
             // Act
-            _navigator.MoveToNextLevel(_mockClient.Object);
+            navigator.MoveToNextLevel(_mockClient.Object);
 
             // Assert
-            Assert.That(_navigator.currentLevelId, Is.EqualTo("1.2.3")); // Should move up to parent
+            Assert.That(navigator.currentLevelId, Is.EqualTo("1.2.3")); // Should move up to parent
         }
     }
 }
