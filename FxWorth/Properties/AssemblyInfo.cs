@@ -33,4 +33,4 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("5.0.0.5")]
 [assembly: AssemblyFileVersion("0.0.0.0")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("FxWorth.Tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("FxUnitTests")]

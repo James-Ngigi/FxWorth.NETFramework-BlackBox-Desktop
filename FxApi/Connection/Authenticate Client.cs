@@ -53,7 +53,7 @@ namespace FxApi
         }
 
         // The trading parameters associated with this client, defining the trading strategy and risk management rules.
-        public TradingParameters TradingParameters { get; set; }
+        public virtual TradingParameters TradingParameters { get; set; }
 
         // The current account balance, updated as trades are executed and balance updates are received from the Deriv API.
         public decimal Balance { get; set; }

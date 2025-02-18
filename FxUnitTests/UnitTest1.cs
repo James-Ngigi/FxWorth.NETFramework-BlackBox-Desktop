@@ -4,8 +4,10 @@ using FxApi.Connection;
 using System.Collections.Generic;
 using FxWorth.Hierarchy;
 using FxApi;
+using FxWorth;
+using System.IO;
 
-namespace FxWorth.Tests
+namespace FxUnitTests // Changed namespace
 {
     [TestFixture]
     public class HierarchyNavigatorTests
@@ -16,7 +18,7 @@ namespace FxWorth.Tests
         private PhaseParameters _phase1Params;
         private PhaseParameters _phase2Params;
         private Dictionary<int, CustomLayerConfig> _customLayerConfigs;
-        private Mock<TokenStorage> _mockStorage; // Mock TokenStorage
+        private TokenStorage _storage; // Real TokenStorage, not a mock
 
         [SetUp]
         public void SetUp()
@@ -48,15 +50,17 @@ namespace FxWorth.Tests
 
             _customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
 
-            // Mock TokenStorage.  For now, we're just mocking the necessary methods.
-            _mockStorage = new Mock<TokenStorage>(new object[] { "dummy_path.json" }); // Pass a dummy path
-            _mockStorage.Setup(x => x.customLayerConfigs).Returns(_customLayerConfigs);
+            // Create a REAL TokenStorage instance, using a temporary file.
+            string tempFilePath = Path.GetTempFileName(); // Get a unique temporary file path
+            _storage = new TokenStorage(tempFilePath);
+            _storage.customLayerConfigs = _customLayerConfigs; // Set the customLayerConfigs
+
 
             _mockClient = new Mock<AuthClient>(new Credentials { AppId = "123", Token = "test_token" }, 0); // Pass dummy credentials
             _mockClient.Setup(x => x.TradingParameters).Returns(_tradingParameters); // Return _tradingParameters
 
             // Initialize _navigator here, so it's available for all tests.
-            _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _mockStorage.Object);
+            _navigator = new HierarchyNavigator(5000, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _storage);
 
         }
 
@@ -78,6 +82,7 @@ namespace FxWorth.Tests
         public void MoveToNextLevel_ShouldMoveToParentLevel_FromLayer2()
         {
             // Arrange
+            // Create a navigator that will create a hierarchy (amountToBeRecovered > phase1Params.MaxDrawdown)
             _navigator.currentLevelId = "2.3"; // Start on Layer 2, last Level
 
             // Act
@@ -92,6 +97,7 @@ namespace FxWorth.Tests
         public void MoveToNextLevel_ShouldExitHierarchyMode_FromLayer1LastLevel()
         {
             // Arrange
+            // Create a navigator that will create a hierarchy.
             _navigator.currentLevelId = "1.3"; // Last level in layer 1 (assuming HierarchyLevels = 3)
             _navigator.layer1CompletedLevels = 2; // Set to 2, so the next increment will trigger exit.
 
@@ -151,7 +157,7 @@ namespace FxWorth.Tests
         {
             // Arrange
             // amountToBeRecovered (500) is less than phase1Params.MaxDrawdown (1000)
-            var navigator = new HierarchyNavigator(500, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, _mockStorage.Object);
+            var navigator = new HierarchyNavigator(500, _tradingParameters, _phase1Params, _phase2Params, _customLayerConfigs, 10, new TokenStorage("dummy.json"));
 
             // Assert
             Assert.That(navigator.IsInHierarchyMode, Is.False);
