@@ -52,7 +52,7 @@ namespace FxWorth.Tests
             _mockStorage = new Mock<TokenStorage>(new object[] { "dummy_path.json" });
             _mockStorage.Setup(x => x.customLayerConfigs).Returns(_customLayerConfigs);
 
-            _mockClient = new Mock<AuthClient>(new Credentials { AppId = "123", Token = "test_token" }, 0);
+            _mockClient = new Mock<AuthClient>(new Credentials { AppId = "51558", Token = "Eb50l6kGVlahrMW" }, 0);
             _mockClient.Setup(x => x.TradingParameters).Returns(_tradingParameters); 
         }
 
