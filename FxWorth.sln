@@ -7,8 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxWorth", "FxWorth\FxWorth.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxApi", "FxApi\FxApi.csproj", "{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxWorth.Tests", "FxWorth.Tests\FxWorth.Tests.csproj", "{69E091E4-0D29-4C0B-B139-3933F2ECDD94}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxUnitTests", "FxUnitTests\FxUnitTests.csproj", "{D31E02BA-A0A2-4065-9738-D97FA773C82B}"
 	ProjectSection(ProjectDependencies) = postProject
+		{26154E53-34D1-4F50-8626-D4CD65051B14} = {26154E53-34D1-4F50-8626-D4CD65051B14}
 		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB} = {63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}
 	EndProjectSection
 EndProject
@@ -26,10 +27,10 @@ Global
 		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{69E091E4-0D29-4C0B-B139-3933F2ECDD94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{69E091E4-0D29-4C0B-B139-3933F2ECDD94}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{69E091E4-0D29-4C0B-B139-3933F2ECDD94}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{69E091E4-0D29-4C0B-B139-3933F2ECDD94}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
