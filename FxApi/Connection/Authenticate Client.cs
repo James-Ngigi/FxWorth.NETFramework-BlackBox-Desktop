@@ -580,7 +580,7 @@ namespace FxApi
             {
                 if (int.TryParse(Credentials.AppId, out int appId))
                 {
-                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime, new List<decimal>()); // Pass a dummy empty list.
+                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime);
                 }
                 else
                 {

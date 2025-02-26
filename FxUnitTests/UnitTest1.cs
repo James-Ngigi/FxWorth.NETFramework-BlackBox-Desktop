@@ -27,7 +27,7 @@ namespace FxUnitTests // Changed namespace
             _tradingParameters = new TradingParameters
             {
                 HierarchyLevels = 3,
-                MaxHierarchyDepth = 3, // Add MaxHierarchyDepth
+                MaxHierarchyDepth = 4, // Add MaxHierarchyDepth
                 MaxDrawdown = 1000,
                 Barrier = 1.5m,
                 MartingaleLevel = 2,
@@ -38,14 +38,14 @@ namespace FxUnitTests // Changed namespace
             {
                 MaxDrawdown = 1000,
                 Barrier = 1.5m,
-                MartingaleLevel = 2
+                MartingaleLevel = 1
             };
 
             _phase2Params = new PhaseParameters
             {
                 MaxDrawdown = 2000,
                 Barrier = 2.0m,
-                MartingaleLevel = 3
+                MartingaleLevel = 1
             };
 
             _customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
