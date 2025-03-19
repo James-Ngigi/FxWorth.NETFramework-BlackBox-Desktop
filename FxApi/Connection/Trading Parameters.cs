@@ -100,6 +100,13 @@ namespace FxApi.Connection
 
         public int InitialStake4Layer1 { get; set; }
 
+        private List<decimal> recoveryResults = new List<decimal>();
+
+        protected List<decimal> RecoveryResults
+        {
+            get => recoveryResults;
+            set => recoveryResults = value;
+        }
 
         /*------------------------------------------------------------------------------------------------------------------------*/
 
@@ -111,7 +118,7 @@ namespace FxApi.Connection
         /// <param name="estimate">An estimated profit value, typically used when `mlp` is zero to determine the initial stake for recovery.</param>
         /// <param name="recoveryResults">The list of recovery results for the *current level*.</param>
         /// </summary>
-        public void Process(decimal mlp, decimal estimate, int appId, long contractId, int transactionTime, List<decimal> recoveryResults)
+        public void Process(decimal mlp, decimal estimate, int appId, long contractId, int transactionTime)
         {
             // If not in recovery mode and the trade was profitable, update the PreviousProfit.
             if (!IsRecoveryMode && mlp > 0)

@@ -138,13 +138,18 @@ namespace FxWorth
             // If the credentials file exists, load and process the credentials.
             if (File.Exists(path))
             {
-                // Deserialize the credentials from the JSON file.
-                var creds = JsonConvert.DeserializeObject<List<Credentials>>(File.ReadAllText(path));
-
-                // Add each credential to the list of managed clients.
-                foreach (var cred in creds)
+                var json = File.ReadAllText(path);
+                if (!string.IsNullOrWhiteSpace(json)) // Check if file is empty or whitespace
                 {
-                    Add(cred);
+                    var creds = JsonConvert.DeserializeObject<List<Credentials>>(json);
+
+                    if (creds != null)
+                    {
+                        foreach (var cred in creds)
+                        {
+                            Add(cred);
+                        }
+                    }
                 }
             }
         }

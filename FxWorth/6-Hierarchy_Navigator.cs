@@ -137,12 +137,15 @@ namespace FxWorth.Hierarchy
         {
             logger.Info($"Exiting Level: {currentLevelId}");
 
+            // Split the current level ID into its components.
             string[] parts = currentLevelId.Split('.');
-            int currentLayer = parts.Length;
-            int currentLevelNumber = int.Parse(parts.Last());
+            int currentLayer = parts.Length;          // The layer number is the number of parts.
+            int currentLevelNumber = int.Parse(parts.Last()); // The level number is the last part.
 
+            // 1. Check if we're at the end of the current layer.
             if (currentLevelNumber < hierarchyLevelsCount)
             {
+                // Move to the next level within the current layer.
                 currentLevelNumber++;
                 parts[parts.Length - 1] = currentLevelNumber.ToString();
                 currentLevelId = string.Join(".", parts);
@@ -151,19 +154,24 @@ namespace FxWorth.Hierarchy
                 return;
             }
 
+            // 2. If we're at the end of the current layer:
+
+            // 2a. If we're in Layer 1, check if all levels are complete.
             if (currentLayer == 1)
             {
-                layer1CompletedLevels++;
+                layer1CompletedLevels++; // Increment completed levels counter
                 if (layer1CompletedLevels >= hierarchyLevelsCount)
                 {
+                    // All levels in Layer 1 are complete. Exit hierarchy mode.
                     IsInHierarchyMode = false;
-                    currentLevelId = "0";
-                    layer1CompletedLevels = 0;
+                    currentLevelId = "0"; // Or any other indicator for root level
+                    layer1CompletedLevels = 0; // Reset for next hierarchy entry
                     logger.Info("Layer 1 recovered. Returning to root level trading.");
                     return;
                 }
                 else
                 {
+                    // Move to the next level within layer 1
                     currentLevelNumber = layer1CompletedLevels + 1;
                     currentLevelId = $"1.{currentLevelNumber}";
                     LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);
@@ -172,7 +180,8 @@ namespace FxWorth.Hierarchy
                 }
             }
 
-            parts = parts.Take(parts.Length - 1).ToArray(); 
+            // 2b. If we're NOT in Layer 1, move up to the parent level.
+            parts = parts.Take(parts.Length - 1).ToArray(); // Remove the last part (current level).
             currentLevelId = string.Join(".", parts);
             LoadLevelTradingParameters(currentLevelId, client, client.TradingParameters);
             logger.Info($"Moving up to parent level: {currentLevelId}");

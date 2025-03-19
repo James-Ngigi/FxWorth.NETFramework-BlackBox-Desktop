@@ -53,7 +53,7 @@ namespace FxApi
         }
 
         // The trading parameters associated with this client, defining the trading strategy and risk management rules.
-        public TradingParameters TradingParameters { get; set; }
+        public virtual TradingParameters TradingParameters { get; set; }
 
         // The current account balance, updated as trades are executed and balance updates are received from the Deriv API.
         public decimal Balance { get; set; }
@@ -580,7 +580,7 @@ namespace FxApi
             {
                 if (int.TryParse(Credentials.AppId, out int appId))
                 {
-                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime, new List<decimal>()); // Pass a dummy empty list.
+                    TradingParameters.Process(model.Profit, model.Payouts.Max(), appId, currentContractId, currentTransactionTime);
                 }
                 else
                 {

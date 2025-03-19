@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -444,7 +444,7 @@
             this.Custom_Layer_Config_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Custom_Layer_Config_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Custom_Layer_Config_BTN.FlatAppearance.BorderSize = 0;
-            this.Custom_Layer_Config_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Custom_Layer_Config_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Custom_Layer_Config_BTN.Location = new System.Drawing.Point(20, 270);
             this.Custom_Layer_Config_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Custom_Layer_Config_BTN.Name = "Custom_Layer_Config_BTN";
@@ -753,11 +753,11 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Font = new System.Drawing.Font("Eras Medium ITC", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(165, 249);
+            this.label3.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label3.Location = new System.Drawing.Point(170, 247);
             this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(78, 21);
+            this.label3.Size = new System.Drawing.Size(80, 21);
             this.label3.TabIndex = 25;
             this.label3.Text = "00:00:00";
             // 
@@ -790,14 +790,14 @@
             this.dataGridView1.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dataGridView1.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dataGridView1.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView1.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
@@ -895,7 +895,7 @@
             this.Remove_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Remove_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Remove_BTN.FlatAppearance.BorderSize = 0;
-            this.Remove_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Remove_BTN.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Remove_BTN.Location = new System.Drawing.Point(738, 28);
             this.Remove_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Remove_BTN.Name = "Remove_BTN";
@@ -911,7 +911,7 @@
             this.Add_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Add_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Add_BTN.FlatAppearance.BorderSize = 0;
-            this.Add_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Add_BTN.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Add_BTN.Location = new System.Drawing.Point(600, 28);
             this.Add_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Add_BTN.Name = "Add_BTN";
@@ -1170,7 +1170,7 @@
             this.Start_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Start_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.Start_BTN.FlatAppearance.BorderSize = 0;
-            this.Start_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Start_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Start_BTN.Location = new System.Drawing.Point(12, 885);
             this.Start_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Start_BTN.Name = "Start_BTN";
@@ -1186,7 +1186,7 @@
             this.Stop_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Stop_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Stop_BTN.FlatAppearance.BorderSize = 0;
-            this.Stop_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Stop_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Stop_BTN.Location = new System.Drawing.Point(313, 885);
             this.Stop_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Stop_BTN.Name = "Stop_BTN";
@@ -1202,7 +1202,7 @@
             this.Pause_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Pause_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Pause_BTN.FlatAppearance.BorderSize = 0;
-            this.Pause_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Pause_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Pause_BTN.Location = new System.Drawing.Point(163, 885);
             this.Pause_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Pause_BTN.Name = "Pause_BTN";
@@ -1217,7 +1217,7 @@
             this.Trade_Logs_GRBX.BackColor = System.Drawing.SystemColors.Window;
             this.Trade_Logs_GRBX.Controls.Add(this.Internet_conection_LBL);
             this.Trade_Logs_GRBX.Controls.Add(this.Results_Panel);
-            this.Trade_Logs_GRBX.Font = new System.Drawing.Font("Eras Demi ITC", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Trade_Logs_GRBX.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Trade_Logs_GRBX.Location = new System.Drawing.Point(914, 0);
             this.Trade_Logs_GRBX.Margin = new System.Windows.Forms.Padding(4);
             this.Trade_Logs_GRBX.Name = "Trade_Logs_GRBX";
@@ -1231,11 +1231,11 @@
             // 
             this.Internet_conection_LBL.AutoSize = true;
             this.Internet_conection_LBL.BackColor = System.Drawing.Color.Transparent;
-            this.Internet_conection_LBL.Font = new System.Drawing.Font("Eras Medium ITC", 8.5F);
+            this.Internet_conection_LBL.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F);
             this.Internet_conection_LBL.Location = new System.Drawing.Point(296, 18);
             this.Internet_conection_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Internet_conection_LBL.Name = "Internet_conection_LBL";
-            this.Internet_conection_LBL.Size = new System.Drawing.Size(116, 19);
+            this.Internet_conection_LBL.Size = new System.Drawing.Size(124, 20);
             this.Internet_conection_LBL.TabIndex = 1;
             this.Internet_conection_LBL.Text = "    Link Latency";
             this.Internet_conection_LBL.Click += new System.EventHandler(this.label1_Click);
@@ -1244,6 +1244,7 @@
             // 
             this.Results_Panel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.Results_Panel.Controls.Add(this.dataGridView2);
+            this.Results_Panel.Font = new System.Drawing.Font("Lucida Sans Unicode", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Results_Panel.Location = new System.Drawing.Point(9, 40);
             this.Results_Panel.Margin = new System.Windows.Forms.Padding(4);
             this.Results_Panel.Name = "Results_Panel";
