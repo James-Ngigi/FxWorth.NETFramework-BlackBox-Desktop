@@ -37,8 +37,7 @@
             this.Martingale_Level_LBL3 = new System.Windows.Forms.Label();
             this.Hierarchy_Levels_LBL2 = new System.Windows.Forms.Label();
             this.Max_Drawdown_LBL3 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
+            this.VerticalAxisCross = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.Barrier_Offset_TXT3 = new System.Windows.Forms.NumericUpDown();
             this.Martingale_Level_TXT3 = new System.Windows.Forms.NumericUpDown();
@@ -47,6 +46,7 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Stake_LBL3 = new System.Windows.Forms.Label();
             this.Stake_TXT3 = new System.Windows.Forms.NumericUpDown();
+            this.HoriztonalAxisCross = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.HierarchyLayerIllustration)).BeginInit();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.Barrier_Offset_TXT3)).BeginInit();
@@ -62,14 +62,14 @@
             this.Choose_Layer_LBL.AutoSize = true;
             this.Choose_Layer_LBL.Location = new System.Drawing.Point(43, 161);
             this.Choose_Layer_LBL.Name = "Choose_Layer_LBL";
-            this.Choose_Layer_LBL.Size = new System.Drawing.Size(217, 21);
+            this.Choose_Layer_LBL.Size = new System.Drawing.Size(214, 25);
             this.Choose_Layer_LBL.TabIndex = 0;
             this.Choose_Layer_LBL.Text = "Select Layer to Customize";
             // 
             // HierarchyLayerIllustration
             // 
             this.HierarchyLayerIllustration.Image = ((System.Drawing.Image)(resources.GetObject("HierarchyLayerIllustration.Image")));
-            this.HierarchyLayerIllustration.Location = new System.Drawing.Point(243, 12);
+            this.HierarchyLayerIllustration.Location = new System.Drawing.Point(242, 12);
             this.HierarchyLayerIllustration.Name = "HierarchyLayerIllustration";
             this.HierarchyLayerIllustration.Size = new System.Drawing.Size(110, 110);
             this.HierarchyLayerIllustration.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -80,7 +80,7 @@
             // 
             this.Load_Layer_Config_BTN.BackColor = System.Drawing.SystemColors.Control;
             this.Load_Layer_Config_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.Load_Layer_Config_BTN.Location = new System.Drawing.Point(175, 15);
+            this.Load_Layer_Config_BTN.Location = new System.Drawing.Point(172, 15);
             this.Load_Layer_Config_BTN.Name = "Load_Layer_Config_BTN";
             this.Load_Layer_Config_BTN.Size = new System.Drawing.Size(250, 45);
             this.Load_Layer_Config_BTN.TabIndex = 2;
@@ -94,7 +94,7 @@
             this.Select_Layer_CMBX.FormattingEnabled = true;
             this.Select_Layer_CMBX.Location = new System.Drawing.Point(345, 158);
             this.Select_Layer_CMBX.Name = "Select_Layer_CMBX";
-            this.Select_Layer_CMBX.Size = new System.Drawing.Size(178, 29);
+            this.Select_Layer_CMBX.Size = new System.Drawing.Size(178, 33);
             this.Select_Layer_CMBX.TabIndex = 3;
             // 
             // Barrier_Offset_LBL3
@@ -102,7 +102,7 @@
             this.Barrier_Offset_LBL3.AutoSize = true;
             this.Barrier_Offset_LBL3.Location = new System.Drawing.Point(133, 290);
             this.Barrier_Offset_LBL3.Name = "Barrier_Offset_LBL3";
-            this.Barrier_Offset_LBL3.Size = new System.Drawing.Size(116, 21);
+            this.Barrier_Offset_LBL3.Size = new System.Drawing.Size(116, 25);
             this.Barrier_Offset_LBL3.TabIndex = 4;
             this.Barrier_Offset_LBL3.Text = "Barrier Offest";
             // 
@@ -111,7 +111,7 @@
             this.Martingale_Level_LBL3.AutoSize = true;
             this.Martingale_Level_LBL3.Location = new System.Drawing.Point(102, 410);
             this.Martingale_Level_LBL3.Name = "Martingale_Level_LBL3";
-            this.Martingale_Level_LBL3.Size = new System.Drawing.Size(144, 21);
+            this.Martingale_Level_LBL3.Size = new System.Drawing.Size(140, 25);
             this.Martingale_Level_LBL3.TabIndex = 6;
             this.Martingale_Level_LBL3.Text = "Martingale Level";
             // 
@@ -120,7 +120,7 @@
             this.Hierarchy_Levels_LBL2.AutoSize = true;
             this.Hierarchy_Levels_LBL2.Location = new System.Drawing.Point(105, 350);
             this.Hierarchy_Levels_LBL2.Name = "Hierarchy_Levels_LBL2";
-            this.Hierarchy_Levels_LBL2.Size = new System.Drawing.Size(142, 21);
+            this.Hierarchy_Levels_LBL2.Size = new System.Drawing.Size(138, 25);
             this.Hierarchy_Levels_LBL2.TabIndex = 7;
             this.Hierarchy_Levels_LBL2.Text = "Hierarchy Levels";
             // 
@@ -129,27 +129,18 @@
             this.Max_Drawdown_LBL3.AutoSize = true;
             this.Max_Drawdown_LBL3.Location = new System.Drawing.Point(57, 470);
             this.Max_Drawdown_LBL3.Name = "Max_Drawdown_LBL3";
-            this.Max_Drawdown_LBL3.Size = new System.Drawing.Size(188, 21);
+            this.Max_Drawdown_LBL3.Size = new System.Drawing.Size(184, 25);
             this.Max_Drawdown_LBL3.TabIndex = 8;
             this.Max_Drawdown_LBL3.Text = "Maximum DrawDown";
             // 
-            // label3
+            // VerticalAxisCross
             // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(290, 150);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(19, 357);
-            this.label3.TabIndex = 14;
-            this.label3.Text = "|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|";
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(236, 195);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(126, 21);
-            this.label7.TabIndex = 15;
-            this.label7.Text = "----  ----------------  ----";
+            this.VerticalAxisCross.AutoSize = true;
+            this.VerticalAxisCross.Location = new System.Drawing.Point(289, 150);
+            this.VerticalAxisCross.Name = "VerticalAxisCross";
+            this.VerticalAxisCross.Size = new System.Drawing.Size(16, 350);
+            this.VerticalAxisCross.TabIndex = 14;
+            this.VerticalAxisCross.Text = "|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n|\r\n";
             // 
             // panel1
             // 
@@ -279,7 +270,7 @@
             this.Stake_LBL3.AutoSize = true;
             this.Stake_LBL3.Location = new System.Drawing.Point(150, 230);
             this.Stake_LBL3.Name = "Stake_LBL3";
-            this.Stake_LBL3.Size = new System.Drawing.Size(101, 21);
+            this.Stake_LBL3.Size = new System.Drawing.Size(98, 25);
             this.Stake_LBL3.TabIndex = 22;
             this.Stake_LBL3.Text = "Level Stake";
             // 
@@ -314,6 +305,15 @@
             0,
             0});
             // 
+            // HoriztonalAxisCross
+            // 
+            this.HoriztonalAxisCross.AutoSize = true;
+            this.HoriztonalAxisCross.Location = new System.Drawing.Point(197, 182);
+            this.HoriztonalAxisCross.Name = "HoriztonalAxisCross";
+            this.HoriztonalAxisCross.Size = new System.Drawing.Size(201, 25);
+            this.HoriztonalAxisCross.TabIndex = 24;
+            this.HoriztonalAxisCross.Text = "___________________________\r\n";
+            // 
             // Layer_Configuration
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
@@ -328,7 +328,7 @@
             this.Controls.Add(this.Martingale_Level_TXT3);
             this.Controls.Add(this.Barrier_Offset_TXT3);
             this.Controls.Add(this.panel1);
-            this.Controls.Add(this.label3);
+            this.Controls.Add(this.VerticalAxisCross);
             this.Controls.Add(this.Max_Drawdown_LBL3);
             this.Controls.Add(this.Hierarchy_Levels_LBL2);
             this.Controls.Add(this.Martingale_Level_LBL3);
@@ -336,9 +336,9 @@
             this.Controls.Add(this.Select_Layer_CMBX);
             this.Controls.Add(this.HierarchyLayerIllustration);
             this.Controls.Add(this.Choose_Layer_LBL);
-            this.Controls.Add(this.label7);
+            this.Controls.Add(this.HoriztonalAxisCross);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HelpButton = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
@@ -372,8 +372,7 @@
         private System.Windows.Forms.Label Martingale_Level_LBL3;
         private System.Windows.Forms.Label Hierarchy_Levels_LBL2;
         private System.Windows.Forms.Label Max_Drawdown_LBL3;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label VerticalAxisCross;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.NumericUpDown Barrier_Offset_TXT3;
         private System.Windows.Forms.NumericUpDown Martingale_Level_TXT3;
@@ -382,5 +381,6 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Label Stake_LBL3;
         private System.Windows.Forms.NumericUpDown Stake_TXT3;
+        private System.Windows.Forms.Label HoriztonalAxisCross;
     }
 }

@@ -57,8 +57,8 @@
             this.Okay_BTN.FlatAppearance.BorderSize = 0;
             this.Okay_BTN.FlatAppearance.MouseDownBackColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.Okay_BTN.FlatAppearance.MouseOverBackColor = System.Drawing.SystemColors.GradientInactiveCaption;
-            this.Okay_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
-            this.Okay_BTN.Location = new System.Drawing.Point(235, 14);
+            this.Okay_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Okay_BTN.Location = new System.Drawing.Point(234, 14);
             this.Okay_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Okay_BTN.Name = "Okay_BTN";
             this.Okay_BTN.Size = new System.Drawing.Size(130, 35);
@@ -80,11 +80,11 @@
             // Token_LBL
             // 
             this.Token_LBL.AutoSize = true;
-            this.Token_LBL.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Token_LBL.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Token_LBL.Location = new System.Drawing.Point(120, 50);
             this.Token_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Token_LBL.Name = "Token_LBL";
-            this.Token_LBL.Size = new System.Drawing.Size(415, 42);
+            this.Token_LBL.Size = new System.Drawing.Size(409, 50);
             this.Token_LBL.TabIndex = 26;
             this.Token_LBL.Text = "The current DrawDown value is too low.\r\nRe-Adjust to a Reasonable Higher Threshol" +
     "d Limit!";
@@ -101,7 +101,7 @@
             this.Controls.Add(this.Error_PictureBox);
             this.Controls.Add(this.panel1);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;

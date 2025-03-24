@@ -66,8 +66,8 @@
             this.Okay_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Okay_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Okay_BTN.FlatAppearance.BorderSize = 0;
-            this.Okay_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
-            this.Okay_BTN.Location = new System.Drawing.Point(205, 14);
+            this.Okay_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Okay_BTN.Location = new System.Drawing.Point(199, 14);
             this.Okay_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Okay_BTN.Name = "Okay_BTN";
             this.Okay_BTN.Size = new System.Drawing.Size(129, 34);
@@ -82,7 +82,7 @@
             this.label1.Location = new System.Drawing.Point(110, 40);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(391, 42);
+            this.label1.Size = new System.Drawing.Size(386, 50);
             this.label1.TabIndex = 6;
             this.label1.Text = "15 Seconds is the Minimum Trade Duration for \r\nDuration Type \'Seconds\'.";
             // 
@@ -97,7 +97,7 @@
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.pictureBox1);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;

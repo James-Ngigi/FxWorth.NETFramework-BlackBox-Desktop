@@ -41,11 +41,11 @@
             // Exit_FxWorth_LBL
             // 
             this.Exit_FxWorth_LBL.AutoSize = true;
-            this.Exit_FxWorth_LBL.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Exit_FxWorth_LBL.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Exit_FxWorth_LBL.Location = new System.Drawing.Point(115, 53);
             this.Exit_FxWorth_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Exit_FxWorth_LBL.Name = "Exit_FxWorth_LBL";
-            this.Exit_FxWorth_LBL.Size = new System.Drawing.Size(303, 21);
+            this.Exit_FxWorth_LBL.Size = new System.Drawing.Size(291, 25);
             this.Exit_FxWorth_LBL.TabIndex = 2;
             this.Exit_FxWorth_LBL.Text = "You\'re hitting the Exit button, yeah?";
             // 
@@ -68,7 +68,7 @@
             this.No_BTN.DialogResult = System.Windows.Forms.DialogResult.No;
             this.No_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.No_BTN.FlatAppearance.BorderSize = 0;
-            this.No_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.No_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.No_BTN.Location = new System.Drawing.Point(275, 15);
             this.No_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.No_BTN.Name = "No_BTN";
@@ -84,7 +84,7 @@
             this.Yes_BTN.DialogResult = System.Windows.Forms.DialogResult.Yes;
             this.Yes_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Yes_BTN.FlatAppearance.BorderSize = 0;
-            this.Yes_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Yes_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Yes_BTN.Location = new System.Drawing.Point(75, 15);
             this.Yes_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Yes_BTN.Name = "Yes_BTN";
@@ -115,7 +115,7 @@
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.Exit_FxWorth_LBL);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;

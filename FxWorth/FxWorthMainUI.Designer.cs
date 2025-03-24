@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -226,7 +226,7 @@
             0,
             0,
             0});
-            this.Oversold_TXT.Location = new System.Drawing.Point(162, 218);
+            this.Oversold_TXT.Location = new System.Drawing.Point(162, 220);
             this.Oversold_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Oversold_TXT.Maximum = new decimal(new int[] {
             99,
@@ -268,7 +268,7 @@
             0,
             0,
             0});
-            this.Overbought0_TXT.Location = new System.Drawing.Point(162, 158);
+            this.Overbought0_TXT.Location = new System.Drawing.Point(162, 160);
             this.Overbought0_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Overbought0_TXT.Maximum = new decimal(new int[] {
             99,
@@ -293,7 +293,7 @@
             // Period0_TXT
             // 
             this.Period0_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Period0_TXT.Location = new System.Drawing.Point(162, 98);
+            this.Period0_TXT.Location = new System.Drawing.Point(162, 99);
             this.Period0_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Period0_TXT.Maximum = new decimal(new int[] {
             50,
@@ -319,7 +319,7 @@
             // 
             this.Close_Interval0_TXT.BackColor = System.Drawing.SystemColors.Window;
             this.Close_Interval0_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Close_Interval0_TXT.Location = new System.Drawing.Point(162, 38);
+            this.Close_Interval0_TXT.Location = new System.Drawing.Point(162, 40);
             this.Close_Interval0_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Close_Interval0_TXT.Minimum = new decimal(new int[] {
             1,
@@ -411,7 +411,7 @@
             0,
             0,
             131072});
-            this.Stake_TXT2.Location = new System.Drawing.Point(214, 210);
+            this.Stake_TXT2.Location = new System.Drawing.Point(214, 209);
             this.Stake_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Stake_TXT2.Maximum = new decimal(new int[] {
             15,
@@ -432,7 +432,7 @@
             // 
             this.Stake_LBL2.AutoSize = true;
             this.Stake_LBL2.Font = new System.Drawing.Font("Ebrima", 9F);
-            this.Stake_LBL2.Location = new System.Drawing.Point(16, 215);
+            this.Stake_LBL2.Location = new System.Drawing.Point(16, 214);
             this.Stake_LBL2.Name = "Stake_LBL2";
             this.Stake_LBL2.Size = new System.Drawing.Size(99, 25);
             this.Stake_LBL2.TabIndex = 23;
@@ -444,7 +444,7 @@
             this.Custom_Layer_Config_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Custom_Layer_Config_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Custom_Layer_Config_BTN.FlatAppearance.BorderSize = 0;
-            this.Custom_Layer_Config_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Custom_Layer_Config_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Custom_Layer_Config_BTN.Location = new System.Drawing.Point(20, 270);
             this.Custom_Layer_Config_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Custom_Layer_Config_BTN.Name = "Custom_Layer_Config_BTN";
@@ -463,7 +463,7 @@
             0,
             0,
             131072});
-            this.Barrier_Offset_TXT2.Location = new System.Drawing.Point(214, 155);
+            this.Barrier_Offset_TXT2.Location = new System.Drawing.Point(214, 154);
             this.Barrier_Offset_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Barrier_Offset_TXT2.Maximum = new decimal(new int[] {
             1000,
@@ -543,7 +543,7 @@
             // 
             this.Max_Drawdown_LBL2.AutoSize = true;
             this.Max_Drawdown_LBL2.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Max_Drawdown_LBL2.Location = new System.Drawing.Point(15, 103);
+            this.Max_Drawdown_LBL2.Location = new System.Drawing.Point(15, 104);
             this.Max_Drawdown_LBL2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Max_Drawdown_LBL2.Name = "Max_Drawdown_LBL2";
             this.Max_Drawdown_LBL2.Size = new System.Drawing.Size(136, 25);
@@ -553,7 +553,7 @@
             // Martingale_Level_TXT2
             // 
             this.Martingale_Level_TXT2.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Martingale_Level_TXT2.Location = new System.Drawing.Point(214, 45);
+            this.Martingale_Level_TXT2.Location = new System.Drawing.Point(214, 44);
             this.Martingale_Level_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Martingale_Level_TXT2.Maximum = new decimal(new int[] {
             10,
@@ -596,7 +596,7 @@
             // Hierarchy_Levels_TXT
             // 
             this.Hierarchy_Levels_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Hierarchy_Levels_TXT.Location = new System.Drawing.Point(214, 146);
+            this.Hierarchy_Levels_TXT.Location = new System.Drawing.Point(214, 145);
             this.Hierarchy_Levels_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Hierarchy_Levels_TXT.Maximum = new decimal(new int[] {
             10,
@@ -639,7 +639,7 @@
             // 
             this.label6.AutoSize = true;
             this.label6.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label6.Location = new System.Drawing.Point(15, 206);
+            this.label6.Location = new System.Drawing.Point(15, 205);
             this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(145, 25);
@@ -699,7 +699,7 @@
             // 
             this.Max_Drawdown_LBL.AutoSize = true;
             this.Max_Drawdown_LBL.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Max_Drawdown_LBL.Location = new System.Drawing.Point(15, 94);
+            this.Max_Drawdown_LBL.Location = new System.Drawing.Point(15, 95);
             this.Max_Drawdown_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Max_Drawdown_LBL.Name = "Max_Drawdown_LBL";
             this.Max_Drawdown_LBL.Size = new System.Drawing.Size(136, 25);
@@ -709,7 +709,7 @@
             // Martingale_Level_TXT
             // 
             this.Martingale_Level_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Martingale_Level_TXT.Location = new System.Drawing.Point(214, 34);
+            this.Martingale_Level_TXT.Location = new System.Drawing.Point(214, 35);
             this.Martingale_Level_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Martingale_Level_TXT.Maximum = new decimal(new int[] {
             10,
@@ -790,14 +790,14 @@
             this.dataGridView1.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dataGridView1.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dataGridView1.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView1.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
@@ -895,7 +895,7 @@
             this.Remove_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Remove_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Remove_BTN.FlatAppearance.BorderSize = 0;
-            this.Remove_BTN.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Remove_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Remove_BTN.Location = new System.Drawing.Point(738, 28);
             this.Remove_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Remove_BTN.Name = "Remove_BTN";
@@ -911,7 +911,7 @@
             this.Add_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Add_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Add_BTN.FlatAppearance.BorderSize = 0;
-            this.Add_BTN.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Add_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Add_BTN.Location = new System.Drawing.Point(600, 28);
             this.Add_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Add_BTN.Name = "Add_BTN";
@@ -1170,7 +1170,7 @@
             this.Start_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Start_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.Start_BTN.FlatAppearance.BorderSize = 0;
-            this.Start_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Start_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Start_BTN.Location = new System.Drawing.Point(12, 885);
             this.Start_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Start_BTN.Name = "Start_BTN";
@@ -1186,8 +1186,8 @@
             this.Stop_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Stop_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Stop_BTN.FlatAppearance.BorderSize = 0;
-            this.Stop_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Stop_BTN.Location = new System.Drawing.Point(313, 885);
+            this.Stop_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Stop_BTN.Location = new System.Drawing.Point(312, 885);
             this.Stop_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Stop_BTN.Name = "Stop_BTN";
             this.Stop_BTN.Size = new System.Drawing.Size(130, 35);
@@ -1202,8 +1202,8 @@
             this.Pause_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
             this.Pause_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Pause_BTN.FlatAppearance.BorderSize = 0;
-            this.Pause_BTN.Font = new System.Drawing.Font("Cambria", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Pause_BTN.Location = new System.Drawing.Point(163, 885);
+            this.Pause_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Pause_BTN.Location = new System.Drawing.Point(162, 885);
             this.Pause_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Pause_BTN.Name = "Pause_BTN";
             this.Pause_BTN.Size = new System.Drawing.Size(130, 35);
