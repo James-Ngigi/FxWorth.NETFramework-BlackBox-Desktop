@@ -54,11 +54,11 @@ namespace FxWorth
         private Dictionary<Credentials, AuthClient> clients = new Dictionary<Credentials, AuthClient>();
 
         // A `PingClient` instance used to measure and monitor the latency to the Deriv API server.
-        private PingClient pinger = new PingClient(new Credentials() { AppId = "65920" });
+        private PingClient pinger = new PingClient(new Credentials() { AppId = "70216" });
 
         // A `MarketDataClient` instance used to subscribe to market data (e.g., price quotes, candlesticks) for selected symbols.
-        // new Credentials() { AppId = "65920" } : The App ID used to authenticate with the Deriv API.
-        private MarketDataClient marketDataClient = new MarketDataClient(new Credentials() { AppId = "65920" });
+        // new Credentials() { AppId = "70216" } : The App ID used to authenticate with the Deriv API.
+        private MarketDataClient marketDataClient = new MarketDataClient(new Credentials() { AppId = "70216" });
 
         // Event raised when the state of any managed `AuthClient` changes (e.g., connection status, balance updates).
         public EventHandler<EventArgs> ClientsStateChanged;

@@ -55,7 +55,7 @@
             this.Delete_Token_LBL.Location = new System.Drawing.Point(99, 45);
             this.Delete_Token_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Delete_Token_LBL.Name = "Delete_Token_LBL";
-            this.Delete_Token_LBL.Size = new System.Drawing.Size(498, 42);
+            this.Delete_Token_LBL.Size = new System.Drawing.Size(489, 50);
             this.Delete_Token_LBL.TabIndex = 1;
             this.Delete_Token_LBL.Text = "The Client associated with the  \"XXXXXXXXXXXXXXX\" Token,\r\nis about to be deleted " +
     "from the Client List. Delete?";
@@ -79,7 +79,7 @@
             this.No_BTN.DialogResult = System.Windows.Forms.DialogResult.No;
             this.No_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.No_BTN.FlatAppearance.BorderSize = 0;
-            this.No_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.No_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.No_BTN.Location = new System.Drawing.Point(370, 15);
             this.No_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.No_BTN.Name = "No_BTN";
@@ -96,7 +96,7 @@
             this.Yes_BTN.DialogResult = System.Windows.Forms.DialogResult.Yes;
             this.Yes_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Yes_BTN.FlatAppearance.BorderSize = 0;
-            this.Yes_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Yes_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Yes_BTN.Location = new System.Drawing.Point(120, 15);
             this.Yes_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Yes_BTN.Name = "Yes_BTN";
@@ -117,7 +117,7 @@
             this.Controls.Add(this.Delete_Token_LBL);
             this.Controls.Add(this.Question_Mark_PictureBox);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;

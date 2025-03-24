@@ -55,8 +55,8 @@
             this.Okay_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Okay_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Okay_BTN.FlatAppearance.BorderSize = 0;
-            this.Okay_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
-            this.Okay_BTN.Location = new System.Drawing.Point(220, 12);
+            this.Okay_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Okay_BTN.Location = new System.Drawing.Point(214, 14);
             this.Okay_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Okay_BTN.Name = "Okay_BTN";
             this.Okay_BTN.Size = new System.Drawing.Size(130, 35);
@@ -78,11 +78,11 @@
             // Token_LBL
             // 
             this.Token_LBL.AutoSize = true;
-            this.Token_LBL.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Token_LBL.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Token_LBL.Location = new System.Drawing.Point(131, 27);
             this.Token_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Token_LBL.Name = "Token_LBL";
-            this.Token_LBL.Size = new System.Drawing.Size(345, 63);
+            this.Token_LBL.Size = new System.Drawing.Size(342, 75);
             this.Token_LBL.TabIndex = 26;
             this.Token_LBL.Text = "You need atleast an \r\nAPI Account Token n\' an Account ID\r\nto automate your trades" +
     " on this platform.";
@@ -101,7 +101,7 @@
             this.Controls.Add(this.Error_PictureBox);
             this.Controls.Add(this.panel1);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);

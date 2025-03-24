@@ -48,11 +48,11 @@
             // Insert_Token_LBL
             // 
             this.Insert_Token_LBL.AutoSize = true;
-            this.Insert_Token_LBL.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Insert_Token_LBL.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Insert_Token_LBL.Location = new System.Drawing.Point(33, 40);
             this.Insert_Token_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Insert_Token_LBL.Name = "Insert_Token_LBL";
-            this.Insert_Token_LBL.Size = new System.Drawing.Size(203, 21);
+            this.Insert_Token_LBL.Size = new System.Drawing.Size(199, 25);
             this.Insert_Token_LBL.TabIndex = 0;
             this.Insert_Token_LBL.Text = "Insert Account Token   -";
             // 
@@ -62,7 +62,7 @@
             this.Insert_App_ID_LBL.Location = new System.Drawing.Point(33, 100);
             this.Insert_App_ID_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Insert_App_ID_LBL.Name = "Insert_App_ID_LBL";
-            this.Insert_App_ID_LBL.Size = new System.Drawing.Size(205, 21);
+            this.Insert_App_ID_LBL.Size = new System.Drawing.Size(206, 25);
             this.Insert_App_ID_LBL.TabIndex = 0;
             this.Insert_App_ID_LBL.Text = "Insert Account ID          -";
             // 
@@ -72,7 +72,7 @@
             this.tokenTextBox.Location = new System.Drawing.Point(262, 37);
             this.tokenTextBox.Margin = new System.Windows.Forms.Padding(4);
             this.tokenTextBox.Name = "tokenTextBox";
-            this.tokenTextBox.Size = new System.Drawing.Size(260, 28);
+            this.tokenTextBox.Size = new System.Drawing.Size(260, 31);
             this.tokenTextBox.TabIndex = 1;
             // 
             // Cut_Copy_Paste_CMS
@@ -121,7 +121,7 @@
             this.appTextBox.Location = new System.Drawing.Point(262, 97);
             this.appTextBox.Margin = new System.Windows.Forms.Padding(4);
             this.appTextBox.Name = "appTextBox";
-            this.appTextBox.Size = new System.Drawing.Size(260, 28);
+            this.appTextBox.Size = new System.Drawing.Size(260, 31);
             this.appTextBox.TabIndex = 2;
             // 
             // Add_BTN
@@ -131,7 +131,7 @@
             this.Add_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Add_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Add_BTN.FlatAppearance.BorderSize = 0;
-            this.Add_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Add_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Add_BTN.Location = new System.Drawing.Point(265, 12);
             this.Add_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Add_BTN.Name = "Add_BTN";
@@ -147,7 +147,7 @@
             this.Cancel_BTN.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.Cancel_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Cancel_BTN.FlatAppearance.BorderSize = 0;
-            this.Cancel_BTN.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Cancel_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Cancel_BTN.Location = new System.Drawing.Point(405, 12);
             this.Cancel_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Cancel_BTN.Name = "Cancel_BTN";
@@ -183,7 +183,7 @@
             this.Controls.Add(this.Insert_App_ID_LBL);
             this.Controls.Add(this.Insert_Token_LBL);
             this.DoubleBuffered = true;
-            this.Font = new System.Drawing.Font("Eras Medium ITC", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.HelpButton = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);
