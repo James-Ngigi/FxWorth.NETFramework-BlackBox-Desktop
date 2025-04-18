@@ -27,8 +27,7 @@ namespace FxWorth
         {
             base.OnLoad(e);
 
-            // Initialize controls with potentially null values
-            Stake_TXT3.Value = InitialStake.HasValue ? InitialStake.Value : 1;
+            Stake_TXT3.Value = InitialStake.HasValue?Math.Max(Stake_TXT3.Minimum, Math.Min(Stake_TXT3.Maximum, InitialStake.Value)):Stake_TXT3.Minimum;
             Martingale_Level_TXT3.Value = MartingaleLevel.HasValue ? MartingaleLevel.Value : 1;
             Max_Drawdown_TXT3.Value = MaxDrawdown.HasValue ? MaxDrawdown.Value : 1000;  //Default value of 1000
             Barrier_Offset_TXT3.Value = BarrierOffset.HasValue ? BarrierOffset.Value : 0;

@@ -17,11 +17,7 @@ namespace FxWorth
 {
     public partial class FxWorth : Form
     {
-        /// <summary>
-        /// This method is used to set the app into high priority, prevent sleep and keep display on 
-        /// when the app is opened. It ensures trading happens without interruptions.
-        /// </summary>
-        /// <param name="e"></param>
+        
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
@@ -31,10 +27,6 @@ namespace FxWorth
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
         }
 
-        /// <summary>
-        /// This method is used to prevent flickering of the form when resizing.
-        /// It also improves the loading times and responsieness of the Window.
-        /// </summary>
         protected override CreateParams CreateParams
         {
             get
@@ -45,12 +37,8 @@ namespace FxWorth
             }
         }
 
-        /// <summary>
-        /// This method ensures that the app uses resources optimally by removing the high priority and sleep prevention.
-        /// </summary>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // Check if sleep mode is currently prevented
             if (Process.GetCurrentProcess().PriorityClass == ProcessPriorityClass.High)
             {
                 PowerManager.AllowSleep();
@@ -114,7 +102,7 @@ namespace FxWorth
             phase2Parameters = new PhaseParameters();
             storage.ClientsStateChanged += ClientsStateChanged;
             Timer updateTimer = new Timer();
-            updateTimer.Interval = 300; // 1/3 of a second
+            updateTimer.Interval = 300; 
             updateTimer.Tick += (s, args) => ClientsStateChanged(storage, EventArgs.Empty);
             updateTimer.Start();
             storage.TradeUpdated += Storage_TradeUpdated;
@@ -806,7 +794,6 @@ namespace FxWorth
             // Update DataGrid status *before* stopping the clients
             foreach (DataGridViewRow row in dataGridView1.Rows)
             {
-                // Check if the client was trading and is online
                 if (((row.Cells[5].Value?.ToString() == "Trading" || row.Cells[5].Value?.ToString() == "Analyzing") && storage.Clients.ContainsKey(storage.Credentials[row.Index]) && storage.Clients[storage.Credentials[row.Index]].IsOnline) || row.Cells[5].Value?.ToString() == "Standby")
                 {
                     row.Cells[5].Value = "Completed";
@@ -817,15 +804,13 @@ namespace FxWorth
             Pause_BTN.Text = "Pause";
             EnableAll();
             storage.MarketDataClient.UnsubscribeAll();
-
-            // Deactivate high priority and allow sleep mode
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
             PowerManager.AllowSleep();
         }
 
         private void Pause_BTN_Click(object sender, EventArgs e)
         {
-            if (Pause_BTN.Text == "Pause") // Pausing trading
+            if (Pause_BTN.Text == "Pause")
             {
                 if (!storage.IsTradingAllowed)
                 {
@@ -996,8 +981,6 @@ namespace FxWorth
         {
             Layer_Configuration layerConfigForm = new Layer_Configuration(this);
             layerConfigForm.Owner = this;
-
-            // Pass values to the Layer_Configuration dialog
             layerConfigForm.BarrierOffset = Barrier_Offset_TXT2.Value;
             layerConfigForm.MartingaleLevel = (int)Martingale_Level_TXT2.Value;
             layerConfigForm.HierarchyLevels = (int)Hierarchy_Levels_TXT.Value;
@@ -1049,6 +1032,18 @@ namespace FxWorth
         {
             // Ensure Max_Depth_TXT is at least Hierarchy_Levels_TXT + 1
             Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Value, Hierarchy_Levels_TXT.Value + 1);
+        }
+
+        private void Fetch_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new Subscriber_Fetch())
+            {
+                var result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    // Handle success
+                }
+            }
         }
     }
 

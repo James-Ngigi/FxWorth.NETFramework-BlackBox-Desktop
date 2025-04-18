@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxUnitTests", "FxUnitTests\
 		{63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB} = {63F072B4-60AE-4D6F-9F2C-6FEB76AA71EB}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxBackendClient", "FxBackendClient\FxBackendClient.csproj", "{9A1E47A8-70A7-452F-BDED-036B28E85112}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,6 +33,10 @@ Global
 		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D31E02BA-A0A2-4065-9738-D97FA773C82B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A1E47A8-70A7-452F-BDED-036B28E85112}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A1E47A8-70A7-452F-BDED-036B28E85112}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A1E47A8-70A7-452F-BDED-036B28E85112}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A1E47A8-70A7-452F-BDED-036B28E85112}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
