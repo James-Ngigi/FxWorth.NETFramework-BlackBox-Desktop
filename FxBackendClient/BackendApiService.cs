@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNet.SignalR.Client;
+﻿using Microsoft.AspNetCore.SignalR.Client;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -19,7 +19,7 @@ public class LoginResponseDto
 
 public class TradingQueueItemDto
 {
-    public Guid Id { get; set; } 
+    public Guid Id { get; set; }
     public string ApiTokenValue { get; set; }
     public string Name { get; set; }
     public decimal ProfitTargetAmount { get; set; }
@@ -47,7 +47,7 @@ namespace FxBackendClient
             if (string.IsNullOrWhiteSpace(backendBaseUrl))
                 throw new ArgumentNullException(nameof(backendBaseUrl));
 
-            _backendBaseUrl = backendBaseUrl.TrimEnd('/'); 
+            _backendBaseUrl = backendBaseUrl.TrimEnd('/');
             _restClient = new HttpClient { BaseAddress = new Uri(_backendBaseUrl + "/api/") }; // Set base address for REST
             _restClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             _reconnectionTimer = new System.Timers.Timer();
@@ -117,27 +117,53 @@ namespace FxBackendClient
                 Console.WriteLine("Cannot connect SignalR: Operator not logged in.");
                 return;
             }
-            if (_signalRConnection != null && _signalRConnection.State != ConnectionState.Disconnected)
+            if (_signalRConnection != null && _signalRConnection.State != HubConnectionState.Disconnected)
             {
                 Console.WriteLine("SignalR connection already exists or is connecting.");
                 return;
             }
 
-            // Construct hub URL (relative to base address)
             string hubUrl = _backendBaseUrl + "/tradinghub";
             Console.WriteLine($"Attempting to connect SignalR to: {hubUrl}");
 
-            _signalRConnection = new HubConnection(hubUrl);
+            _signalRConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl, options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult(_operatorJwt);
+                })
+                .WithAutomaticReconnect(new[] {
+                    TimeSpan.FromSeconds(0),
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(10)
+                })
+                .Build();
 
-            // --- Authentication ---
-            _signalRConnection.Headers.Add("Authorization", $"Bearer {_operatorJwt}");
-            var hubProxy = _signalRConnection.CreateHubProxy("TradingHub");
-            hubProxy["access_token"] = _operatorJwt;
+            // Event handlers
+            _signalRConnection.Closed += async (error) =>
+            {
+                _isSignalRConnected = false;
+                Console.WriteLine($"SignalR connection closed: {error?.Message}");
+                if (!_isDisposed)
+                {
+                    ScheduleSignalRReconnect();
+                }
+            };
 
-            // --- Event Handlers ---
-            _signalRConnection.StateChanged += SignalRConnection_StateChanged;
-            _signalRConnection.Closed += SignalRConnection_Closed;
-            _signalRConnection.Error += SignalRConnection_Error;
+            _signalRConnection.Reconnecting += error =>
+            {
+                _isSignalRConnected = false;
+                Console.WriteLine($"SignalR attempting to reconnect: {error?.Message}");
+                return Task.CompletedTask;
+            };
+
+            _signalRConnection.Reconnected += connectionId =>
+            {
+                _isSignalRConnected = true;
+                _reconnectAttempts = 0;
+                Console.WriteLine($"SignalR reconnected. ConnectionId: {connectionId}");
+                return Task.CompletedTask;
+            };
 
             await StartSignalRWithRetryAsync();
         }
@@ -149,46 +175,16 @@ namespace FxBackendClient
             Console.WriteLine("Starting SignalR connection attempt...");
             try
             {
-                await _signalRConnection.Start();
-            }
-            catch (HttpRequestException httpEx) 
-            {
-                Console.WriteLine($"SignalR connection failed (HTTP): {httpEx.Message}. Will retry.");
-                ScheduleSignalRReconnect();
+                await _signalRConnection.StartAsync();
+                _isSignalRConnected = true;
+                _reconnectAttempts = 0;
+                Console.WriteLine("SignalR connection established successfully.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"SignalR connection failed (General): {ex.Message}. Will retry.");
+                Console.WriteLine($"SignalR connection failed: {ex.Message}. Will retry.");
                 ScheduleSignalRReconnect();
             }
-        }
-
-        private void SignalRConnection_StateChanged(StateChange state)
-        {
-            _isSignalRConnected = state.NewState == ConnectionState.Connected;
-            Console.WriteLine($"SignalR State Changed: {state.OldState} -> {state.NewState}");
-
-            if (state.NewState == ConnectionState.Connected)
-            {
-                _reconnectAttempts = 0;
-                _reconnectionTimer.Stop();
-            }
-        }
-
-        private async void SignalRConnection_Closed()
-        {
-            _isSignalRConnected = false;
-            Console.WriteLine("SignalR connection closed.");
-            if (!_isDisposed)
-            {
-                ScheduleSignalRReconnect();
-            }
-        }
-
-        private void SignalRConnection_Error(Exception error)
-        {
-            _isSignalRConnected = false;
-            Console.WriteLine($"SignalR connection error: {error?.Message ?? "Unknown error"}");
         }
 
         private void ScheduleSignalRReconnect()
@@ -234,23 +230,23 @@ namespace FxBackendClient
             if (_signalRConnection != null)
             {
                 _reconnectionTimer.Stop();
-                _signalRConnection.StateChanged -= SignalRConnection_StateChanged;
-                _signalRConnection.Closed -= SignalRConnection_Closed;
-                _signalRConnection.Error -= SignalRConnection_Error;
+                //_signalRConnection.Closed -= SignalRConnection_Closed;
+                //_signalRConnection.Reconnecting -= SignalRConnection_Reconnecting;
+                //_signalRConnection.Reconnected -= SignalRConnection_Reconnected;
 
-                if (_signalRConnection.State != ConnectionState.Disconnected)
+                if (_signalRConnection.State != HubConnectionState.Disconnected)
                 {
                     Console.WriteLine("Stopping SignalR connection...");
                     try
                     {
-                        _signalRConnection.Stop(TimeSpan.FromSeconds(5));
+                        await _signalRConnection.StopAsync();
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error stopping SignalR connection: {ex.Message}");
                     }
                 }
-                _signalRConnection.Dispose();
+                //_signalRConnection.Dispose();
                 _signalRConnection = null;
                 _isSignalRConnected = false;
                 Console.WriteLine("SignalR connection disposed.");
@@ -319,14 +315,12 @@ namespace FxBackendClient
             }
             try
             {
-                var hubProxy = _signalRConnection.CreateHubProxy("TradingHub");
-                await hubProxy.Invoke("SendProfitUpdate", apiTokenValue, newProfit);
+                await _signalRConnection.InvokeAsync("SendProfitUpdate", apiTokenValue, newProfit);
                 Console.WriteLine($"Sent profit update for {apiTokenValue}: {newProfit}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending profit update for {apiTokenValue}: {ex.Message}");
-                // Consider implications if sending fails (e.g., queueing?)
             }
         }
 
@@ -339,8 +333,7 @@ namespace FxBackendClient
             }
             try
             {
-                var hubProxy = _signalRConnection.CreateHubProxy("TradingHub");
-                await hubProxy.Invoke("SendStatusUpdate", apiTokenValue, newStatus);
+                await _signalRConnection.InvokeAsync("SendStatusUpdate", apiTokenValue, newStatus);
                 Console.WriteLine($"Sent status update for {apiTokenValue}: {newStatus}");
             }
             catch (Exception ex)
@@ -358,8 +351,7 @@ namespace FxBackendClient
             }
             try
             {
-                var hubProxy = _signalRConnection.CreateHubProxy("TradingHub");
-                await hubProxy.Invoke("SendTradingPing", apiTokenValue);
+                await _signalRConnection.InvokeAsync("SendTradingPing", apiTokenValue);
             }
             catch (Exception ex)
             {
@@ -383,7 +375,7 @@ namespace FxBackendClient
                 _reconnectionTimer?.Stop();
                 _reconnectionTimer?.Dispose();
                 Task.Run(async () => await DisconnectSignalRAsync()).Wait(TimeSpan.FromSeconds(5));
-                _signalRConnection?.Dispose();
+                //_signalRConnection?.Dispose();
                 _restClient?.Dispose();
             }
 

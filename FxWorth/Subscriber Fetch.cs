@@ -21,7 +21,7 @@ namespace FxWorth
         // --- Helper Method to Fetch and Populate Grid ---
         private async Task FetchAndPopulate(string queueType, DataGridView targetGrid)
         {
-            targetGrid.Rows.Clear(); // Clear the specific grid first
+            targetGrid.Rows.Clear();
             this.Cursor = Cursors.WaitCursor;
             string fetchError = null;
 
