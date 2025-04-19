@@ -32,32 +32,32 @@
             this.FxWorth_Subscriber_Fetching_Service_Tab = new System.Windows.Forms.TabControl();
             this.Paid_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_Paid = new System.Windows.Forms.DataGridView();
+            this.Api_Tokens_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Profit_Targets_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel1 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_Paid_BTN = new System.Windows.Forms.Button();
             this.Extract_Paid_BTN = new System.Windows.Forms.Button();
             this.Trial_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_Trial = new System.Windows.Forms.DataGridView();
+            this.Api_Tokens_Trial = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Profit_Targets_Trial = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel2 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_Trial_BTN = new System.Windows.Forms.Button();
             this.Extract_Trial_BTN = new System.Windows.Forms.Button();
             this.OTH_CR_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_OTH_Real = new System.Windows.Forms.DataGridView();
+            this.OTH_CR_Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.OTH_CR_Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel3 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_OTH_Real_BTN = new System.Windows.Forms.Button();
             this.Extract_OTH_Real_BTN = new System.Windows.Forms.Button();
             this.OTH_VR_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_OTH_Virtual = new System.Windows.Forms.DataGridView();
+            this.OTH_VR_Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.OTH_VR_Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel4 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_OTH_Virtual_BTN = new System.Windows.Forms.Button();
             this.Extract_OTH_Virtual_BTN = new System.Windows.Forms.Button();
-            this.Api_Tokens_Trial = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Profit_Targets_Trial = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Api_Tokens_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Profit_Targets_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.OTH_CR_Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.OTH_CR_Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.OTH_VR_Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.OTH_VR_Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.FxWorth_Subscriber_Fetching_Service_Tab.SuspendLayout();
             this.Paid_Client_Tab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView_Paid)).BeginInit();
@@ -113,6 +113,21 @@
             this.dataGridView_Paid.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_Paid.TabIndex = 23;
             // 
+            // Api_Tokens_Paid
+            // 
+            this.Api_Tokens_Paid.HeaderText = "Paid Subscriber Api Tokens";
+            this.Api_Tokens_Paid.MinimumWidth = 8;
+            this.Api_Tokens_Paid.Name = "Api_Tokens_Paid";
+            this.Api_Tokens_Paid.ReadOnly = true;
+            this.Api_Tokens_Paid.Width = 365;
+            // 
+            // Profit_Targets_Paid
+            // 
+            this.Profit_Targets_Paid.HeaderText = "Profit Targets Assigned";
+            this.Profit_Targets_Paid.MinimumWidth = 8;
+            this.Profit_Targets_Paid.Name = "Profit_Targets_Paid";
+            this.Profit_Targets_Paid.Width = 362;
+            // 
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.GhostWhite;
@@ -129,7 +144,6 @@
             // 
             this.Clear_n_Fetch_Paid_BTN.BackColor = System.Drawing.SystemColors.MenuBar;
             this.Clear_n_Fetch_Paid_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.Clear_n_Fetch_Paid_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Clear_n_Fetch_Paid_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Clear_n_Fetch_Paid_BTN.FlatAppearance.BorderSize = 0;
             this.Clear_n_Fetch_Paid_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -184,6 +198,21 @@
             this.dataGridView_Trial.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_Trial.TabIndex = 24;
             // 
+            // Api_Tokens_Trial
+            // 
+            this.Api_Tokens_Trial.HeaderText = "Trial Subscriber Api Tokens";
+            this.Api_Tokens_Trial.MinimumWidth = 8;
+            this.Api_Tokens_Trial.Name = "Api_Tokens_Trial";
+            this.Api_Tokens_Trial.ReadOnly = true;
+            this.Api_Tokens_Trial.Width = 365;
+            // 
+            // Profit_Targets_Trial
+            // 
+            this.Profit_Targets_Trial.HeaderText = "Profit Targets Assigned";
+            this.Profit_Targets_Trial.MinimumWidth = 8;
+            this.Profit_Targets_Trial.Name = "Profit_Targets_Trial";
+            this.Profit_Targets_Trial.Width = 362;
+            // 
             // panel2
             // 
             this.panel2.BackColor = System.Drawing.Color.GhostWhite;
@@ -200,7 +229,6 @@
             // 
             this.Clear_n_Fetch_Trial_BTN.BackColor = System.Drawing.SystemColors.MenuBar;
             this.Clear_n_Fetch_Trial_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.Clear_n_Fetch_Trial_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Clear_n_Fetch_Trial_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Clear_n_Fetch_Trial_BTN.FlatAppearance.BorderSize = 0;
             this.Clear_n_Fetch_Trial_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -255,6 +283,21 @@
             this.dataGridView_OTH_Real.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_OTH_Real.TabIndex = 24;
             // 
+            // OTH_CR_Api_Tokens
+            // 
+            this.OTH_CR_Api_Tokens.HeaderText = "O.T.H Real Acc Subscriber Api Tokens";
+            this.OTH_CR_Api_Tokens.MinimumWidth = 8;
+            this.OTH_CR_Api_Tokens.Name = "OTH_CR_Api_Tokens";
+            this.OTH_CR_Api_Tokens.ReadOnly = true;
+            this.OTH_CR_Api_Tokens.Width = 365;
+            // 
+            // OTH_CR_Profit_Targets
+            // 
+            this.OTH_CR_Profit_Targets.HeaderText = "Profit Targets Assigned";
+            this.OTH_CR_Profit_Targets.MinimumWidth = 8;
+            this.OTH_CR_Profit_Targets.Name = "OTH_CR_Profit_Targets";
+            this.OTH_CR_Profit_Targets.Width = 362;
+            // 
             // panel3
             // 
             this.panel3.BackColor = System.Drawing.Color.GhostWhite;
@@ -271,7 +314,6 @@
             // 
             this.Clear_n_Fetch_OTH_Real_BTN.BackColor = System.Drawing.SystemColors.MenuBar;
             this.Clear_n_Fetch_OTH_Real_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.Clear_n_Fetch_OTH_Real_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Clear_n_Fetch_OTH_Real_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Clear_n_Fetch_OTH_Real_BTN.FlatAppearance.BorderSize = 0;
             this.Clear_n_Fetch_OTH_Real_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -326,6 +368,21 @@
             this.dataGridView_OTH_Virtual.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_OTH_Virtual.TabIndex = 24;
             // 
+            // OTH_VR_Api_Tokens
+            // 
+            this.OTH_VR_Api_Tokens.HeaderText = "O.T.H Virtual Acc Subscriber Api Tokens";
+            this.OTH_VR_Api_Tokens.MinimumWidth = 8;
+            this.OTH_VR_Api_Tokens.Name = "OTH_VR_Api_Tokens";
+            this.OTH_VR_Api_Tokens.ReadOnly = true;
+            this.OTH_VR_Api_Tokens.Width = 365;
+            // 
+            // OTH_VR_Profit_Targets
+            // 
+            this.OTH_VR_Profit_Targets.HeaderText = "Profit Targets Assigned";
+            this.OTH_VR_Profit_Targets.MinimumWidth = 8;
+            this.OTH_VR_Profit_Targets.Name = "OTH_VR_Profit_Targets";
+            this.OTH_VR_Profit_Targets.Width = 362;
+            // 
             // panel4
             // 
             this.panel4.BackColor = System.Drawing.Color.GhostWhite;
@@ -342,7 +399,6 @@
             // 
             this.Clear_n_Fetch_OTH_Virtual_BTN.BackColor = System.Drawing.SystemColors.MenuBar;
             this.Clear_n_Fetch_OTH_Virtual_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.Clear_n_Fetch_OTH_Virtual_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.Clear_n_Fetch_OTH_Virtual_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.Clear_n_Fetch_OTH_Virtual_BTN.FlatAppearance.BorderSize = 0;
             this.Clear_n_Fetch_OTH_Virtual_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -369,66 +425,6 @@
             this.Extract_OTH_Virtual_BTN.TabIndex = 4;
             this.Extract_OTH_Virtual_BTN.Text = "Extract";
             this.Extract_OTH_Virtual_BTN.UseVisualStyleBackColor = false;
-            // 
-            // Api_Tokens_Trial
-            // 
-            this.Api_Tokens_Trial.HeaderText = "Trial Subscriber Api Tokens";
-            this.Api_Tokens_Trial.MinimumWidth = 8;
-            this.Api_Tokens_Trial.Name = "Api_Tokens_Trial";
-            this.Api_Tokens_Trial.ReadOnly = true;
-            this.Api_Tokens_Trial.Width = 365;
-            // 
-            // Profit_Targets_Trial
-            // 
-            this.Profit_Targets_Trial.HeaderText = "Profit Targets Assigned";
-            this.Profit_Targets_Trial.MinimumWidth = 8;
-            this.Profit_Targets_Trial.Name = "Profit_Targets_Trial";
-            this.Profit_Targets_Trial.Width = 362;
-            // 
-            // Api_Tokens_Paid
-            // 
-            this.Api_Tokens_Paid.HeaderText = "Paid Subscriber Api Tokens";
-            this.Api_Tokens_Paid.MinimumWidth = 8;
-            this.Api_Tokens_Paid.Name = "Api_Tokens_Paid";
-            this.Api_Tokens_Paid.ReadOnly = true;
-            this.Api_Tokens_Paid.Width = 365;
-            // 
-            // Profit_Targets_Paid
-            // 
-            this.Profit_Targets_Paid.HeaderText = "Profit Targets Assigned";
-            this.Profit_Targets_Paid.MinimumWidth = 8;
-            this.Profit_Targets_Paid.Name = "Profit_Targets_Paid";
-            this.Profit_Targets_Paid.Width = 362;
-            // 
-            // OTH_CR_Api_Tokens
-            // 
-            this.OTH_CR_Api_Tokens.HeaderText = "O.T.H Real Acc Subscriber Api Tokens";
-            this.OTH_CR_Api_Tokens.MinimumWidth = 8;
-            this.OTH_CR_Api_Tokens.Name = "OTH_CR_Api_Tokens";
-            this.OTH_CR_Api_Tokens.ReadOnly = true;
-            this.OTH_CR_Api_Tokens.Width = 365;
-            // 
-            // OTH_CR_Profit_Targets
-            // 
-            this.OTH_CR_Profit_Targets.HeaderText = "Profit Targets Assigned";
-            this.OTH_CR_Profit_Targets.MinimumWidth = 8;
-            this.OTH_CR_Profit_Targets.Name = "OTH_CR_Profit_Targets";
-            this.OTH_CR_Profit_Targets.Width = 362;
-            // 
-            // OTH_VR_Api_Tokens
-            // 
-            this.OTH_VR_Api_Tokens.HeaderText = "O.T.H Virtual Acc Subscriber Api Tokens";
-            this.OTH_VR_Api_Tokens.MinimumWidth = 8;
-            this.OTH_VR_Api_Tokens.Name = "OTH_VR_Api_Tokens";
-            this.OTH_VR_Api_Tokens.ReadOnly = true;
-            this.OTH_VR_Api_Tokens.Width = 365;
-            // 
-            // OTH_VR_Profit_Targets
-            // 
-            this.OTH_VR_Profit_Targets.HeaderText = "Profit Targets Assigned";
-            this.OTH_VR_Profit_Targets.MinimumWidth = 8;
-            this.OTH_VR_Profit_Targets.Name = "OTH_VR_Profit_Targets";
-            this.OTH_VR_Profit_Targets.Width = 362;
             // 
             // Subscriber_Fetch
             // 

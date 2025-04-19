@@ -15,86 +15,106 @@ namespace FxWorth
             InitializeComponent();
             _backendApiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
 
-            // Optional: Add event handlers
+            // Assign event handlers (ensure these match designer)
+            this.Clear_n_Fetch_Paid_BTN.Click += new System.EventHandler(this.Clear_n_Fetch_Paid_BTN_Click);
+            this.Clear_n_Fetch_Trial_BTN.Click += new System.EventHandler(this.Clear_n_Fetch_Trial_BTN_Click);
+            this.Clear_n_Fetch_OTH_Real_BTN.Click += new System.EventHandler(this.Clear_n_Fetch_OTH_Real_BTN_Click);
+            this.Clear_n_Fetch_OTH_Virtual_BTN.Click += new System.EventHandler(this.Clear_n_Fetch_OTH_Virtual_BTN_Click);
+            this.Extract_Paid_BTN.Click += new System.EventHandler(this.Extract_Paid_BTN_Click);
+            this.Extract_Trial_BTN.Click += new System.EventHandler(this.Extract_Trial_BTN_Click);
+            this.Extract_OTH_Real_BTN.Click += new System.EventHandler(this.Extract_OTH_Real_BTN_Click);
+            this.Extract_OTH_Virtual_BTN.Click += new System.EventHandler(this.Extract_OTH_Virtual_BTN_Click);
         }
 
         // --- Helper Method to Fetch and Populate Grid ---
-        private async Task FetchAndPopulate(string queueType, DataGridView targetGrid)
+        private async Task FetchAndPopulate(string queueType, DataGridView targetGrid, string tokenColumnName, string targetColumnName)
         {
+            if (!_backendApiService.IsUserLoggedIn)
+            {
+                MessageBox.Show("Operator session expired or not logged in. Please close and reopen the fetch window.", "Authentication Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!targetGrid.Columns.Contains(tokenColumnName) || !targetGrid.Columns.Contains(targetColumnName))
+            {
+                MessageBox.Show($"Required columns not found in the grid for '{queueType}'. Expected '{tokenColumnName}' and '{targetColumnName}'. Check column Names in the designer.", "Grid Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             targetGrid.Rows.Clear();
             this.Cursor = Cursors.WaitCursor;
             string fetchError = null;
+            int fetchedCount = 0;
 
             try
             {
-                // Use the stored _backendApiService instance
                 List<TradingQueueItemDto> items = await _backendApiService.FetchTradingQueueAsync(queueType);
 
                 if (items != null)
                 {
+                    fetchedCount = items.Count;
+                    targetGrid.SuspendLayout();
+
                     foreach (var item in items)
                     {
-                        // Add items to the target grid
-                        // Assumes columns are: 0=ApiTokenValue, 1=ProfitTargetAmount
-                        targetGrid.Rows.Add(item.ApiTokenValue, item.ProfitTargetAmount);
+                        try
+                        {
+                            int rowIdx = targetGrid.Rows.Add();
+                            DataGridViewRow row = targetGrid.Rows[rowIdx];
+                            row.Cells[tokenColumnName].Value = item.ApiTokenValue;
+                            row.Cells[targetColumnName].Value = item.ProfitTargetAmount;
+                        }
+                        catch (Exception rowEx)
+                        {
+                            Console.WriteLine($"Error adding row: {rowEx.Message}");
+                        }
                     }
-                    if (fetchError == null)
-                    {
-                        Console.WriteLine($"Fetched {items.Count} items for '{queueType}'.");
-                    }
+                    targetGrid.ResumeLayout();
                 }
                 else
                 {
-                    fetchError = $"Failed to fetch items for '{queueType}'. Backend returned null or error.";
+                    fetchError = $"Failed to fetch items for '{queueType}'.";
                 }
             }
             catch (Exception ex)
             {
-                fetchError = $"Error during fetch for '{queueType}': {ex.Message}";
-                Console.WriteLine($"EXCEPTION during fetch for '{queueType}': {ex}");
+                fetchError = $"Error fetching '{queueType}': {ex.Message}";
+                Console.WriteLine($"EXCEPTION: {ex}");
             }
             finally
             {
                 this.Cursor = Cursors.Default;
                 if (fetchError != null)
-                {
-                    MessageBox.Show(fetchError, "Fetch Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
+                    MessageBox.Show(fetchError, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                else
+                    Console.WriteLine($"Fetched {fetchedCount} items for '{queueType}'.");
             }
         }
 
         // --- Helper Method to Extract Data from a Grid ---
-        private List<CredentialsWithTarget> ExtractDataFromGrid(DataGridView sourceGrid)
+        private List<CredentialsWithTarget> ExtractDataFromGrid(DataGridView sourceGrid, string tokenColumnName, string targetColumnName)
         {
             List<CredentialsWithTarget> extractedData = new List<CredentialsWithTarget>();
-
             foreach (DataGridViewRow row in sourceGrid.Rows)
             {
                 if (row.IsNewRow) continue;
-                string apiToken = row.Cells[0].Value?.ToString();
-                decimal profitTarget;
 
-                object tokenValueObj = row.Cells[0].Value;
-                object targetValueObj = row.Cells[1].Value;
+                object tokenValueObj = row.Cells[tokenColumnName].Value;
+                object targetValueObj = row.Cells[targetColumnName].Value;
 
                 if (tokenValueObj == null || targetValueObj == null)
                 {
-                    MessageBox.Show($"Row {row.Index + 1}: Skipping row with missing data.", "Extract Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     continue;
                 }
 
-                apiToken = tokenValueObj.ToString();
-
+                string apiToken = tokenValueObj.ToString();
+                decimal profitTarget;
 
                 if (decimal.TryParse(targetValueObj.ToString(), out profitTarget))
                 {
                     if (!string.IsNullOrEmpty(apiToken))
                     {
                         extractedData.Add(new CredentialsWithTarget { ApiTokenValue = apiToken, ProfitTarget = profitTarget });
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Row {row.Index + 1}: Skipping row with empty API Token.", "Extract Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 }
                 else
@@ -105,54 +125,10 @@ namespace FxWorth
             return extractedData;
         }
 
-        // --- Event Handlers for "Clear n Fetch" Buttons ---
-
-        private async void Clear_n_Fetch_Paid_BTN_Click(object sender, EventArgs e)
-        {
-            await FetchAndPopulate("paid", dataGridView_Paid);
-        }
-
-        private async void Clear_n_Fetch_Trial_BTN_Click(object sender, EventArgs e)
-        {
-            await FetchAndPopulate("virtual-trial", dataGridView_Trial);
-        }
-
-        private async void Clear_n_Fetch_OTH_Real_BTN_Click(object sender, EventArgs e)
-        {
-            await FetchAndPopulate("free-real", dataGridView_OTH_Real);
-        }
-
-        private async void Clear_n_Fetch_OTH_Virtual_BTN_Click(object sender, EventArgs e)
-        {
-            await FetchAndPopulate("free-virtual", dataGridView_OTH_Virtual);
-        }
-
-        // --- Event Handlers for "Extract" Buttons ---
-
-        private void Extract_Paid_BTN_Click(object sender, EventArgs e)
-        {
-            ExtractAndLoad(dataGridView_Paid);
-        }
-
-        private void Extract_Trial_BTN_Click(object sender, EventArgs e)
-        {
-            ExtractAndLoad(dataGridView_Trial);
-        }
-
-        private void Extract_OTH_Real_BTN_Click(object sender, EventArgs e)
-        {
-            ExtractAndLoad(dataGridView_OTH_Real);
-        }
-
-        private void Extract_OTH_Virtual_BTN_Click(object sender, EventArgs e)
-        {
-            ExtractAndLoad(dataGridView_OTH_Virtual);
-        }
-
         // --- Helper Method for Extracting and Loading ---
-        private void ExtractAndLoad(DataGridView sourceGrid)
+        private void ExtractAndLoad(DataGridView sourceGrid, string tokenColumnName, string targetColumnName)
         {
-            List<CredentialsWithTarget> extractedData = ExtractDataFromGrid(sourceGrid);
+            List<CredentialsWithTarget> extractedData = ExtractDataFromGrid(sourceGrid, tokenColumnName, targetColumnName);
 
             if (extractedData.Count == 0)
             {
@@ -162,21 +138,63 @@ namespace FxWorth
 
             if (this.Owner is FxWorth mainForm)
             {
-                mainForm.LoadTokensFromFetch(extractedData); 
+                mainForm.LoadTokensFromFetch(extractedData);
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
             else
             {
-                MessageBox.Show("Could not find the main application window to load tokens.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Could not find the main application window.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+
+        // --- Event Handlers for "Clear n Fetch" Buttons ---
+        private async void Clear_n_Fetch_Paid_BTN_Click(object sender, EventArgs e)
+        {
+            await FetchAndPopulate("paid", dataGridView_Paid, "Api_Tokens_Paid", "Profit_Targets_Paid");
+        }
+
+        private async void Clear_n_Fetch_Trial_BTN_Click(object sender, EventArgs e)
+        {
+            await FetchAndPopulate("virtual-trial", dataGridView_Trial, "Api_Tokens_Trial", "Profit_Targets_Trial");
+        }
+
+        private async void Clear_n_Fetch_OTH_Real_BTN_Click(object sender, EventArgs e)
+        {
+            await FetchAndPopulate("free-real", dataGridView_OTH_Real, "OTH_CR_Api_Tokens", "OTH_CR_Profit_Targets");
+        }
+
+        private async void Clear_n_Fetch_OTH_Virtual_BTN_Click(object sender, EventArgs e)
+        {
+            await FetchAndPopulate("free-virtual", dataGridView_OTH_Virtual, "OTH_VR_Api_Tokens", "OTH_VR_Profit_Targets");
+        }
+
+        // --- Event Handlers for "Extract" Buttons ---
+        private void Extract_Paid_BTN_Click(object sender, EventArgs e)
+        {
+            ExtractAndLoad(dataGridView_Paid, "Api_Tokens_Paid", "Profit_Targets_Paid");
+        }
+
+        private void Extract_Trial_BTN_Click(object sender, EventArgs e)
+        {
+            ExtractAndLoad(dataGridView_Trial, "Api_Tokens_Trial", "Profit_Targets_Trial");
+        }
+
+        private void Extract_OTH_Real_BTN_Click(object sender, EventArgs e)
+        {
+            ExtractAndLoad(dataGridView_OTH_Real, "OTH_CR_Api_Tokens", "OTH_CR_Profit_Targets");
+        }
+
+        private void Extract_OTH_Virtual_BTN_Click(object sender, EventArgs e)
+        {
+            ExtractAndLoad(dataGridView_OTH_Virtual, "OTH_VR_Api_Tokens", "OTH_VR_Profit_Targets");
+        }
     }
-    // --- Helper Class for Credentials and Target ---
+
     public class CredentialsWithTarget
     {
         public string ApiTokenValue { get; set; }
         public decimal ProfitTarget { get; set; }
-        // Add other fields if needed, e.g., Name, ID from DTO?
     }
 }
