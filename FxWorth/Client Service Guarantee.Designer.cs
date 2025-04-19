@@ -47,10 +47,10 @@
             this.Okay_BTN.FlatAppearance.MouseDownBackColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.Okay_BTN.FlatAppearance.MouseOverBackColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.Okay_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Okay_BTN.Location = new System.Drawing.Point(207, 16);
+            this.Okay_BTN.Location = new System.Drawing.Point(207, 14);
             this.Okay_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Okay_BTN.Name = "Okay_BTN";
-            this.Okay_BTN.Size = new System.Drawing.Size(129, 30);
+            this.Okay_BTN.Size = new System.Drawing.Size(129, 35);
             this.Okay_BTN.TabIndex = 20;
             this.Okay_BTN.Text = "Noted";
             this.Okay_BTN.UseVisualStyleBackColor = false;

@@ -64,6 +64,7 @@
             this.Max_Drawdown_LBL = new System.Windows.Forms.Label();
             this.Martingale_Level_TXT = new System.Windows.Forms.NumericUpDown();
             this.API_Token_GRBX = new System.Windows.Forms.GroupBox();
+            this.Fetch = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.Time_LBL = new System.Windows.Forms.Label();
             this.Data_Grip_Dock_PNL = new System.Windows.Forms.Panel();
@@ -733,6 +734,7 @@
             // 
             // API_Token_GRBX
             // 
+            this.API_Token_GRBX.Controls.Add(this.Fetch);
             this.API_Token_GRBX.Controls.Add(this.label3);
             this.API_Token_GRBX.Controls.Add(this.Time_LBL);
             this.API_Token_GRBX.Controls.Add(this.Data_Grip_Dock_PNL);
@@ -749,6 +751,16 @@
             this.API_Token_GRBX.TabIndex = 20;
             this.API_Token_GRBX.TabStop = false;
             this.API_Token_GRBX.Text = "API Token Management";
+            // 
+            // Fetch
+            // 
+            this.Fetch.AutoSize = true;
+            this.Fetch.Location = new System.Drawing.Point(844, 246);
+            this.Fetch.Name = "Fetch";
+            this.Fetch.Size = new System.Drawing.Size(29, 25);
+            this.Fetch.TabIndex = 26;
+            this.Fetch.Text = "⛶";
+            this.Fetch.Click += new System.EventHandler(this.Fetch_Click);
             // 
             // label3
             // 
@@ -1583,6 +1595,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Column4;
         private System.Windows.Forms.DataGridViewTextBoxColumn Column5;
         private System.Windows.Forms.DataGridViewTextBoxColumn Status;
+        private System.Windows.Forms.Label Fetch;
     }
 }
 

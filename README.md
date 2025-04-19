@@ -57,6 +57,20 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
 
 * **User-Friendly Interface:** A well-designed, responsive, and DPI-aware Windows Forms UI.
 
+## Current Data Flow
+
+*	FxWorthMainUI loads credentials into TokenStorage.
+*	TokenStorage creates AuthClient instances for each credential.
+*	User clicks "Start" in FxWorthMainUI.
+*	TokenStorage.StartAll() starts the AuthClient instances, connecting them directly to Deriv.
+*	TokenStorage subscribes to market data via MarketDataClient.
+*	MarketDataClient feeds data to the Rsi indicator.
+*	Rsi.Crossover event triggers TokenStorage.OnCrossover.
+*	TokenStorage.OnCrossover iterates through active AuthClient instances and calls their Buy/Sell methods if conditions are met.
+*	AuthClient sends trade requests directly to Deriv.
+*	AuthClient receives transaction/balance updates directly from Deriv and updates its internal Balance and Pnl properties.
+*	FxWorthMainUI periodically polls TokenStorage (via ClientsStateChanged event triggered by a timer) to update the DataGridViews with Balance and Pnl from each AuthClient.
+
 ## Future Development
 
 *   **Integration with FxWorth Web Application:**  The primary focus of future development is to integrate the FxWorth Desktop application with the FxWorth Web application.  This will enable:
