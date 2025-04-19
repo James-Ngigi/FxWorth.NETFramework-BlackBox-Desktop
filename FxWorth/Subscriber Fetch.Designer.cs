@@ -29,36 +29,36 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Subscriber_Fetch));
-            this.tabControl1 = new System.Windows.Forms.TabControl();
+            this.FxWorth_Subscriber_Fetching_Service_Tab = new System.Windows.Forms.TabControl();
             this.Paid_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_Paid = new System.Windows.Forms.DataGridView();
-            this.Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel1 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_Paid_BTN = new System.Windows.Forms.Button();
             this.Extract_Paid_BTN = new System.Windows.Forms.Button();
             this.Trial_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_Trial = new System.Windows.Forms.DataGridView();
-            this.dataGridViewTextBoxColumn1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.dataGridViewTextBoxColumn2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel2 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_Trial_BTN = new System.Windows.Forms.Button();
             this.Extract_Trial_BTN = new System.Windows.Forms.Button();
             this.OTH_CR_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_OTH_Real = new System.Windows.Forms.DataGridView();
-            this.dataGridViewTextBoxColumn3 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.dataGridViewTextBoxColumn4 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel3 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_OTH_Real_BTN = new System.Windows.Forms.Button();
             this.Extract_OTH_Real_BTN = new System.Windows.Forms.Button();
             this.OTH_VR_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_OTH_Virtual = new System.Windows.Forms.DataGridView();
-            this.dataGridViewTextBoxColumn5 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.dataGridViewTextBoxColumn6 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel4 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_OTH_Virtual_BTN = new System.Windows.Forms.Button();
             this.Extract_OTH_Virtual_BTN = new System.Windows.Forms.Button();
-            this.tabControl1.SuspendLayout();
+            this.Api_Tokens_Trial = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Profit_Targets_Trial = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Api_Tokens_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Profit_Targets_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.OTH_CR_Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.OTH_CR_Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.OTH_VR_Api_Tokens = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.OTH_VR_Profit_Targets = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.FxWorth_Subscriber_Fetching_Service_Tab.SuspendLayout();
             this.Paid_Client_Tab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView_Paid)).BeginInit();
             this.panel1.SuspendLayout();
@@ -73,17 +73,17 @@
             this.panel4.SuspendLayout();
             this.SuspendLayout();
             // 
-            // tabControl1
+            // FxWorth_Subscriber_Fetching_Service_Tab
             // 
-            this.tabControl1.Controls.Add(this.Paid_Client_Tab);
-            this.tabControl1.Controls.Add(this.Trial_Client_Tab);
-            this.tabControl1.Controls.Add(this.OTH_CR_Client_Tab);
-            this.tabControl1.Controls.Add(this.OTH_VR_Client_Tab);
-            this.tabControl1.Location = new System.Drawing.Point(10, 9);
-            this.tabControl1.Name = "tabControl1";
-            this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(850, 508);
-            this.tabControl1.TabIndex = 0;
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Controls.Add(this.Paid_Client_Tab);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Controls.Add(this.Trial_Client_Tab);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Controls.Add(this.OTH_CR_Client_Tab);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Controls.Add(this.OTH_VR_Client_Tab);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Location = new System.Drawing.Point(10, 9);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Name = "FxWorth_Subscriber_Fetching_Service_Tab";
+            this.FxWorth_Subscriber_Fetching_Service_Tab.SelectedIndex = 0;
+            this.FxWorth_Subscriber_Fetching_Service_Tab.Size = new System.Drawing.Size(850, 508);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.TabIndex = 0;
             // 
             // Paid_Client_Tab
             // 
@@ -103,8 +103,8 @@
             this.dataGridView_Paid.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dataGridView_Paid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_Paid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.Api_Tokens,
-            this.Profit_Targets});
+            this.Api_Tokens_Paid,
+            this.Profit_Targets_Paid});
             this.dataGridView_Paid.GridColor = System.Drawing.SystemColors.ScrollBar;
             this.dataGridView_Paid.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_Paid.Name = "dataGridView_Paid";
@@ -112,21 +112,6 @@
             this.dataGridView_Paid.RowTemplate.Height = 28;
             this.dataGridView_Paid.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_Paid.TabIndex = 23;
-            // 
-            // Api_Tokens
-            // 
-            this.Api_Tokens.HeaderText = "Paid Subscriber Api Tokens";
-            this.Api_Tokens.MinimumWidth = 8;
-            this.Api_Tokens.Name = "Api_Tokens";
-            this.Api_Tokens.ReadOnly = true;
-            this.Api_Tokens.Width = 365;
-            // 
-            // Profit_Targets
-            // 
-            this.Profit_Targets.HeaderText = "Profit Targets Assigned";
-            this.Profit_Targets.MinimumWidth = 8;
-            this.Profit_Targets.Name = "Profit_Targets";
-            this.Profit_Targets.Width = 362;
             // 
             // panel1
             // 
@@ -190,29 +175,14 @@
             this.dataGridView_Trial.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dataGridView_Trial.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_Trial.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.dataGridViewTextBoxColumn1,
-            this.dataGridViewTextBoxColumn2});
+            this.Api_Tokens_Trial,
+            this.Profit_Targets_Trial});
             this.dataGridView_Trial.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_Trial.Name = "dataGridView_Trial";
             this.dataGridView_Trial.RowHeadersWidth = 62;
             this.dataGridView_Trial.RowTemplate.Height = 28;
             this.dataGridView_Trial.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_Trial.TabIndex = 24;
-            // 
-            // dataGridViewTextBoxColumn1
-            // 
-            this.dataGridViewTextBoxColumn1.HeaderText = "Trial Subscriber Api Tokens";
-            this.dataGridViewTextBoxColumn1.MinimumWidth = 8;
-            this.dataGridViewTextBoxColumn1.Name = "dataGridViewTextBoxColumn1";
-            this.dataGridViewTextBoxColumn1.ReadOnly = true;
-            this.dataGridViewTextBoxColumn1.Width = 365;
-            // 
-            // dataGridViewTextBoxColumn2
-            // 
-            this.dataGridViewTextBoxColumn2.HeaderText = "Profit Targets Assigned";
-            this.dataGridViewTextBoxColumn2.MinimumWidth = 8;
-            this.dataGridViewTextBoxColumn2.Name = "dataGridViewTextBoxColumn2";
-            this.dataGridViewTextBoxColumn2.Width = 362;
             // 
             // panel2
             // 
@@ -276,29 +246,14 @@
             this.dataGridView_OTH_Real.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dataGridView_OTH_Real.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_OTH_Real.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.dataGridViewTextBoxColumn3,
-            this.dataGridViewTextBoxColumn4});
+            this.OTH_CR_Api_Tokens,
+            this.OTH_CR_Profit_Targets});
             this.dataGridView_OTH_Real.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_OTH_Real.Name = "dataGridView_OTH_Real";
             this.dataGridView_OTH_Real.RowHeadersWidth = 62;
             this.dataGridView_OTH_Real.RowTemplate.Height = 28;
             this.dataGridView_OTH_Real.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_OTH_Real.TabIndex = 24;
-            // 
-            // dataGridViewTextBoxColumn3
-            // 
-            this.dataGridViewTextBoxColumn3.HeaderText = "O.T.H Real Acc Subscriber Api Tokens";
-            this.dataGridViewTextBoxColumn3.MinimumWidth = 8;
-            this.dataGridViewTextBoxColumn3.Name = "dataGridViewTextBoxColumn3";
-            this.dataGridViewTextBoxColumn3.ReadOnly = true;
-            this.dataGridViewTextBoxColumn3.Width = 365;
-            // 
-            // dataGridViewTextBoxColumn4
-            // 
-            this.dataGridViewTextBoxColumn4.HeaderText = "Profit Targets Assigned";
-            this.dataGridViewTextBoxColumn4.MinimumWidth = 8;
-            this.dataGridViewTextBoxColumn4.Name = "dataGridViewTextBoxColumn4";
-            this.dataGridViewTextBoxColumn4.Width = 362;
             // 
             // panel3
             // 
@@ -362,29 +317,14 @@
             this.dataGridView_OTH_Virtual.BackgroundColor = System.Drawing.SystemColors.Window;
             this.dataGridView_OTH_Virtual.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_OTH_Virtual.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.dataGridViewTextBoxColumn5,
-            this.dataGridViewTextBoxColumn6});
+            this.OTH_VR_Api_Tokens,
+            this.OTH_VR_Profit_Targets});
             this.dataGridView_OTH_Virtual.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_OTH_Virtual.Name = "dataGridView_OTH_Virtual";
             this.dataGridView_OTH_Virtual.RowHeadersWidth = 62;
             this.dataGridView_OTH_Virtual.RowTemplate.Height = 28;
             this.dataGridView_OTH_Virtual.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_OTH_Virtual.TabIndex = 24;
-            // 
-            // dataGridViewTextBoxColumn5
-            // 
-            this.dataGridViewTextBoxColumn5.HeaderText = "O.T.H Virtual Acc Subscriber Api Tokens";
-            this.dataGridViewTextBoxColumn5.MinimumWidth = 8;
-            this.dataGridViewTextBoxColumn5.Name = "dataGridViewTextBoxColumn5";
-            this.dataGridViewTextBoxColumn5.ReadOnly = true;
-            this.dataGridViewTextBoxColumn5.Width = 365;
-            // 
-            // dataGridViewTextBoxColumn6
-            // 
-            this.dataGridViewTextBoxColumn6.HeaderText = "Profit Targets Assigned";
-            this.dataGridViewTextBoxColumn6.MinimumWidth = 8;
-            this.dataGridViewTextBoxColumn6.Name = "dataGridViewTextBoxColumn6";
-            this.dataGridViewTextBoxColumn6.Width = 362;
             // 
             // panel4
             // 
@@ -430,13 +370,73 @@
             this.Extract_OTH_Virtual_BTN.Text = "Extract";
             this.Extract_OTH_Virtual_BTN.UseVisualStyleBackColor = false;
             // 
+            // Api_Tokens_Trial
+            // 
+            this.Api_Tokens_Trial.HeaderText = "Trial Subscriber Api Tokens";
+            this.Api_Tokens_Trial.MinimumWidth = 8;
+            this.Api_Tokens_Trial.Name = "Api_Tokens_Trial";
+            this.Api_Tokens_Trial.ReadOnly = true;
+            this.Api_Tokens_Trial.Width = 365;
+            // 
+            // Profit_Targets_Trial
+            // 
+            this.Profit_Targets_Trial.HeaderText = "Profit Targets Assigned";
+            this.Profit_Targets_Trial.MinimumWidth = 8;
+            this.Profit_Targets_Trial.Name = "Profit_Targets_Trial";
+            this.Profit_Targets_Trial.Width = 362;
+            // 
+            // Api_Tokens_Paid
+            // 
+            this.Api_Tokens_Paid.HeaderText = "Paid Subscriber Api Tokens";
+            this.Api_Tokens_Paid.MinimumWidth = 8;
+            this.Api_Tokens_Paid.Name = "Api_Tokens_Paid";
+            this.Api_Tokens_Paid.ReadOnly = true;
+            this.Api_Tokens_Paid.Width = 365;
+            // 
+            // Profit_Targets_Paid
+            // 
+            this.Profit_Targets_Paid.HeaderText = "Profit Targets Assigned";
+            this.Profit_Targets_Paid.MinimumWidth = 8;
+            this.Profit_Targets_Paid.Name = "Profit_Targets_Paid";
+            this.Profit_Targets_Paid.Width = 362;
+            // 
+            // OTH_CR_Api_Tokens
+            // 
+            this.OTH_CR_Api_Tokens.HeaderText = "O.T.H Real Acc Subscriber Api Tokens";
+            this.OTH_CR_Api_Tokens.MinimumWidth = 8;
+            this.OTH_CR_Api_Tokens.Name = "OTH_CR_Api_Tokens";
+            this.OTH_CR_Api_Tokens.ReadOnly = true;
+            this.OTH_CR_Api_Tokens.Width = 365;
+            // 
+            // OTH_CR_Profit_Targets
+            // 
+            this.OTH_CR_Profit_Targets.HeaderText = "Profit Targets Assigned";
+            this.OTH_CR_Profit_Targets.MinimumWidth = 8;
+            this.OTH_CR_Profit_Targets.Name = "OTH_CR_Profit_Targets";
+            this.OTH_CR_Profit_Targets.Width = 362;
+            // 
+            // OTH_VR_Api_Tokens
+            // 
+            this.OTH_VR_Api_Tokens.HeaderText = "O.T.H Virtual Acc Subscriber Api Tokens";
+            this.OTH_VR_Api_Tokens.MinimumWidth = 8;
+            this.OTH_VR_Api_Tokens.Name = "OTH_VR_Api_Tokens";
+            this.OTH_VR_Api_Tokens.ReadOnly = true;
+            this.OTH_VR_Api_Tokens.Width = 365;
+            // 
+            // OTH_VR_Profit_Targets
+            // 
+            this.OTH_VR_Profit_Targets.HeaderText = "Profit Targets Assigned";
+            this.OTH_VR_Profit_Targets.MinimumWidth = 8;
+            this.OTH_VR_Profit_Targets.Name = "OTH_VR_Profit_Targets";
+            this.OTH_VR_Profit_Targets.Width = 362;
+            // 
             // Subscriber_Fetch
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Window;
             this.ClientSize = new System.Drawing.Size(870, 527);
-            this.Controls.Add(this.tabControl1);
+            this.Controls.Add(this.FxWorth_Subscriber_Fetching_Service_Tab);
             this.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
@@ -447,7 +447,7 @@
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Subscriber Fetch";
-            this.tabControl1.ResumeLayout(false);
+            this.FxWorth_Subscriber_Fetching_Service_Tab.ResumeLayout(false);
             this.Paid_Client_Tab.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView_Paid)).EndInit();
             this.panel1.ResumeLayout(false);
@@ -466,7 +466,7 @@
 
         #endregion
 
-        private System.Windows.Forms.TabControl tabControl1;
+        private System.Windows.Forms.TabControl FxWorth_Subscriber_Fetching_Service_Tab;
         private System.Windows.Forms.TabPage Paid_Client_Tab;
         private System.Windows.Forms.TabPage Trial_Client_Tab;
         private System.Windows.Forms.TabPage OTH_CR_Client_Tab;
@@ -484,16 +484,16 @@
         private System.Windows.Forms.Panel panel4;
         private System.Windows.Forms.Button Clear_n_Fetch_OTH_Virtual_BTN;
         private System.Windows.Forms.Button Extract_OTH_Virtual_BTN;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Api_Tokens;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Profit_Targets;
         private System.Windows.Forms.DataGridView dataGridView_Trial;
         private System.Windows.Forms.DataGridView dataGridView_OTH_Real;
         private System.Windows.Forms.DataGridView dataGridView_OTH_Virtual;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumn1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumn2;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumn3;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumn4;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumn5;
-        private System.Windows.Forms.DataGridViewTextBoxColumn dataGridViewTextBoxColumn6;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Api_Tokens_Paid;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Profit_Targets_Paid;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Api_Tokens_Trial;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Profit_Targets_Trial;
+        private System.Windows.Forms.DataGridViewTextBoxColumn OTH_CR_Api_Tokens;
+        private System.Windows.Forms.DataGridViewTextBoxColumn OTH_CR_Profit_Targets;
+        private System.Windows.Forms.DataGridViewTextBoxColumn OTH_VR_Api_Tokens;
+        private System.Windows.Forms.DataGridViewTextBoxColumn OTH_VR_Profit_Targets;
     }
 }

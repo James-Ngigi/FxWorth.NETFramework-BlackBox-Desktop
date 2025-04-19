@@ -32,10 +32,10 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.Email_LBL = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.textBox2 = new System.Windows.Forms.TextBox();
+            this.emailTextBox = new System.Windows.Forms.TextBox();
+            this.passwordTextBox = new System.Windows.Forms.TextBox();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.Login_BTN = new System.Windows.Forms.Button();
+            this.btnLogin = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
@@ -68,24 +68,24 @@
             this.label1.TabIndex = 20;
             this.label1.Text = "Admin Password";
             // 
-            // textBox1
+            // emailTextBox
             // 
-            this.textBox1.Location = new System.Drawing.Point(234, 250);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(278, 32);
-            this.textBox1.TabIndex = 21;
+            this.emailTextBox.Location = new System.Drawing.Point(234, 250);
+            this.emailTextBox.Name = "emailTextBox";
+            this.emailTextBox.Size = new System.Drawing.Size(278, 32);
+            this.emailTextBox.TabIndex = 21;
             // 
-            // textBox2
+            // passwordTextBox
             // 
-            this.textBox2.Location = new System.Drawing.Point(234, 315);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(278, 32);
-            this.textBox2.TabIndex = 22;
+            this.passwordTextBox.Location = new System.Drawing.Point(234, 315);
+            this.passwordTextBox.Name = "passwordTextBox";
+            this.passwordTextBox.Size = new System.Drawing.Size(278, 32);
+            this.passwordTextBox.TabIndex = 22;
             // 
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.GhostWhite;
-            this.panel1.Controls.Add(this.Login_BTN);
+            this.panel1.Controls.Add(this.btnLogin);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panel1.Location = new System.Drawing.Point(0, 408);
             this.panel1.Margin = new System.Windows.Forms.Padding(4);
@@ -93,21 +93,21 @@
             this.panel1.Size = new System.Drawing.Size(545, 83);
             this.panel1.TabIndex = 23;
             // 
-            // Login_BTN
+            // btnLogin
             // 
-            this.Login_BTN.BackColor = System.Drawing.SystemColors.ControlLight;
-            this.Login_BTN.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.Login_BTN.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.Login_BTN.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
-            this.Login_BTN.FlatAppearance.BorderSize = 0;
-            this.Login_BTN.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Login_BTN.Location = new System.Drawing.Point(197, 25);
-            this.Login_BTN.Margin = new System.Windows.Forms.Padding(4);
-            this.Login_BTN.Name = "Login_BTN";
-            this.Login_BTN.Size = new System.Drawing.Size(150, 35);
-            this.Login_BTN.TabIndex = 20;
-            this.Login_BTN.Text = "Login";
-            this.Login_BTN.UseVisualStyleBackColor = false;
+            this.btnLogin.BackColor = System.Drawing.SystemColors.ControlLight;
+            this.btnLogin.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnLogin.DialogResult = System.Windows.Forms.DialogResult.OK;
+            this.btnLogin.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
+            this.btnLogin.FlatAppearance.BorderSize = 0;
+            this.btnLogin.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnLogin.Location = new System.Drawing.Point(197, 25);
+            this.btnLogin.Margin = new System.Windows.Forms.Padding(4);
+            this.btnLogin.Name = "btnLogin";
+            this.btnLogin.Size = new System.Drawing.Size(150, 35);
+            this.btnLogin.TabIndex = 20;
+            this.btnLogin.Text = "Login";
+            this.btnLogin.UseVisualStyleBackColor = false;
             // 
             // Admin_Authorization
             // 
@@ -116,8 +116,8 @@
             this.BackColor = System.Drawing.SystemColors.Window;
             this.ClientSize = new System.Drawing.Size(545, 491);
             this.Controls.Add(this.panel1);
-            this.Controls.Add(this.textBox2);
-            this.Controls.Add(this.textBox1);
+            this.Controls.Add(this.passwordTextBox);
+            this.Controls.Add(this.emailTextBox);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.Email_LBL);
             this.Controls.Add(this.pictureBox1);
@@ -130,6 +130,7 @@
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Admin Login";
+            this.Load += new System.EventHandler(this.Admin_Authorization_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -142,9 +143,9 @@
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.Label Email_LBL;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox textBox1;
-        private System.Windows.Forms.TextBox textBox2;
+        private System.Windows.Forms.TextBox emailTextBox;
+        private System.Windows.Forms.TextBox passwordTextBox;
         private System.Windows.Forms.Panel panel1;
-        private System.Windows.Forms.Button Login_BTN;
+        private System.Windows.Forms.Button btnLogin;
     }
 }

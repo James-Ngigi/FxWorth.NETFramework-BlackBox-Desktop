@@ -755,7 +755,7 @@
             // Fetch
             // 
             this.Fetch.AutoSize = true;
-            this.Fetch.Location = new System.Drawing.Point(838, 244);
+            this.Fetch.Location = new System.Drawing.Point(844, 246);
             this.Fetch.Name = "Fetch";
             this.Fetch.Size = new System.Drawing.Size(29, 25);
             this.Fetch.TabIndex = 26;

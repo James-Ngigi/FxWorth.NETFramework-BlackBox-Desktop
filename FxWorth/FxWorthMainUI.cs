@@ -12,6 +12,8 @@ using System.Reflection;
 using System.Windows.Forms;
 using static FxApi.AuthClient;
 using static FxWorth.Hierarchy.HierarchyNavigator;
+using FxBackendClient;
+using System.Threading.Tasks;
 
 namespace FxWorth
 {
@@ -43,6 +45,11 @@ namespace FxWorth
             {
                 PowerManager.AllowSleep();
             }
+
+            if (e.Cancel == false)
+            {
+                _backendApiService?.Dispose();
+            }
             base.OnFormClosing(e);
         }
 
@@ -58,6 +65,9 @@ namespace FxWorth
         private PhaseParameters phase1Parameters;
         private PhaseParameters phase2Parameters;
         private HierarchyNavigator hierarchyNavigator;
+        private BackendApiService _backendApiService;
+        private bool _isOperatorLoggedIn = false;
+        private string _backendApiUrl = "http://localhost:8080"; // Later configured from App.config
 
 
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
@@ -72,6 +82,17 @@ namespace FxWorth
             {
                 Internet_conection_LBL.Text = string.Format("Latency: {0} ms", latency);
             }
+        }
+
+        public void LoadTokensFromFetch(List<CredentialsWithTarget> fetchedData)
+        {
+            MessageBox.Show($"Received {fetchedData.Count} tokens to load.", "Data Extracted");
+            // TODO: Implement logic to process fetchedData
+            // - Clear existing tokens in dataGridView1?
+            // - Create FxApi.Credentials objects
+            // - Add them to storage.Credentials and storage.Clients
+            // - Populate dataGridView1 on the main form
+            // - Potentially associate the ProfitTarget with the TradingParameters for each client
         }
 
         public FxWorth()
@@ -106,6 +127,23 @@ namespace FxWorth
             updateTimer.Tick += (s, args) => ClientsStateChanged(storage, EventArgs.Empty);
             updateTimer.Start();
             storage.TradeUpdated += Storage_TradeUpdated;
+
+            try
+            {
+                _backendApiService = new BackendApiService(_backendApiUrl);
+            }
+            catch (ArgumentNullException ex)
+            {
+                MessageBox.Show($"Backend API URL is not configured correctly: {ex.Message}", "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Handle error appropriately, maybe disable features or close app
+                // For now, disable the fetch button if service fails to initialize
+                Fetch.Enabled = false; // Assuming 'Fetch' is the design name of your label/button
+            }
+            catch (Exception ex) // Catch other potential exceptions during initialization
+            {
+                MessageBox.Show($"Failed to initialize Backend API Service: {ex.Message}", "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Fetch.Enabled = false;
+            }
 
             foreach (var kvp in storage.Clients)
             {
@@ -1034,16 +1072,98 @@ namespace FxWorth
             Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Value, Hierarchy_Levels_TXT.Value + 1);
         }
 
-        private void Fetch_Click(object sender, EventArgs e)
+        private async Task<bool> EnsureOperatorLogin()
         {
-            using (var dialog = new Subscriber_Fetch())
+            if (_isOperatorLoggedIn) return true;
+
+            // Show your Admin_Authorization form as a dialogue
+            using (var loginDialog = new Admin_Authorization())
             {
-                var result = dialog.ShowDialog();
+                var result = loginDialog.ShowDialog(this); 
+
                 if (result == DialogResult.OK)
                 {
-                    // Handle success
+                    string email = loginDialog.EnteredEmail;
+                    string password = loginDialog.EnteredPassword;
+
+                    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                    {
+                        MessageBox.Show("Email and Password cannot be empty.", "Login Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return false;
+                    }
+
+                    this.Cursor = Cursors.WaitCursor;
+                    bool loginSuccess = false;
+                    try
+                    {
+                        loginSuccess = await _backendApiService.LoginOperatorAsync(email, password);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"An error occurred during login: {ex.Message}", "Login Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        // Log the full exception details
+                    }
+                    finally
+                    {
+                        this.Cursor = Cursors.Default;
+                    }
+
+
+                    if (loginSuccess)
+                    {
+                        _isOperatorLoggedIn = true;
+                        // Connect SignalR AFTER successful login
+                        try
+                        {
+                            await _backendApiService.ConnectSignalRAsync();
+                            // Optionally notify user of successful connection
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Failed to connect to real-time service after login: {ex.Message}", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            // Login succeeded, but SignalR failed. Decide how to handle this.
+                            // Maybe allow fetch but warn that real-time updates might not work?
+                            // For now, we still return true as login itself worked.
+                        }
+                        return true;
+                    }
+                    else
+                    {
+                        // Login failed message is shown by LoginOperatorAsync or caught exception
+                        _isOperatorLoggedIn = false;
+                        return false;
+                    }
+                }
+                else // User cancelled the login dialogue
+                {
+                    return false;
                 }
             }
+        }
+
+        // --- Corrected Fetch_Click Event Handler ---
+        private async void Fetch_Click(object sender, EventArgs e)
+        {
+            if (_backendApiService == null)
+            {
+                MessageBox.Show("Backend service is not available. Please check configuration or restart the application.", "Service Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            bool isLoggedIn = await EnsureOperatorLogin();
+
+            if (isLoggedIn)
+            {
+                using (var dialog = new Subscriber_Fetch(_backendApiService))
+                {
+                    dialog.ShowDialog(this);
+
+                    // Optional: Handle any result from the dialogue if needed
+                    // if (dialog.DialogResult == DialogResult.OK) { ... }
+                }
+            }
+            // If not loggedIn, the EnsureOperatorLogin method already handled showing errors or cancellation.
+            // No further action needed here if login failed or was cancelled.
         }
     }
 
