@@ -48,7 +48,7 @@ namespace FxBackendClient
                 throw new ArgumentNullException(nameof(backendBaseUrl));
 
             _backendBaseUrl = backendBaseUrl.TrimEnd('/');
-            _restClient = new HttpClient { BaseAddress = new Uri(_backendBaseUrl + "/api/") }; // Set base address for REST
+            _restClient = new HttpClient { BaseAddress = new Uri(_backendBaseUrl + "/api/") };
             _restClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             _reconnectionTimer = new System.Timers.Timer();
             _reconnectionTimer.Elapsed += async (sender, e) => await AttemptSignalRReconnect();
@@ -375,14 +375,11 @@ namespace FxBackendClient
                 _reconnectionTimer?.Stop();
                 _reconnectionTimer?.Dispose();
                 Task.Run(async () => await DisconnectSignalRAsync()).Wait(TimeSpan.FromSeconds(5));
-                //_signalRConnection?.Dispose();
                 _restClient?.Dispose();
             }
 
-            // Free unmanaged resources (unmanaged objects) and override finalizer
             _operatorJwt = null;
             _signalRConnection = null;
-
             _isDisposed = true;
             Console.WriteLine("BackendApiService disposed.");
         }
