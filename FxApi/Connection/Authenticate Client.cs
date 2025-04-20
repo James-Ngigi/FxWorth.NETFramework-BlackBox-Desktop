@@ -480,13 +480,13 @@ namespace FxApi
                         return;
                     }
 
-                    // Log the relevant trade information
-                    logger.Info("<=> Deal Active....... => Client-ID-> {0} :: Contract ID-> {1} :: Symbol: {2}              :: Acc Balance-> {3:C} :: Stake placed-> {4:C}.",
-                        Credentials.AppId, // App ID
-                        trans.transaction.contract_id, // Contract ID
-                        trans.transaction.symbol, // Symbol
-                        trans.transaction.balance, // Account Balance
-                        TradingParameters.DynamicStake); // Dynamic Stake
+                    //// Log the relevant trade information
+                    //logger.Info("<=> Deal Active....... => Client-ID-> {0} :: Contract ID-> {1} :: Symbol: {2}              :: Acc Balance-> {3:C} :: Stake placed-> {4:C}.",
+                    //    Credentials.AppId, // App ID
+                    //    trans.transaction.contract_id, // Contract ID
+                    //    trans.transaction.symbol, // Symbol
+                    //    trans.transaction.balance, // Account Balance
+                    //    TradingParameters.DynamicStake); // Dynamic Stake
 
                     // Call `ProcessTransaction` to update the client's P&L and trade model based on the transaction details.
                     ProcessTransaction(

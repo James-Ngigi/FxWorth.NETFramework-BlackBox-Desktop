@@ -215,7 +215,7 @@ namespace FxApi.Connection
             string formattedTransactionTime = DateTimeOffset.FromUnixTimeSeconds(transactionTime).ToString("dd-MM-yyyy @ HH:mm:ss");
 
             // Log the processed trade outcome and relevant trading parameters. STT = Server Transaction Time.
-            logger.Info($"<=> Deal Processed.... => Client-ID-> {appId} :: Contract ID-> {contractId} :: STT-> {formattedTransactionTime} :: Profit/Loss-> {mlp:C}    :: Recovery Mode-> {(IsRecoveryMode ? "Yes" : "No")}.");
+            //logger.Info($"<=> Deal Processed.... => Client-ID-> {appId} :: Contract ID-> {contractId} :: STT-> {formattedTransactionTime} :: Profit/Loss-> {mlp:C}    :: Recovery Mode-> {(IsRecoveryMode ? "Yes" : "No")}.");
         }
         /// Returns a string representation of the trading parameters, including all relevant values.
         public override string ToString()
