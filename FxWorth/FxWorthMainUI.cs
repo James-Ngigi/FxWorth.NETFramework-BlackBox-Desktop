@@ -152,10 +152,10 @@ namespace FxWorth
 
             foreach (var credential in storage.Credentials)
             {
-                dataGridView1.Rows.Add(credential.IsChecked, credential.Token, credential.AppId, null, null, null);
+                Main_Token_Table.Rows.Add(credential.IsChecked, credential.Token, credential.AppId, null, null, null);
             }
 
-            foreach (DataGridViewRow row in dataGridView1.Rows)
+            foreach (DataGridViewRow row in Main_Token_Table.Rows)
             {
                 row.Cells[5].Value = "Spooling";
             }
@@ -277,7 +277,7 @@ namespace FxWorth
         {
             this.InvokeIfRequired(() =>
             {
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
 
                     var creds = storage.Clients.FirstOrDefault(x => x.Value == sender).Key;
@@ -306,7 +306,7 @@ namespace FxWorth
         {
             this.InvokeIfRequired(() =>
             {
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     var token = row.Cells[1].Value.ToString();
                     var appId = row.Cells[2].Value.ToString();
@@ -374,7 +374,7 @@ namespace FxWorth
                 Trade_Logs_GRBX.Text = string.Format("Trade table report ⤵ : RSI ➟ {0:N2}", storage.rsi?.Value);
                 bool isTrading = false;
 
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     if (row.Cells[5].Value?.ToString() == "Trading")
                     {
@@ -431,7 +431,7 @@ namespace FxWorth
                     return;
                 }
 
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     var token = row.Cells[1].Value?.ToString();
                     var appId = row.Cells[2].Value?.ToString();
@@ -497,7 +497,7 @@ namespace FxWorth
 
                 bool allClientsCompleted = true;
 
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     if ((bool)row.Cells[0].Value && storage.Clients.ContainsKey(storage.Credentials[row.Index]) && storage.Clients[storage.Credentials[row.Index]].TradingParameters != null)
                     {
@@ -599,7 +599,7 @@ namespace FxWorth
                 return;
             }
 
-            dataGridView1.Rows.Add(false, creds.Token, creds.AppId, null, null);
+            Main_Token_Table.Rows.Add(false, creds.Token, creds.AppId, null, null);
 
             if (storage.Credentials.Count >= TokenStorage.MaxTokensCount)
             {
@@ -609,9 +609,9 @@ namespace FxWorth
 
         private void Remove_BTN_Click(object sender, EventArgs e)
         {
-            for (int i = dataGridView1.SelectedRows.Count - 1; i >= 0; i--)
+            for (int i = Main_Token_Table.SelectedRows.Count - 1; i >= 0; i--)
             {
-                var row = dataGridView1.SelectedRows[i];
+                var row = Main_Token_Table.SelectedRows[i];
                 var appId = row.Cells[2].Value.ToString();
                 var token = row.Cells[1].Value.ToString();
                 var frm = new Remove_Token(appId, token);
@@ -624,7 +624,7 @@ namespace FxWorth
                 else if (result == DialogResult.Yes)
                 {
                     storage.Remove(appId, token);
-                    dataGridView1.Rows.Remove(row);
+                    Main_Token_Table.Rows.Remove(row);
                 }
 
             }
@@ -770,7 +770,7 @@ namespace FxWorth
                 sw.Start();
             }
 
-            foreach (DataGridViewRow row in dataGridView1.Rows)
+            foreach (DataGridViewRow row in Main_Token_Table.Rows)
             {
                 var appId = row.Cells[2].Value.ToString();
                 var token = row.Cells[1].Value.ToString();
@@ -804,7 +804,7 @@ namespace FxWorth
         private void DisableAll()
         {
             Start_BTN.Enabled = false;
-            dataGridView1.Enabled = false;
+            Main_Token_Table.Enabled = false;
             Add_BTN.Enabled = false;
             Remove_BTN.Enabled = false;
             Trading_Parameters_GRBX.Enabled = false;
@@ -815,7 +815,7 @@ namespace FxWorth
         private void EnableAll()
         {
             Start_BTN.Enabled = true;
-            dataGridView1.Enabled = true;
+            Main_Token_Table.Enabled = true;
             Add_BTN.Enabled = true;
             Remove_BTN.Enabled = true;
             Trading_Parameters_GRBX.Enabled = true;
@@ -830,7 +830,7 @@ namespace FxWorth
             tradingSessionCompleted = true;
 
             // Update DataGrid status *before* stopping the clients
-            foreach (DataGridViewRow row in dataGridView1.Rows)
+            foreach (DataGridViewRow row in Main_Token_Table.Rows)
             {
                 if (((row.Cells[5].Value?.ToString() == "Trading" || row.Cells[5].Value?.ToString() == "Analyzing") && storage.Clients.ContainsKey(storage.Credentials[row.Index]) && storage.Clients[storage.Credentials[row.Index]].IsOnline) || row.Cells[5].Value?.ToString() == "Standby")
                 {
@@ -859,7 +859,7 @@ namespace FxWorth
                 Pause_BTN.Text = "Resume";
                 sw.Stop();
 
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     var token = row.Cells[1].Value?.ToString();
                     var appId = row.Cells[2].Value?.ToString();
@@ -889,7 +889,7 @@ namespace FxWorth
                 storage.IsTradingAllowed = true;
                 Pause_BTN.Text = "Pause";
 
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     var token = row.Cells[1].Value?.ToString();
                     var appId = row.Cells[2].Value?.ToString();
@@ -927,7 +927,7 @@ namespace FxWorth
                 return;
             }
 
-            var row = dataGridView1.Rows[e.RowIndex];
+            var row = Main_Token_Table.Rows[e.RowIndex];
             storage.EnableCredentials((bool)row.Cells[0].Value,
                 row.Cells[2].Value.ToString(),
                 row.Cells[1].Value.ToString());

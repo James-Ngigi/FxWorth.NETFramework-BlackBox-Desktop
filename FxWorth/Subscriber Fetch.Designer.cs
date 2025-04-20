@@ -101,11 +101,13 @@
             // 
             this.dataGridView_Paid.AllowUserToOrderColumns = true;
             this.dataGridView_Paid.BackgroundColor = System.Drawing.SystemColors.Window;
+            this.dataGridView_Paid.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.dataGridView_Paid.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
             this.dataGridView_Paid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_Paid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Api_Tokens_Paid,
             this.Profit_Targets_Paid});
-            this.dataGridView_Paid.GridColor = System.Drawing.SystemColors.ScrollBar;
+            this.dataGridView_Paid.GridColor = System.Drawing.SystemColors.Window;
             this.dataGridView_Paid.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_Paid.Name = "dataGridView_Paid";
             this.dataGridView_Paid.RowHeadersWidth = 62;
@@ -187,10 +189,13 @@
             // 
             this.dataGridView_Trial.AllowUserToOrderColumns = true;
             this.dataGridView_Trial.BackgroundColor = System.Drawing.SystemColors.Window;
+            this.dataGridView_Trial.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.dataGridView_Trial.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
             this.dataGridView_Trial.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_Trial.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Api_Tokens_Trial,
             this.Profit_Targets_Trial});
+            this.dataGridView_Trial.GridColor = System.Drawing.SystemColors.Window;
             this.dataGridView_Trial.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_Trial.Name = "dataGridView_Trial";
             this.dataGridView_Trial.RowHeadersWidth = 62;
@@ -272,10 +277,13 @@
             // 
             this.dataGridView_OTH_Real.AllowUserToOrderColumns = true;
             this.dataGridView_OTH_Real.BackgroundColor = System.Drawing.SystemColors.Window;
+            this.dataGridView_OTH_Real.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.dataGridView_OTH_Real.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
             this.dataGridView_OTH_Real.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_OTH_Real.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.OTH_CR_Api_Tokens,
             this.OTH_CR_Profit_Targets});
+            this.dataGridView_OTH_Real.GridColor = System.Drawing.SystemColors.Window;
             this.dataGridView_OTH_Real.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_OTH_Real.Name = "dataGridView_OTH_Real";
             this.dataGridView_OTH_Real.RowHeadersWidth = 62;
@@ -357,10 +365,13 @@
             // 
             this.dataGridView_OTH_Virtual.AllowUserToOrderColumns = true;
             this.dataGridView_OTH_Virtual.BackgroundColor = System.Drawing.SystemColors.Window;
+            this.dataGridView_OTH_Virtual.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.dataGridView_OTH_Virtual.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
             this.dataGridView_OTH_Virtual.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dataGridView_OTH_Virtual.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.OTH_VR_Api_Tokens,
             this.OTH_VR_Profit_Targets});
+            this.dataGridView_OTH_Virtual.GridColor = System.Drawing.SystemColors.Window;
             this.dataGridView_OTH_Virtual.Location = new System.Drawing.Point(26, 25);
             this.dataGridView_OTH_Virtual.Name = "dataGridView_OTH_Virtual";
             this.dataGridView_OTH_Virtual.RowHeadersWidth = 62;

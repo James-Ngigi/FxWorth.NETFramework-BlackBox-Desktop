@@ -28,7 +28,6 @@ namespace FxWorth
 
             // Indicates that system activity is being performed, preventing the system from going to sleep.
             ES_SYSTEM_REQUIRED = 0x00000001
-            // ... other flags can be added if needed
         }
 
         /// Prevents the system from going to sleep and the display from turning off.

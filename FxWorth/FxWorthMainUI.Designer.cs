@@ -68,12 +68,12 @@
             this.label3 = new System.Windows.Forms.Label();
             this.Time_LBL = new System.Windows.Forms.Label();
             this.Data_Grip_Dock_PNL = new System.Windows.Forms.Panel();
-            this.dataGridView1 = new System.Windows.Forms.DataGridView();
+            this.Main_Token_Table = new System.Windows.Forms.DataGridView();
             this.Column1 = new System.Windows.Forms.DataGridViewCheckBoxColumn();
-            this.Column2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Column3 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Column4 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Column5 = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Api_Token = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Application_ID = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Acc_Balance = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Current_Profit = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Status = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Valid_Tokens_LBL = new System.Windows.Forms.Label();
             this.Remove_BTN = new System.Windows.Forms.Button();
@@ -134,7 +134,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.Martingale_Level_TXT)).BeginInit();
             this.API_Token_GRBX.SuspendLayout();
             this.Data_Grip_Dock_PNL.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Main_Token_Table)).BeginInit();
             this.Trading_Parameters_GRBX.SuspendLayout();
             this.Duration_Panel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.Take_Profit_TXT)).BeginInit();
@@ -787,21 +787,21 @@
             // Data_Grip_Dock_PNL
             // 
             this.Data_Grip_Dock_PNL.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.Data_Grip_Dock_PNL.Controls.Add(this.dataGridView1);
+            this.Data_Grip_Dock_PNL.Controls.Add(this.Main_Token_Table);
             this.Data_Grip_Dock_PNL.Location = new System.Drawing.Point(9, 70);
             this.Data_Grip_Dock_PNL.Margin = new System.Windows.Forms.Padding(4);
             this.Data_Grip_Dock_PNL.Name = "Data_Grip_Dock_PNL";
             this.Data_Grip_Dock_PNL.Size = new System.Drawing.Size(860, 174);
             this.Data_Grip_Dock_PNL.TabIndex = 23;
             // 
-            // dataGridView1
+            // Main_Token_Table
             // 
-            this.dataGridView1.AllowUserToAddRows = false;
-            this.dataGridView1.AllowUserToOrderColumns = true;
-            this.dataGridView1.AllowUserToResizeRows = false;
-            this.dataGridView1.BackgroundColor = System.Drawing.SystemColors.Window;
-            this.dataGridView1.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.dataGridView1.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
+            this.Main_Token_Table.AllowUserToAddRows = false;
+            this.Main_Token_Table.AllowUserToOrderColumns = true;
+            this.Main_Token_Table.AllowUserToResizeRows = false;
+            this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
+            this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
             dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
             dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
@@ -809,27 +809,27 @@
             dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
             dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
             dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dataGridView1.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
-            this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dataGridView1.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
-            this.Column2,
-            this.Column3,
-            this.Column4,
-            this.Column5,
+            this.Api_Token,
+            this.Application_ID,
+            this.Acc_Balance,
+            this.Current_Profit,
             this.Status});
-            this.dataGridView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.dataGridView1.GridColor = System.Drawing.SystemColors.Window;
-            this.dataGridView1.Location = new System.Drawing.Point(0, 0);
-            this.dataGridView1.Margin = new System.Windows.Forms.Padding(4);
-            this.dataGridView1.Name = "dataGridView1";
-            this.dataGridView1.RowHeadersVisible = false;
-            this.dataGridView1.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.AutoSizeToAllHeaders;
-            this.dataGridView1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Size = new System.Drawing.Size(858, 172);
-            this.dataGridView1.TabIndex = 21;
-            this.dataGridView1.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellValueChanged_1);
+            this.Main_Token_Table.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.Main_Token_Table.GridColor = System.Drawing.SystemColors.Window;
+            this.Main_Token_Table.Location = new System.Drawing.Point(0, 0);
+            this.Main_Token_Table.Margin = new System.Windows.Forms.Padding(4);
+            this.Main_Token_Table.Name = "Main_Token_Table";
+            this.Main_Token_Table.RowHeadersVisible = false;
+            this.Main_Token_Table.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.AutoSizeToAllHeaders;
+            this.Main_Token_Table.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.Main_Token_Table.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.Main_Token_Table.Size = new System.Drawing.Size(858, 172);
+            this.Main_Token_Table.TabIndex = 21;
+            this.Main_Token_Table.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellValueChanged_1);
             // 
             // Column1
             // 
@@ -840,45 +840,45 @@
             this.Column1.ToolTipText = "Check Box to Send Trades";
             this.Column1.Width = 70;
             // 
-            // Column2
+            // Api_Token
             // 
-            this.Column2.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.Column2.HeaderText = "API Token";
-            this.Column2.MinimumWidth = 8;
-            this.Column2.Name = "Column2";
-            this.Column2.ReadOnly = true;
-            this.Column2.ToolTipText = "API Account Token";
-            this.Column2.Width = 240;
+            this.Api_Token.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.Api_Token.HeaderText = "API Token";
+            this.Api_Token.MinimumWidth = 8;
+            this.Api_Token.Name = "Api_Token";
+            this.Api_Token.ReadOnly = true;
+            this.Api_Token.ToolTipText = "API Account Token";
+            this.Api_Token.Width = 240;
             // 
-            // Column3
+            // Application_ID
             // 
-            this.Column3.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.Column3.HeaderText = "Acc ID";
-            this.Column3.MinimumWidth = 8;
-            this.Column3.Name = "Column3";
-            this.Column3.ReadOnly = true;
-            this.Column3.ToolTipText = "Application ID";
-            this.Column3.Width = 107;
+            this.Application_ID.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.Application_ID.HeaderText = "App ID";
+            this.Application_ID.MinimumWidth = 8;
+            this.Application_ID.Name = "Application_ID";
+            this.Application_ID.ReadOnly = true;
+            this.Application_ID.ToolTipText = "Application ID";
+            this.Application_ID.Width = 107;
             // 
-            // Column4
+            // Acc_Balance
             // 
-            this.Column4.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.Column4.HeaderText = "Balance";
-            this.Column4.MinimumWidth = 8;
-            this.Column4.Name = "Column4";
-            this.Column4.ReadOnly = true;
-            this.Column4.ToolTipText = "Account Balance";
-            this.Column4.Width = 170;
+            this.Acc_Balance.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.Acc_Balance.HeaderText = "Balance";
+            this.Acc_Balance.MinimumWidth = 8;
+            this.Acc_Balance.Name = "Acc_Balance";
+            this.Acc_Balance.ReadOnly = true;
+            this.Acc_Balance.ToolTipText = "Account Balance";
+            this.Acc_Balance.Width = 170;
             // 
-            // Column5
+            // Current_Profit
             // 
-            this.Column5.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.Column5.HeaderText = "Profit/Loss";
-            this.Column5.MinimumWidth = 8;
-            this.Column5.Name = "Column5";
-            this.Column5.ReadOnly = true;
-            this.Column5.ToolTipText = "Profit or Loss in current session";
-            this.Column5.Width = 130;
+            this.Current_Profit.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.Current_Profit.HeaderText = "Profit/Loss";
+            this.Current_Profit.MinimumWidth = 8;
+            this.Current_Profit.Name = "Current_Profit";
+            this.Current_Profit.ReadOnly = true;
+            this.Current_Profit.ToolTipText = "Profit or Loss in current session";
+            this.Current_Profit.Width = 130;
             // 
             // Status
             // 
@@ -1492,7 +1492,7 @@
             this.API_Token_GRBX.ResumeLayout(false);
             this.API_Token_GRBX.PerformLayout();
             this.Data_Grip_Dock_PNL.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.Main_Token_Table)).EndInit();
             this.Trading_Parameters_GRBX.ResumeLayout(false);
             this.Trading_Parameters_GRBX.PerformLayout();
             this.Duration_Panel.ResumeLayout(false);
@@ -1548,7 +1548,7 @@
         private System.Windows.Forms.Label Choose_Asset_LBL;
         private System.Windows.Forms.GroupBox Trade_Logs_GRBX;
         private System.Windows.Forms.NotifyIcon Minimize_Notification;
-        private System.Windows.Forms.DataGridView dataGridView1;
+        private System.Windows.Forms.DataGridView Main_Token_Table;
         private System.Windows.Forms.Panel Results_Panel;
         private System.Windows.Forms.Panel Choose_Asset_Panel;
         private System.Windows.Forms.Panel Duration_Panel;
@@ -1589,13 +1589,13 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Profit;
         private System.Windows.Forms.Label Stake_LBL2;
         private System.Windows.Forms.NumericUpDown Stake_TXT2;
-        private System.Windows.Forms.DataGridViewCheckBoxColumn Column1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column3;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column4;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column5;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Status;
         private System.Windows.Forms.Label Fetch;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn Column1;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Api_Token;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Application_ID;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Acc_Balance;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Current_Profit;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Status;
     }
 }
 
