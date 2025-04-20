@@ -1548,7 +1548,6 @@
         private System.Windows.Forms.Label Choose_Asset_LBL;
         private System.Windows.Forms.GroupBox Trade_Logs_GRBX;
         private System.Windows.Forms.NotifyIcon Minimize_Notification;
-        private System.Windows.Forms.DataGridView Main_Token_Table;
         private System.Windows.Forms.Panel Results_Panel;
         private System.Windows.Forms.Panel Choose_Asset_Panel;
         private System.Windows.Forms.Panel Duration_Panel;
@@ -1596,6 +1595,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Acc_Balance;
         private System.Windows.Forms.DataGridViewTextBoxColumn Current_Profit;
         private System.Windows.Forms.DataGridViewTextBoxColumn Status;
+        public System.Windows.Forms.DataGridView Main_Token_Table;
     }
 }
 

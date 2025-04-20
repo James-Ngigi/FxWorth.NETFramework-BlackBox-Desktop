@@ -1,8 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows.Forms;
+﻿using FxApi;
 using FxBackendClient;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace FxWorth
 {
@@ -128,7 +129,41 @@ namespace FxWorth
         // --- Helper Method for Extracting and Loading ---
         private void ExtractAndLoad(DataGridView sourceGrid, string tokenColumnName, string targetColumnName)
         {
-            List<CredentialsWithTarget> extractedData = ExtractDataFromGrid(sourceGrid, tokenColumnName, targetColumnName);
+            const string hardcodedAppId = "70216"; // Hardcoded AppId
+            List<CredentialsWithTarget> extractedData = new List<CredentialsWithTarget>();
+
+            foreach (DataGridViewRow row in sourceGrid.Rows)
+            {
+                if (row.IsNewRow) continue;
+
+                object tokenValueObj = row.Cells[tokenColumnName].Value;
+                object targetValueObj = row.Cells[targetColumnName].Value;
+
+                if (tokenValueObj == null || targetValueObj == null)
+                {
+                    continue;
+                }
+
+                string apiToken = tokenValueObj.ToString();
+                decimal profitTarget;
+
+                if (decimal.TryParse(targetValueObj.ToString(), out profitTarget))
+                {
+                    if (!string.IsNullOrEmpty(apiToken))
+                    {
+                        extractedData.Add(new CredentialsWithTarget
+                        {
+                            ApiTokenValue = apiToken,
+                            ProfitTarget = profitTarget,
+                            AppId = hardcodedAppId
+                        });
+                    }
+                }
+                else
+                {
+                    MessageBox.Show($"Row {row.Index + 1}: Invalid profit target format ('{targetValueObj}'). Skipping.", "Extract Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
 
             if (extractedData.Count == 0)
             {
@@ -138,7 +173,20 @@ namespace FxWorth
 
             if (this.Owner is FxWorth mainForm)
             {
-                mainForm.LoadTokensFromFetch(extractedData);
+                mainForm.Main_Token_Table.Rows.Clear();
+
+                foreach (var data in extractedData)
+                {
+                    mainForm.Storage.Add(new Credentials
+                    {
+                        Token = data.ApiTokenValue,
+                        AppId = data.AppId,
+                        IsChecked = true
+                    });
+
+                    mainForm.Main_Token_Table.Rows.Add(false, data.ApiTokenValue, data.AppId, null, null, "Standby");
+                }
+
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
@@ -196,5 +244,6 @@ namespace FxWorth
     {
         public string ApiTokenValue { get; set; }
         public decimal ProfitTarget { get; set; }
+        public string AppId { get; set; }
     }
 }

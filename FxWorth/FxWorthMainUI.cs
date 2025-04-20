@@ -57,6 +57,7 @@ namespace FxWorth
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly Stopwatch sw = new Stopwatch();
         private readonly TokenStorage storage;
+        public TokenStorage Storage => storage;
         private readonly string layoutPath = "layout.json";
         private readonly List<NumericUpDown> numerics = new List<NumericUpDown>();
         private readonly ApiCompliance apiCompliance;
