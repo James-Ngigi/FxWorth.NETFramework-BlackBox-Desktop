@@ -24,7 +24,7 @@ namespace FxWorth
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private bool isTradingGloballyAllowed = true;
-        public static int MaxTokensCount = 50;
+        public static int MaxTokensCount = 150;
         private static int slowInternetConst = 650;
 
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
@@ -497,10 +497,134 @@ namespace FxWorth
         /// Sets the trading parameters for all managed `AuthClient` instances. The trading parameters to apply to all accounts.
         public void SetTradingParameters(TradingParameters parameters)
         {
-            foreach (var value in Clients.Values)
+            foreach (var client in clients.Values)
             {
-                value.TradingParameters = (TradingParameters)parameters.Clone();
+                if (client.IsOnline)
+                {
+                    client.TradingParameters = (TradingParameters)parameters.Clone();
+                }
             }
+        }
+
+        private void OnTradeUpdate(object sender, TradeEventArgs e)
+        {
+            lock (tradeUpdateLock)
+            {
+                try
+                {
+                    TradeModel model = e.Model;
+                    var client = e.Client;
+
+                    if (client == null)
+                    {
+                        logger.Warn("Trade update received with null client");
+                        return;
+                    }
+
+                    TradeUpdated?.Invoke(this, e);
+
+                    if (IsHierarchyMode)
+                    {
+                        HandleHierarchyTradeUpdate(model, client);
+                    }
+                    else
+                    {
+                        HandleNormalTradeUpdate(model, client);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "Error processing trade update");
+                }
+            }
+        }
+
+        private void HandleHierarchyTradeUpdate(TradeModel model, AuthClient client)
+        {
+            HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
+
+            if (currentLevel != null)
+            {
+                client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+
+                if (!client.TradingParameters.IsRecoveryMode)
+                {
+                    currentLevel.IsCompleted = true;
+                    hierarchyNavigator.MoveToNextLevel(client);
+
+                    if (hierarchyNavigator.currentLevelId == "0")
+                    {
+                        logger.Info("Returned to root level trading.");
+                    }
+                    else
+                    {
+                        logger.Info($"Moved to next level: {hierarchyNavigator.currentLevelId}");
+                    }
+                }
+                else
+                {
+                    currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
+
+                    decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? phase2Parameters.MaxDrawdown : phase1Parameters.MaxDrawdown);
+                    if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < MaxHierarchyDepth + 1)
+                    {
+                        CreateNewLayer(currentLevel, client);
+                    }
+                }
+            }
+        }
+
+        private void CreateNewLayer(HierarchyLevel currentLevel, AuthClient client)
+        {
+            int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
+
+            decimal initialStakeForNextLayer;
+            if (nextLayer == 2)
+            {
+                initialStakeForNextLayer = customLayerConfigs.ContainsKey(nextLayer) ?
+                    (customLayerConfigs[nextLayer].InitialStake ?? InitialStakeLayer1) :
+                    InitialStakeLayer1;
+            }
+            else
+            {
+                initialStakeForNextLayer = customLayerConfigs.ContainsKey(nextLayer) ?
+                    (customLayerConfigs[nextLayer].InitialStake ?? currentLevel.InitialStake) :
+                    currentLevel.InitialStake;
+            }
+
+            hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+
+            string nextLevelId = $"{currentLevel.LevelId}.1";
+            hierarchyNavigator.currentLevelId = nextLevelId;
+            hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
+            logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
+        }
+
+        private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
+        {
+            client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+
+            if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
+            {
+                EnterHierarchyMode(client);
+            }
+        }
+
+        private void EnterHierarchyMode(AuthClient client)
+        {
+            hierarchyClient = client;
+            hierarchyNavigator = new HierarchyNavigator(
+                client.TradingParameters.AmountToBeRecoverd,
+                client.TradingParameters,
+                phase1Parameters,
+                phase2Parameters,
+                customLayerConfigs,
+                InitialStakeLayer1,
+                this
+            );
+            currentLevelId = "1.1";
+            hierarchyNavigator.AssignClientToLevel(currentLevelId, client);
+            logger.Info("Entered hierarchy mode");
         }
     }
 
