@@ -406,8 +406,9 @@ namespace FxWorth
                 var client = clientPair.Value;
                 var tradingParameters = client.TradingParameters;
 
-                if (client.Pnl < tradingParameters.TakeProfit &&
-                    client.Pnl > -tradingParameters.Stoploss)
+                // Only check take profit if we've actually started trading (PnL != 0)
+                if (client.Pnl == 0 || (client.Pnl < tradingParameters.TakeProfit &&
+                    client.Pnl > -tradingParameters.Stoploss))
                 {
                     isTradingGloballyAllowed = true;
                     return;
@@ -499,11 +500,50 @@ namespace FxWorth
         {
             foreach (var client in clients.Values)
             {
-                if (client.IsOnline)
+                if (client.TradingParameters != null)
                 {
-                    client.TradingParameters = (TradingParameters)parameters.Clone();
+                    // Unsubscribe from the old parameters' events
+                    client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
                 }
+
+                // Clone the parameters for each client to ensure independent state
+                var clientParameters = (TradingParameters)parameters.Clone();
+                
+                // Subscribe to the take profit event
+                clientParameters.TakeProfitReached += OnTakeProfitReached;
+                
+                // Set the parameters for the client
+                client.TradingParameters = clientParameters;
             }
+        }
+
+        private void OnTakeProfitReached(object sender, decimal totalProfit)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            
+            // Find the client that reached take profit
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            if (client == null)
+            {
+                return;
+            }
+
+            // Find the credentials for this client
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials == null)
+            {
+                return;
+            }
+
+            // Log the achievement
+            logger.Info($"<=> Take profit target reached for client {credentials.AppId}! Total Profit: {totalProfit:C}");
+
+            // Stop trading for this client
+            client.TradingParameters = null;
+            credentials.IsChecked = false;
+
+            // Update the client's state in the UI
+            ClientsStateChanged?.Raise(client, EventArgs.Empty);
         }
 
         private void OnTradeUpdate(object sender, TradeEventArgs e)

@@ -35,6 +35,9 @@ namespace FxApi.Connection
         public int RecoveryAttemptsLeft { get; set; }
         public decimal TempBarrier { get; set; }
         public int InitialStake4Layer1 { get; set; }
+        public decimal TotalProfit { get; private set; }
+
+        public event EventHandler<decimal> TakeProfitReached;
 
         public List<decimal> recoveryResults = new List<decimal>();
         public List<decimal> RecoveryResults
@@ -55,6 +58,16 @@ namespace FxApi.Connection
         /// </summary>
         public void Process(decimal mlp, decimal estimate, int appId, long contractId, int transactionTime)
         {
+            // Update total profit
+            TotalProfit += mlp;
+
+            // Check if take profit target is reached
+            if (TotalProfit >= TakeProfit)
+            {
+                TakeProfitReached?.Invoke(this, TotalProfit);
+                return;
+            }
+
             // If not in recovery mode and the trade was profitable, update the PreviousProfit.
             if (!IsRecoveryMode && mlp > 0)
             {
@@ -152,11 +165,12 @@ namespace FxApi.Connection
             // Log the processed trade outcome and relevant trading parameters. STT = Server Transaction Time.
             //logger.Info($"<=> Deal Processed.... => Client-ID-> {appId} :: Contract ID-> {contractId} :: STT-> {formattedTransactionTime} :: Profit/Loss-> {mlp:C}    :: Recovery Mode-> {(IsRecoveryMode ? "Yes" : "No")}.");
         }
+
         /// Returns a string representation of the trading parameters, including all relevant values.
         public override string ToString()
         {
             // Format the trading parameters as a string, including all relevant values.
-            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}";
+            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
         }
 
         /// <summary>

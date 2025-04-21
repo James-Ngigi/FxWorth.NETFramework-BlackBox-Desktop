@@ -323,7 +323,7 @@ namespace FxWorth
 
         /// <summary>
         /// This method loads a previously saved trading layout or configuration file and applies its settings to a 
-        /// the UI controls. It’s designed to streamline resuming work with saved preferences, minimizing manual setup.
+        /// the UI controls. It's designed to streamline resuming work with saved preferences, minimizing manual setup.
         /// </summary>
         private void LoadLayout()
         {
@@ -497,12 +497,20 @@ namespace FxWorth
                 }
 
                 bool allClientsCompleted = true;
+                bool anyClientTrading = false;
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     if ((bool)row.Cells[0].Value && storage.Clients.ContainsKey(storage.Credentials[row.Index]) && storage.Clients[storage.Credentials[row.Index]].TradingParameters != null)
                     {
-                        if (row.Cells[5].Value?.ToString() == "Trading" || row.Cells[5].Value?.ToString() == "Analyzing")
+                        var status = row.Cells[5].Value?.ToString();
+                        if (status == "Trading" || status == "Analyzing")
+                        {
+                            anyClientTrading = true;
+                            allClientsCompleted = false;
+                            break;
+                        }
+                        else if (status != "TakeProfit" && status != "Stoploss" && status != "Offline" && status != "Invalid")
                         {
                             allClientsCompleted = false;
                             break;
@@ -510,7 +518,8 @@ namespace FxWorth
                     }
                 }
 
-                if (allClientsCompleted)
+                // Only consider session completed if no clients are trading AND all clients have reached a final state
+                if (!anyClientTrading && allClientsCompleted)
                 {
                     logger.Info("<=> Trading session completed on all accounts. Stopping timer!");
                     sw.Stop();
