@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -113,7 +113,6 @@
             this.Paste_TSMI = new System.Windows.Forms.ToolStripMenuItem();
             this.Copy_TSMI = new System.Windows.Forms.ToolStripMenuItem();
             this.Cut_TSMI = new System.Windows.Forms.ToolStripMenuItem();
-            this.Take_Profit_TXT = new System.Windows.Forms.NumericUpDown();
             this.Setup_GRBX.SuspendLayout();
             this.RSI_Indicator_Settings_GRBX.SuspendLayout();
             this.panel6.SuspendLayout();
@@ -146,7 +145,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).BeginInit();
             this.CMS_Tray.SuspendLayout();
             this.Cut_Copy_Paste_CMS.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.Take_Profit_TXT)).BeginInit();
             this.SuspendLayout();
             // 
             // Setup_GRBX
@@ -802,14 +800,14 @@
             this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
             this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
@@ -935,7 +933,6 @@
             // 
             // Trading_Parameters_GRBX
             // 
-            this.Trading_Parameters_GRBX.Controls.Add(this.Take_Profit_TXT);
             this.Trading_Parameters_GRBX.Controls.Add(this.Duration_Panel);
             this.Trading_Parameters_GRBX.Controls.Add(this.Stake_TXT);
             this.Trading_Parameters_GRBX.Controls.Add(this.Choose_Asset_Panel);
@@ -1415,37 +1412,6 @@
             this.Cut_TSMI.Text = "Cut";
             this.Cut_TSMI.Click += new System.EventHandler(this.Cut_TSMI_Click);
             // 
-            // Take_Profit_TXT
-            // 
-            this.Take_Profit_TXT.DecimalPlaces = 1;
-            this.Take_Profit_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Take_Profit_TXT.Increment = new decimal(new int[] {
-            1,
-            0,
-            0,
-            65536});
-            this.Take_Profit_TXT.Location = new System.Drawing.Point(285, 158);
-            this.Take_Profit_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Take_Profit_TXT.Maximum = new decimal(new int[] {
-            1000000,
-            0,
-            0,
-            0});
-            this.Take_Profit_TXT.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            131072});
-            this.Take_Profit_TXT.Name = "Take_Profit_TXT";
-            this.Take_Profit_TXT.Size = new System.Drawing.Size(127, 34);
-            this.Take_Profit_TXT.TabIndex = 14;
-            this.Take_Profit_TXT.ThousandsSeparator = true;
-            this.Take_Profit_TXT.Value = new decimal(new int[] {
-            100,
-            0,
-            0,
-            0});
-            // 
             // FxWorth
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
@@ -1506,7 +1472,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).EndInit();
             this.CMS_Tray.ResumeLayout(false);
             this.Cut_Copy_Paste_CMS.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.Take_Profit_TXT)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -1595,7 +1560,6 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Current_Profit;
         private System.Windows.Forms.DataGridViewTextBoxColumn Status;
         public System.Windows.Forms.DataGridView Main_Token_Table;
-        private System.Windows.Forms.NumericUpDown Take_Profit_TXT;
     }
 }
 

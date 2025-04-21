@@ -307,13 +307,13 @@ namespace FxWorth
 
                     if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
-                        hierarchyClient = value;
+                            hierarchyClient = value;
 
                         hierarchyNavigator = new HierarchyNavigator(tradingParameters.AmountToBeRecoverd, tradingParameters, phase1Parameters, phase2Parameters, customLayerConfigs, InitialStakeLayer1, this);
                         currentLevelId = "1.1";
                         hierarchyNavigator.LoadLevelTradingParameters(currentLevelId, value, tradingParameters);
                         tradingParameters.DynamicStake = tradingParameters.Stake;
-                    }
+                        }
 
                     if (IsHierarchyMode)
                     {
@@ -330,7 +330,6 @@ namespace FxWorth
                                 value.Buy(tradingParameters.Symbol.symbol, tradingParameters.Duration,
                                     tradingParameters.DurationType, tradingParameters.DynamicStake);
                             });
-
                             Task.Factory.StartNew(() =>
                             {
                                 value.Sell(tradingParameters.Symbol.symbol, tradingParameters.Duration,
@@ -377,7 +376,6 @@ namespace FxWorth
                         {
                             value.Buy(tradingParameters.Symbol.symbol, tradingParameters.Duration, tradingParameters.DurationType, tradingParameters.DynamicStake);
                         });
-
                         Task.Factory.StartNew(() =>
                         {
                             value.Sell(tradingParameters.Symbol.symbol, tradingParameters.Duration, tradingParameters.DurationType, tradingParameters.DynamicStake);
@@ -491,17 +489,39 @@ namespace FxWorth
         public List<Credentials> Credentials { get; set; } = new List<Credentials>();
         public bool IsTradingAllowed { get; set; }
 
-        public void SetTradingParameters(TradingParameters parameters)
+        // Renamed parameter for clarity, added comments
+        public void SetTradingParameters(TradingParameters baseParameters)
         {
-            foreach (var client in clients.Values)
+            // Iterate through the dictionary to easily access both Credentials (key) and AuthClient (value)
+            foreach (var clientPair in clients)
             {
+                var credentials = clientPair.Key; // The Credentials object holding the individual ProfitTarget
+                var client = clientPair.Value;    // The AuthClient instance
+
+                // Unsubscribe from the old TradingParameters event if we are replacing it
                 if (client.TradingParameters != null)
                 {
                     client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
                 }
-                var clientParameters = (TradingParameters)parameters.Clone();
+
+                // Clone the base parameters (from UI) to create an independent object for this client
+                var clientParameters = (TradingParameters)baseParameters.Clone();
+
+                // --- Modification Start ---
+                // Override the TakeProfit in the cloned object with the specific value
+                // stored in this client's Credentials.
+                clientParameters.TakeProfit = credentials.ProfitTarget;
+                // --- Modification End ---
+
+
+                // Subscribe the event handler to the *new* client-specific parameters object
                 clientParameters.TakeProfitReached += OnTakeProfitReached;
+
+                // Assign the fully configured, client-specific parameters object to the client
                 client.TradingParameters = clientParameters;
+
+                // Optional: Log the applied TakeProfit for verification
+                logger.Debug($"<=> Applied TakeProfit {clientParameters.TakeProfit} to client {credentials.AppId}");
             }
         }
 

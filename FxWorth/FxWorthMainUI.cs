@@ -348,7 +348,7 @@ namespace FxWorth
             Duration_TXT.Value = layout.TradingParameters.Duration;
             Duration0_CMBX.SelectedIndex = Duration0_CMBX.Items.IndexOf(layout.TradingParameters.DurationType);
             Stake_TXT.Value = layout.TradingParameters.Stake;
-            Take_Profit_TXT.Value = layout.TradingParameters.TakeProfit;
+            //Take_Profit_TXT.Value = layout.TradingParameters.TakeProfit;
             Max_Drawdown_TXT1.Value = layout.TradingParameters.MaxDrawdown;
             Martingale_Level_TXT.Value = layout.TradingParameters.MartingaleLevel;
             Stake_TXT2.Value = layout.TradingParameters.InitialStake4Layer1;
@@ -587,29 +587,45 @@ namespace FxWorth
             var frm = new Adding_New_Token();
             var result = frm.ShowDialog(this);
 
-            if (result == DialogResult.Cancel)
+            // Use DialogResult.OK for confirmation
+            if (result != DialogResult.OK)
             {
+                return;
+            }
+
+            string appIdText = frm.appTextBox.Text;
+            string tokenText = frm.tokenTextBox.Text;
+            decimal profitTarget = frm.EnteredProfitTarget; 
+
+            // Basic validation
+            if (string.IsNullOrWhiteSpace(appIdText) || string.IsNullOrWhiteSpace(tokenText))
+            {
+                MessageBox.Show("App ID and Token cannot be empty.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (profitTarget <= 0) 
+            {
+                MessageBox.Show("Please enter a valid positive Profit Target.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             var creds = new Credentials
             {
-                AppId = frm.appTextBox.Text,
-                Token = frm.tokenTextBox.Text,
-                Name = frm.appTextBox.Text
+                AppId = appIdText,
+                Token = tokenText,
+                Name = appIdText, 
+                ProfitTarget = profitTarget, 
+                IsChecked = false 
             };
-
-            if (creds.AppId.Length * creds.Token.Length == 0)
-            {
-                return;
-            }
 
             if (!storage.Add(creds))
             {
+                MessageBox.Show("Failed to add credentials. They might already exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            Main_Token_Table.Rows.Add(false, creds.Token, creds.AppId, null, null);
+            Main_Token_Table.Rows.Add(creds.IsChecked, creds.Token, creds.AppId, null, null, "Standby");
 
             if (storage.Credentials.Count >= TokenStorage.MaxTokensCount)
             {
@@ -734,12 +750,12 @@ namespace FxWorth
                 Duration = (int)Duration_TXT.Value,
                 DurationType = Duration0_CMBX.Text,
                 Stake = Stake_TXT.Value,
-                TakeProfit = Take_Profit_TXT.Value,
                 MaxDrawdown = Max_Drawdown_TXT1.Value,
                 MartingaleLevel = (int)Martingale_Level_TXT.Value,
                 DynamicStake = Stake_TXT.Value,
                 HierarchyLevels = (int)Hierarchy_Levels_TXT.Value,
-                MaxHierarchyDepth = (int)Max_Depth_TXT.Value
+                MaxHierarchyDepth = (int)Max_Depth_TXT.Value,
+                InitialStake4Layer1 = (int)Stake_TXT2.Value // Ensure this is captured if needed elsewhere
             };
 
             storage.SetHierarchyParameters(phase1Parameters, phase2Parameters, customLayerConfigs);

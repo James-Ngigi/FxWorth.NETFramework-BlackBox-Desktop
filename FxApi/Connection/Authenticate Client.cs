@@ -38,7 +38,7 @@ namespace FxApi
 
         public string GetToken()
         {
-            return Credentials.Token;
+            return this.Credentials.Token;
         }
 
         /// <summary>
