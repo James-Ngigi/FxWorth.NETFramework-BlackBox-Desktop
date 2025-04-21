@@ -24,7 +24,7 @@ namespace FxWorth
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private bool isTradingGloballyAllowed = true;
-        public static int MaxTokensCount = 50;
+        public static int MaxTokensCount = 150;
         private static int slowInternetConst = 650;
 
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
@@ -264,33 +264,35 @@ namespace FxWorth
                 if (!isTradingGloballyAllowed)
                 {
                     logger.Info("<=> Global trading halted. Take-Profit/Stop-Loss condition reached on all accounts.");
+                    isTradePending = false;
                     return;
                 }
 
                 if (IsInternetSlow())
                 {
+                    isTradePending = false;
                     return;
                 }
 
                 if (!IsTradingAllowed)
                 {
                     logger.Info("<=> Entry blocked by **--IsTradingAllowed = false--** condition.");
+                    isTradePending = false;
                     return;
                 }
-
-                var tradingParameters = Clients.FirstOrDefault(x => x.Key.IsChecked && x.Value.IsOnline).Value?.TradingParameters;
-
-                if (tradingParameters == null)
-                {
-                    logger.Warn("No suitable client found for trading. Skipping trade.");
-                    return;
-                }
-
 
                 foreach (var pair in Clients)
                 {
                     var value = pair.Value;
-                    if (!pair.Key.IsChecked || !value.IsOnline)
+                    var credentials = pair.Key;
+
+                    if (!credentials.IsChecked || !value.IsOnline)
+                    {
+                        continue; 
+                    }
+
+                    var clientParams = value.TradingParameters;
+                    if (clientParams == null)
                     {
                         continue;
                     }
@@ -305,59 +307,73 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (tradingParameters.AmountToBeRecoverd > tradingParameters.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
+                    if (clientParams.AmountToBeRecoverd > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
-
-                        hierarchyNavigator = new HierarchyNavigator(tradingParameters.AmountToBeRecoverd, tradingParameters, phase1Parameters, phase2Parameters, customLayerConfigs, InitialStakeLayer1, this);
+                        decimal initialStakeForHierarchy = clientParams.InitialStake4Layer1 > 0 ? clientParams.InitialStake4Layer1 : clientParams.Stake;
+                        hierarchyNavigator = new HierarchyNavigator(clientParams.AmountToBeRecoverd, clientParams, phase1Parameters, phase2Parameters, customLayerConfigs, initialStakeForHierarchy, this);
+                        
                         currentLevelId = "1.1";
-                        hierarchyNavigator.LoadLevelTradingParameters(currentLevelId, value, tradingParameters);
-                        tradingParameters.DynamicStake = tradingParameters.Stake;
+
+                        hierarchyNavigator.AssignClientToLevel(currentLevelId, value);
+                        hierarchyNavigator.LoadLevelTradingParameters(currentLevelId, value, clientParams);
+                        clientParams.DynamicStake = hierarchyNavigator.GetCurrentLevel()?.InitialStake ?? clientParams.Stake;
                     }
 
                     if (IsHierarchyMode)
                     {
-                        HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
+                        if (hierarchyClient != value) 
+                        {
+                            continue;
+                        }
 
+                        HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
                         if (currentLevel != null)
                         {
-                            hierarchyNavigator.LoadLevelTradingParameters(currentLevel.LevelId, value, tradingParameters);
+                            hierarchyNavigator.LoadLevelTradingParameters(currentLevel.LevelId, value, clientParams);
 
-                            logger.Info($"Hierarchy Trade - Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToBeRecovered}, Stake: {tradingParameters.DynamicStake}, PreviousProfit: {tradingParameters.PreviousProfit}, MartingaleLevel: {tradingParameters.MartingaleLevel}, Barrier: {tradingParameters.Barrier}");
+                            logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToBeRecovered}, Stake: {clientParams.DynamicStake}, Barrier: {clientParams.TempBarrier}");
 
                             Task.Factory.StartNew(() =>
                             {
-                                value.Buy(tradingParameters.Symbol.symbol, tradingParameters.Duration,
-                                    tradingParameters.DurationType, tradingParameters.DynamicStake);
+                                if (clientParams.Symbol != null)
+                                {
+                                    value.Buy(clientParams.Symbol.symbol, clientParams.Duration,
+                                        clientParams.DurationType, clientParams.DynamicStake);
+                                }
+                                else { logger.Error($"Symbol is null for client {credentials.AppId} in hierarchy mode."); }
                             });
 
                             Task.Factory.StartNew(() =>
                             {
-                                value.Sell(tradingParameters.Symbol.symbol, tradingParameters.Duration,
-                                    tradingParameters.DurationType, tradingParameters.DynamicStake);
+                                if (clientParams.Symbol != null)
+                                {
+                                    value.Sell(clientParams.Symbol.symbol, clientParams.Duration,
+                                        clientParams.DurationType, clientParams.DynamicStake);
+                                }
+                                else { logger.Error($"Symbol is null for client {credentials.AppId} in hierarchy mode."); }
                             });
                         }
                         else
                         {
-                            logger.Error("Current level is null in hierarchy mode.");
-                            // Handle error appropriately
+                            logger.Error($"Current hierarchy level ({hierarchyNavigator?.currentLevelId}) is null or not found for client {credentials.AppId}.");
                         }
                     }
-                    else
+                    else 
                     {
-                        if (value.Pnl >= tradingParameters.TakeProfit)
+                        if (value.Pnl >= clientParams.TakeProfit)
                         {
                             continue;
                         }
 
-                        if (value.Pnl <= -tradingParameters.Stoploss)
+                        if (value.Pnl <= -clientParams.Stoploss)
                         {
                             continue;
                         }
 
-                        if (value.Balance < 2 * tradingParameters.DynamicStake)
+                        if (value.Balance < 2 * clientParams.DynamicStake)
                         {
-                            logger.Warn($"<=> Margin call for Client ID: {pair.Key.Name}. Available balance ({value.Balance}) is insufficient to cover the required stake {2 * tradingParameters.DynamicStake}). Trading paused for this account.");
+                            logger.Warn($"<=> Margin call for Client ID: {credentials.Name}. Available balance ({value.Balance}) is insufficient to cover the required stake ({2 * clientParams.DynamicStake}). Trading paused for this account.");
                             continue;
                         }
 
@@ -375,21 +391,29 @@ namespace FxWorth
 
                         Task.Factory.StartNew(() =>
                         {
-                            value.Buy(tradingParameters.Symbol.symbol, tradingParameters.Duration, tradingParameters.DurationType, tradingParameters.DynamicStake);
+                            if (clientParams.Symbol != null)
+                            {
+                                value.Buy(clientParams.Symbol.symbol, clientParams.Duration, clientParams.DurationType, clientParams.DynamicStake);
+                            }
+                            else { logger.Error($"Symbol is null for client {credentials.AppId} in normal mode."); }
                         });
 
                         Task.Factory.StartNew(() =>
                         {
-                            value.Sell(tradingParameters.Symbol.symbol, tradingParameters.Duration, tradingParameters.DurationType, tradingParameters.DynamicStake);
+                            if (clientParams.Symbol != null)
+                            {
+                                value.Sell(clientParams.Symbol.symbol, clientParams.Duration, clientParams.DurationType, clientParams.DynamicStake);
+                            }
+                            else { logger.Error($"Symbol is null for client {credentials.AppId} in normal mode."); }
                         });
                     }
                 }
 
-                UpdateGlobalTradingStatus();
+                // UpdateGlobalTradingStatus(); 
             }
             finally
             {
-                isTradePending = false;
+                isTradePending = false; 
             }
         }
 
@@ -406,15 +430,20 @@ namespace FxWorth
                 var client = clientPair.Value;
                 var tradingParameters = client.TradingParameters;
 
-                if (client.Pnl < tradingParameters.TakeProfit &&
-                    client.Pnl > -tradingParameters.Stoploss)
+                if (tradingParameters == null)
+                {
+                    continue; 
+                }
+
+                if (client.Pnl == 0 || (client.Pnl < tradingParameters.TakeProfit &&
+                    client.Pnl > -tradingParameters.Stoploss))
                 {
                     isTradingGloballyAllowed = true;
                     return;
                 }
             }
 
-            logger.Info("<=> All accounts have met Take-Profit/Stop-Loss condition. Trading attempts halted.");
+            logger.Info("<=> All active accounts have met Take-Profit/Stop-Loss condition. Trading attempts halted.");
 
             if (rsi != null)
             {
@@ -441,11 +470,7 @@ namespace FxWorth
             ClientsStateChanged?.Raise(sender, EventArgs.Empty);
         }
 
-        /// <summary>
         /// Removes a trading account from the list of managed clients based on its API token and App ID.
-        /// <param name="appId">The App ID of the trading account to remove.</param>
-        /// <param name="token">The API token of the trading account to remove.</param>
-        /// </summary>
         public void Remove(string appId, string token)
         {
             var found = Credentials.FirstOrDefault(x => x.AppId == appId && x.Token == token);
@@ -494,13 +519,184 @@ namespace FxWorth
         public List<Credentials> Credentials { get; set; } = new List<Credentials>();
         public bool IsTradingAllowed { get; set; }
 
-        /// Sets the trading parameters for all managed `AuthClient` instances. The trading parameters to apply to all accounts.
-        public void SetTradingParameters(TradingParameters parameters)
+        // Renamed parameter for clarity, added comments
+        public void SetTradingParameters(TradingParameters baseParameters)
         {
-            foreach (var value in Clients.Values)
+            // Iterate through the dictionary to easily access both Credentials (key) and AuthClient (value)
+            foreach (var clientPair in clients)
             {
-                value.TradingParameters = (TradingParameters)parameters.Clone();
+                var credentials = clientPair.Key; // The Credentials object holding the individual ProfitTarget
+                var client = clientPair.Value;    // The AuthClient instance
+
+                // Unsubscribe from the old TradingParameters event if we are replacing it
+                if (client.TradingParameters != null)
+                {
+                    client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
+                }
+
+                // Clone the base parameters (from UI) to create an independent object for this client
+                var clientParameters = (TradingParameters)baseParameters.Clone();
+
+                // --- Modification Start ---
+                // Override the TakeProfit in the cloned object with the specific value
+                // stored in this client's Credentials.
+                clientParameters.TakeProfit = credentials.ProfitTarget;
+                // --- Modification End ---
+
+
+                // Subscribe the event handler to the *new* client-specific parameters object
+                clientParameters.TakeProfitReached += OnTakeProfitReached;
+
+                // Assign the fully configured, client-specific parameters object to the client
+                client.TradingParameters = clientParameters;
+
+                // Optional: Log the applied TakeProfit for verification
+                logger.Debug($"<=> Applied TakeProfit {clientParameters.TakeProfit} to client {credentials.AppId}");
             }
+        }
+
+        private void OnTakeProfitReached(object sender, decimal totalProfit)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            if (client == null)
+            {
+                return;
+            }
+
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials == null)
+            {
+                return;
+            }
+
+            logger.Info($"<=> Take profit target reached for client {credentials.AppId}! Total Profit: {totalProfit:C}");
+
+            client.TradingParameters = null;
+            credentials.IsChecked = false;
+            ClientsStateChanged?.Raise(client, EventArgs.Empty);
+        }
+
+        private void OnTradeUpdate(object sender, TradeEventArgs e)
+        {
+            lock (tradeUpdateLock)
+            {
+                try
+                {
+                    TradeModel model = e.Model;
+                    var client = e.Client;
+
+                    if (client == null)
+                    {
+                        logger.Warn("Trade update received with null client");
+                        return;
+                    }
+
+                    TradeUpdated?.Invoke(this, e);
+
+                    if (IsHierarchyMode)
+                    {
+                        HandleHierarchyTradeUpdate(model, client);
+                    }
+                    else
+                    {
+                        HandleNormalTradeUpdate(model, client);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "Error processing trade update");
+                }
+            }
+        }
+
+        private void HandleHierarchyTradeUpdate(TradeModel model, AuthClient client)
+        {
+            HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
+
+            if (currentLevel != null)
+            {
+                client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+
+                if (!client.TradingParameters.IsRecoveryMode)
+                {
+                    currentLevel.IsCompleted = true;
+                    hierarchyNavigator.MoveToNextLevel(client);
+
+                    if (hierarchyNavigator.currentLevelId == "0")
+                    {
+                        logger.Info("Returned to root level trading.");
+                    }
+                    else
+                    {
+                        logger.Info($"Moved to next level: {hierarchyNavigator.currentLevelId}");
+                    }
+                }
+                else
+                {
+                    currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
+
+                    decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? phase2Parameters.MaxDrawdown : phase1Parameters.MaxDrawdown);
+                    if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < MaxHierarchyDepth + 1)
+                    {
+                        CreateNewLayer(currentLevel, client);
+                    }
+                }
+            }
+        }
+
+        private void CreateNewLayer(HierarchyLevel currentLevel, AuthClient client)
+        {
+            int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
+
+            decimal initialStakeForNextLayer;
+            if (nextLayer == 2)
+            {
+                initialStakeForNextLayer = customLayerConfigs.ContainsKey(nextLayer) ?
+                    (customLayerConfigs[nextLayer].InitialStake ?? InitialStakeLayer1) :
+                    InitialStakeLayer1;
+            }
+            else
+            {
+                initialStakeForNextLayer = customLayerConfigs.ContainsKey(nextLayer) ?
+                    (customLayerConfigs[nextLayer].InitialStake ?? currentLevel.InitialStake) :
+                    currentLevel.InitialStake;
+            }
+
+            hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+
+            string nextLevelId = $"{currentLevel.LevelId}.1";
+            hierarchyNavigator.currentLevelId = nextLevelId;
+            hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
+            logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
+        }
+
+        private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
+        {
+            client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+
+            if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
+            {
+                EnterHierarchyMode(client);
+            }
+        }
+
+        private void EnterHierarchyMode(AuthClient client)
+        {
+            hierarchyClient = client;
+            hierarchyNavigator = new HierarchyNavigator(
+                client.TradingParameters.AmountToBeRecoverd,
+                client.TradingParameters,
+                phase1Parameters,
+                phase2Parameters,
+                customLayerConfigs,
+                InitialStakeLayer1,
+                this
+            );
+            currentLevelId = "1.1";
+            hierarchyNavigator.AssignClientToLevel(currentLevelId, client);
+            logger.Info("Entered hierarchy mode");
         }
     }
 

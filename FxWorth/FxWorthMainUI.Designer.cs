@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -81,7 +81,6 @@
             this.Trading_Parameters_GRBX = new System.Windows.Forms.GroupBox();
             this.Duration_Panel = new System.Windows.Forms.Panel();
             this.Duration0_CMBX = new System.Windows.Forms.ComboBox();
-            this.Take_Profit_TXT = new System.Windows.Forms.NumericUpDown();
             this.Stake_TXT = new System.Windows.Forms.NumericUpDown();
             this.Choose_Asset_Panel = new System.Windows.Forms.Panel();
             this.Choose_Asset_CMBX = new System.Windows.Forms.ComboBox();
@@ -137,7 +136,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.Main_Token_Table)).BeginInit();
             this.Trading_Parameters_GRBX.SuspendLayout();
             this.Duration_Panel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.Take_Profit_TXT)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.Stake_TXT)).BeginInit();
             this.Choose_Asset_Panel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.Barrier_Offset_TXT)).BeginInit();
@@ -802,14 +800,14 @@
             this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
             this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
@@ -936,7 +934,6 @@
             // Trading_Parameters_GRBX
             // 
             this.Trading_Parameters_GRBX.Controls.Add(this.Duration_Panel);
-            this.Trading_Parameters_GRBX.Controls.Add(this.Take_Profit_TXT);
             this.Trading_Parameters_GRBX.Controls.Add(this.Stake_TXT);
             this.Trading_Parameters_GRBX.Controls.Add(this.Choose_Asset_Panel);
             this.Trading_Parameters_GRBX.Controls.Add(this.Stake_LBL);
@@ -982,37 +979,6 @@
             this.Duration0_CMBX.Name = "Duration0_CMBX";
             this.Duration0_CMBX.Size = new System.Drawing.Size(126, 33);
             this.Duration0_CMBX.TabIndex = 9;
-            // 
-            // Take_Profit_TXT
-            // 
-            this.Take_Profit_TXT.DecimalPlaces = 1;
-            this.Take_Profit_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Take_Profit_TXT.Increment = new decimal(new int[] {
-            1,
-            0,
-            0,
-            65536});
-            this.Take_Profit_TXT.Location = new System.Drawing.Point(286, 158);
-            this.Take_Profit_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Take_Profit_TXT.Maximum = new decimal(new int[] {
-            1000000,
-            0,
-            0,
-            0});
-            this.Take_Profit_TXT.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            131072});
-            this.Take_Profit_TXT.Name = "Take_Profit_TXT";
-            this.Take_Profit_TXT.Size = new System.Drawing.Size(127, 34);
-            this.Take_Profit_TXT.TabIndex = 13;
-            this.Take_Profit_TXT.ThousandsSeparator = true;
-            this.Take_Profit_TXT.Value = new decimal(new int[] {
-            100,
-            0,
-            0,
-            0});
             // 
             // Stake_TXT
             // 
@@ -1496,7 +1462,6 @@
             this.Trading_Parameters_GRBX.ResumeLayout(false);
             this.Trading_Parameters_GRBX.PerformLayout();
             this.Duration_Panel.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.Take_Profit_TXT)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.Stake_TXT)).EndInit();
             this.Choose_Asset_Panel.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.Barrier_Offset_TXT)).EndInit();
@@ -1528,7 +1493,6 @@
         private System.Windows.Forms.Label Overbought0_LBL;
         private System.Windows.Forms.Label Period0_LBL;
         private System.Windows.Forms.GroupBox Money_Management_GRBX;
-        private System.Windows.Forms.NumericUpDown Take_Profit_TXT;
         private System.Windows.Forms.NumericUpDown Max_Drawdown_TXT1;
         private System.Windows.Forms.NumericUpDown Martingale_Level_TXT;
         private System.Windows.Forms.Label Max_Drawdown_LBL;

@@ -38,7 +38,7 @@ namespace FxApi
 
         public string GetToken()
         {
-            return Credentials.Token;
+            return this.Credentials.Token;
         }
 
         /// <summary>
@@ -574,7 +574,6 @@ namespace FxApi
         /// </summary>
         private void RaiseTradeUpdate()
         {
-
             // If the trade is closed and not marked as failed...
             if (model.IsClosed && !model.IsFailed)
             {
@@ -603,6 +602,36 @@ namespace FxApi
 
             // Raise the TradeChanged event to notify listeners about the trade update.
             TradeChanged?.Raise(this, new TradeEventArgs(model, this));
+            StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
+        }
+
+        private void InitializeTradingParameters(TradingParameters parameters)
+        {
+            if (TradingParameters != null)
+            {
+                // Unsubscribe from the old parameters' events
+                TradingParameters.TakeProfitReached -= OnTakeProfitReached;
+            }
+
+            TradingParameters = parameters;
+            if (TradingParameters != null)
+            {
+                // Subscribe to the new parameters' events
+                TradingParameters.TakeProfitReached += OnTakeProfitReached;
+            }
+        }
+
+        private void OnTakeProfitReached(object sender, decimal totalProfit)
+        {
+            // Stop trading by clearing the model and waiting IDs
+            model = null;
+            waitingClosedIds.Clear();
+            waitingContradctIds.Clear();
+            
+            // Log the achievement of take profit target
+            logger.Info($"<=> Take profit target reached! Total Profit: {totalProfit:C}");
+            
+            // Notify the UI that trading has stopped
             StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
         }
     }

@@ -2,6 +2,8 @@
 using FxBackendClient;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -147,7 +149,7 @@ namespace FxWorth
                 string apiToken = tokenValueObj.ToString();
                 decimal profitTarget;
 
-                if (decimal.TryParse(targetValueObj.ToString(), out profitTarget))
+                if (decimal.TryParse(targetValueObj.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out profitTarget))
                 {
                     if (!string.IsNullOrEmpty(apiToken))
                     {
@@ -175,16 +177,27 @@ namespace FxWorth
             {
                 mainForm.Main_Token_Table.Rows.Clear();
 
+                var keysToRemove = mainForm.Storage.Clients.Keys.ToList();
+
                 foreach (var data in extractedData)
                 {
-                    mainForm.Storage.Add(new Credentials
+                    // --- Modification Start ---
+                    var newCreds = new Credentials
                     {
                         Token = data.ApiTokenValue,
                         AppId = data.AppId,
-                        IsChecked = true
-                    });
+                        ProfitTarget = data.ProfitTarget,
+                        IsChecked = true, 
+                        Name = data.AppId 
+                    };
 
-                    mainForm.Main_Token_Table.Rows.Add(false, data.ApiTokenValue, data.AppId, null, null, "Standby");
+                    if (!mainForm.Storage.Add(newCreds))
+                    {
+                        Console.WriteLine($"Warning: Could not add token {newCreds.Token}, might be duplicate.");
+                        continue;
+                    }
+
+                    mainForm.Main_Token_Table.Rows.Add(newCreds.IsChecked, newCreds.Token, newCreds.AppId, null, null, "Standby");
                 }
 
                 this.DialogResult = DialogResult.OK;
