@@ -442,11 +442,7 @@ namespace FxWorth
             ClientsStateChanged?.Raise(sender, EventArgs.Empty);
         }
 
-        /// <summary>
         /// Removes a trading account from the list of managed clients based on its API token and App ID.
-        /// <param name="appId">The App ID of the trading account to remove.</param>
-        /// <param name="token">The API token of the trading account to remove.</param>
-        /// </summary>
         public void Remove(string appId, string token)
         {
             var found = Credentials.FirstOrDefault(x => x.AppId == appId && x.Token == token);
@@ -495,24 +491,16 @@ namespace FxWorth
         public List<Credentials> Credentials { get; set; } = new List<Credentials>();
         public bool IsTradingAllowed { get; set; }
 
-        /// Sets the trading parameters for all managed `AuthClient` instances. The trading parameters to apply to all accounts.
         public void SetTradingParameters(TradingParameters parameters)
         {
             foreach (var client in clients.Values)
             {
                 if (client.TradingParameters != null)
                 {
-                    // Unsubscribe from the old parameters' events
                     client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
                 }
-
-                // Clone the parameters for each client to ensure independent state
                 var clientParameters = (TradingParameters)parameters.Clone();
-                
-                // Subscribe to the take profit event
                 clientParameters.TakeProfitReached += OnTakeProfitReached;
-                
-                // Set the parameters for the client
                 client.TradingParameters = clientParameters;
             }
         }
@@ -521,28 +509,22 @@ namespace FxWorth
         {
             var tradingParameters = (TradingParameters)sender;
             
-            // Find the client that reached take profit
             var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
             if (client == null)
             {
                 return;
             }
 
-            // Find the credentials for this client
             var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
             if (credentials == null)
             {
                 return;
             }
 
-            // Log the achievement
             logger.Info($"<=> Take profit target reached for client {credentials.AppId}! Total Profit: {totalProfit:C}");
 
-            // Stop trading for this client
             client.TradingParameters = null;
             credentials.IsChecked = false;
-
-            // Update the client's state in the UI
             ClientsStateChanged?.Raise(client, EventArgs.Empty);
         }
 
