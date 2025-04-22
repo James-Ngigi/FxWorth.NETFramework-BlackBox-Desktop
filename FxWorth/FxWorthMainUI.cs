@@ -458,11 +458,6 @@ namespace FxWorth
                         newStatus = "Invalid";
                     }
 
-                    else if (!client.IsOnline)
-                    {
-                        newStatus = "Offline";
-                    }
-
                     else
                     {
                         var clientParams = client.TradingParameters;
