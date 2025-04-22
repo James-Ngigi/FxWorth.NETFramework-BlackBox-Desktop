@@ -378,12 +378,14 @@ namespace FxWorth
                         }
 
                         var timeout = DateTime.Now - value.LossTradeTime;
+
                         if (timeout < tradesTimeoutThreshold)
                         {
                             continue;
                         }
 
                         var anyTimeout = DateTime.Now - value.AnyTradeTime;
+
                         if (anyTimeout < anyTradeTimeoutThreshold)
                         {
                             continue;
