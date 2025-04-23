@@ -42,6 +42,9 @@ namespace FxWorth
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            _tradingPingTimer?.Stop();
+            _tradingPingTimer?.Dispose();
+
             if (Process.GetCurrentProcess().PriorityClass == ProcessPriorityClass.High)
             {
                 PowerManager.AllowSleep();
@@ -71,9 +74,10 @@ namespace FxWorth
         private bool _isOperatorLoggedIn = false;
         private string _backendApiUrl = "http://localhost:8080"; // Later configured from App.config
         private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
-
-
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
+        private Timer _tradingPingTimer;
+        private const int TRADING_PING_INTERVAL_MS = 30000;
+        private const string TRADING_STATUS = "Trading";
 
         private void UpdateLatencyLabel(int latency)
         {
@@ -150,6 +154,64 @@ namespace FxWorth
             if (storage.Credentials.Count < TokenStorage.MaxTokensCount)
             {
                 Add_BTN.Enabled = true;
+            }
+        }
+
+        private void InitializeTradingPingTimer()
+        {
+            _tradingPingTimer?.Dispose();
+            _tradingPingTimer = new Timer();
+            _tradingPingTimer.Interval = TRADING_PING_INTERVAL_MS;
+            _tradingPingTimer.Tick += TradingPing_Tick;
+        }
+
+        private async void TradingPing_Tick(object sender, EventArgs e)
+        {
+            _tradingPingTimer.Enabled = false;
+
+            try
+            {
+                if (_backendApiService == null || !_isOperatorLoggedIn)
+                {
+                    return;
+                }
+
+                List<string> tradingTokens = new List<string>();
+
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
+                {
+                    var status = row.Cells[5].Value?.ToString();
+                    if (status == TRADING_STATUS)
+                    {
+                        var token = row.Cells[1].Value?.ToString();
+                        if (!string.IsNullOrEmpty(token))
+                        {
+                            tradingTokens.Add(token);
+                        }
+                    }
+                }
+
+                foreach (var token in tradingTokens)
+                {
+                    try
+                    {
+                        await _backendApiService.SendTradingPingAsync(token);
+                        logger.Debug($"Trading ping sent for token {token}");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, $"Failed to send trading ping for token {token}");
+                        // Don't rethrow - we want to continue with other tokens even if one fails
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Error in trading ping timer tick");
+            }
+            finally
+            {
+                _tradingPingTimer.Enabled = storage.IsTradingAllowed;
             }
         }
 
@@ -886,6 +948,9 @@ namespace FxWorth
                 Choose_Asset_CMBX.Text);
 
             storage.IsTradingAllowed = true;
+            InitializeTradingPingTimer();
+            _tradingPingTimer.Start();
+
             var layout = new Layout()
             {
                 MarketDataParameters = md,
@@ -964,6 +1029,7 @@ namespace FxWorth
 
         private void Stop_BTN_Click(object sender, EventArgs e)
         {
+            _tradingPingTimer?.Stop();
             sw.Stop();
             storage.IsTradingAllowed = false;
             tradingSessionCompleted = true;
@@ -1030,6 +1096,7 @@ namespace FxWorth
                 storage.IsTradingAllowed = false;
                 Pause_BTN.Text = "Resume";
                 sw.Stop();
+                _tradingPingTimer?.Stop();
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
@@ -1057,6 +1124,7 @@ namespace FxWorth
             }
             else // Resuming trading
             {
+                _tradingPingTimer?.Start();
                 sw.Start();
                 storage.IsTradingAllowed = true;
                 Pause_BTN.Text = "Pause";
