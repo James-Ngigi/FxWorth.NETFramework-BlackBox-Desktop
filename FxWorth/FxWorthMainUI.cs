@@ -14,6 +14,7 @@ using static FxApi.AuthClient;
 using static FxWorth.Hierarchy.HierarchyNavigator;
 using FxBackendClient;
 using System.Threading.Tasks;
+using System.Globalization;
 
 namespace FxWorth
 {
@@ -69,6 +70,7 @@ namespace FxWorth
         private BackendApiService _backendApiService;
         private bool _isOperatorLoggedIn = false;
         private string _backendApiUrl = "http://localhost:8080"; // Later configured from App.config
+        private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
 
 
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
@@ -87,14 +89,70 @@ namespace FxWorth
 
         public void LoadTokensFromFetch(List<CredentialsWithTarget> fetchedData)
         {
-            MessageBox.Show($"Received {fetchedData.Count} tokens to load.", "Data Extracted");
-            // TODO: Implement logic to process fetchedData
-            // - Clear existing tokens in dataGridView1?
-            // - Create FxApi.Credentials objects
-            // - Add them to storage.Credentials and storage.Clients
-            // - Populate dataGridView1 on the main form
-            // - Potentially associate the ProfitTarget with the TradingParameters for each client
+            if (fetchedData == null || fetchedData.Count == 0)
+            {
+                MessageBox.Show("No token data received to load.", "Load Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            logger.Info($"Attempting to load {fetchedData.Count} tokens from fetch dialogue.");
+
+            // --- Clear existing state before loading new set ---
+            if (storage.IsTradingAllowed)
+            {
+                Stop_BTN.PerformClick();
+                MessageBox.Show("Trading stopped to load new token set.", "Load Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
+            // Clear the main UI grid
+            Main_Token_Table.Rows.Clear();
+            _lastSentStates.Clear();
+
+            // --- End Clearing ---
+            int addedCount = 0;
+            foreach (var data in fetchedData)
+            {
+                var creds = new Credentials
+                {
+                    AppId = Guid.NewGuid().ToString("N").Substring(0, 5), 
+                    Token = data.ApiTokenValue,
+                    Name = $"Fetched_{data.ApiTokenValue.Substring(0, Math.Min(5, data.ApiTokenValue.Length))}", 
+                    ProfitTarget = data.ProfitTarget,
+                    IsChecked = true 
+                };
+
+                if (storage.Add(creds))
+                {
+                    Main_Token_Table.Rows.Add(
+                        creds.IsChecked,
+                        creds.Token,
+                        creds.AppId,
+                        null,
+                        null,
+                        "Idle"
+                    );
+
+                    // Initialize the state tracker for this token
+                    _lastSentStates[creds.Token] = (null, "Idle"); // Initial state: unknown Pnl, Idle status
+
+                    addedCount++;
+                }
+                else
+                {
+                    logger.Warn($"Failed to add token {creds.Token} to TokenStorage (perhaps duplicate?).");
+                }
+            }
+
+            logger.Info($"Successfully added {addedCount} tokens to the main grid.");
+            MessageBox.Show($"Loaded {addedCount} tokens.", "Load Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // Re-enable Add button if limit was reached previously
+            if (storage.Credentials.Count < TokenStorage.MaxTokensCount)
+            {
+                Add_BTN.Enabled = true;
+            }
         }
+
 
         public FxWorth()
         {
@@ -388,7 +446,6 @@ namespace FxWorth
                 {
                     if (sw.IsRunning)
                     {
-                        logger.Info("<=> Internet latency exceeded threshold. Pausing trades & stopwatch.");
                         sw.Stop();
                     }
                     if (isTrading &&
@@ -409,7 +466,6 @@ namespace FxWorth
                 {
                     if (!sw.IsRunning && storage.IsTradingAllowed && !tradingSessionCompleted)
                     {
-                        logger.Info("<=> Internet latency back within threshold. Resuming trades & stopwatch.");
                         sw.Start();
                     }
                     if (OwnedForms.Length > 0 && OwnedForms[0] is No_Internet)
@@ -457,7 +513,6 @@ namespace FxWorth
                     {
                         newStatus = "Invalid";
                     }
-
                     else
                     {
                         var clientParams = client.TradingParameters;
@@ -473,13 +528,13 @@ namespace FxWorth
                         }
                         else if (clientParams != null)
                         {
-                            if (client.Balance < 2 * clientParams.DynamicStake)
-                            {
-                                newStatus = "Margin Call";
-                            }
-                            else if (storage.IsTradingAllowed && isSelected)
+                            if (storage.IsTradingAllowed && isSelected)
                             {
                                 newStatus = "Trading";
+                            }
+                            else if (client.Balance < 2 * clientParams.DynamicStake && currentStatus != "Standby")
+                            {
+                                newStatus = "Margin Call";
                             }
                             else if (!storage.IsTradingAllowed && (currentStatus == "Trading" || currentStatus == "Analyzing"))
                             {
@@ -496,9 +551,52 @@ namespace FxWorth
                         }
                     }
 
+                    // Update status in UI if changed
                     if (row.Cells[5].Value?.ToString() != newStatus)
                     {
                         row.Cells[5].Value = newStatus;
+                    }
+
+                    // Backend synchronization logic
+                    if (_backendApiService != null && _isOperatorLoggedIn)
+                    {
+                        // Check if we have tracked this token before
+                        if (!_lastSentStates.ContainsKey(token))
+                        {
+                            _lastSentStates[token] = (null, null);
+                        }
+
+                        var (lastSentPnl, lastSentStatus) = _lastSentStates[token];
+
+                        // Check if PnL has changed and needs to be sent
+                        if (lastSentPnl == null || client.Pnl != lastSentPnl)
+                        {
+                            try
+                            {
+                                _backendApiService.SendProfitUpdateAsync(token, client.Pnl).ConfigureAwait(false);
+                                _lastSentStates[token] = (client.Pnl, lastSentStatus);
+                                logger.Debug($"PnL update sent for token {token}: {client.Pnl}");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, $"Failed to send PnL update for token {token}");
+                            }
+                        }
+
+                        // Check if status has changed and needs to be sent
+                        if (lastSentStatus == null || newStatus != lastSentStatus)
+                        {
+                            try
+                            {
+                                _backendApiService.SendStatusUpdateAsync(token, newStatus).ConfigureAwait(false);
+                                _lastSentStates[token] = (lastSentPnl, newStatus);
+                                logger.Debug($"Status update sent for token {token}: {newStatus}");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, $"Failed to send status update for token {token}");
+                            }
+                        }
                     }
                 }
 

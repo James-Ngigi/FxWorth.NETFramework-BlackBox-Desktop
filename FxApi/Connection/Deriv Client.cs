@@ -20,7 +20,7 @@ namespace FxApi
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         protected bool isDisposed;
-        protected readonly Credentials Credentials;
+        public readonly Credentials Credentials;
         private readonly string websocketPath;
         private WebSocket sock;
         private readonly SemaphoreSlim reconnectLock = new SemaphoreSlim(1, 1);
