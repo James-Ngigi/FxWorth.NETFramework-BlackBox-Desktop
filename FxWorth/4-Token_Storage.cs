@@ -378,12 +378,14 @@ namespace FxWorth
                         }
 
                         var timeout = DateTime.Now - value.LossTradeTime;
+
                         if (timeout < tradesTimeoutThreshold)
                         {
                             continue;
                         }
 
                         var anyTimeout = DateTime.Now - value.AnyTradeTime;
+
                         if (anyTimeout < anyTradeTimeoutThreshold)
                         {
                             continue;
@@ -409,7 +411,7 @@ namespace FxWorth
                     }
                 }
 
-                // UpdateGlobalTradingStatus(); 
+                 UpdateGlobalTradingStatus(); 
             }
             finally
             {
@@ -574,7 +576,6 @@ namespace FxWorth
             logger.Info($"<=> Take profit target reached for client {credentials.AppId}! Total Profit: {totalProfit:C}");
 
             client.TradingParameters = null;
-            credentials.IsChecked = false;
             ClientsStateChanged?.Raise(client, EventArgs.Empty);
         }
 

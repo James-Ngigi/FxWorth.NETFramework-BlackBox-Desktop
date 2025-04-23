@@ -14,6 +14,7 @@ using static FxApi.AuthClient;
 using static FxWorth.Hierarchy.HierarchyNavigator;
 using FxBackendClient;
 using System.Threading.Tasks;
+using System.Globalization;
 
 namespace FxWorth
 {
@@ -41,6 +42,9 @@ namespace FxWorth
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            _tradingPingTimer?.Stop();
+            _tradingPingTimer?.Dispose();
+
             if (Process.GetCurrentProcess().PriorityClass == ProcessPriorityClass.High)
             {
                 PowerManager.AllowSleep();
@@ -69,9 +73,11 @@ namespace FxWorth
         private BackendApiService _backendApiService;
         private bool _isOperatorLoggedIn = false;
         private string _backendApiUrl = "http://localhost:8080"; // Later configured from App.config
-
-
+        private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
+        private Timer _tradingPingTimer;
+        private const int TRADING_PING_INTERVAL_MS = 30000;
+        private const string TRADING_STATUS = "Trading";
 
         private void UpdateLatencyLabel(int latency)
         {
@@ -87,14 +93,128 @@ namespace FxWorth
 
         public void LoadTokensFromFetch(List<CredentialsWithTarget> fetchedData)
         {
-            MessageBox.Show($"Received {fetchedData.Count} tokens to load.", "Data Extracted");
-            // TODO: Implement logic to process fetchedData
-            // - Clear existing tokens in dataGridView1?
-            // - Create FxApi.Credentials objects
-            // - Add them to storage.Credentials and storage.Clients
-            // - Populate dataGridView1 on the main form
-            // - Potentially associate the ProfitTarget with the TradingParameters for each client
+            if (fetchedData == null || fetchedData.Count == 0)
+            {
+                MessageBox.Show("No token data received to load.", "Load Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            logger.Info($"Attempting to load {fetchedData.Count} tokens from fetch dialogue.");
+
+            // --- Clear existing state before loading new set ---
+            if (storage.IsTradingAllowed)
+            {
+                Stop_BTN.PerformClick();
+                MessageBox.Show("Trading stopped to load new token set.", "Load Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
+            // Clear the main UI grid
+            Main_Token_Table.Rows.Clear();
+            _lastSentStates.Clear();
+
+            // --- End Clearing ---
+            int addedCount = 0;
+            foreach (var data in fetchedData)
+            {
+                var creds = new Credentials
+                {
+                    AppId = Guid.NewGuid().ToString("N").Substring(0, 5), 
+                    Token = data.ApiTokenValue,
+                    Name = $"Fetched_{data.ApiTokenValue.Substring(0, Math.Min(5, data.ApiTokenValue.Length))}", 
+                    ProfitTarget = data.ProfitTarget,
+                    IsChecked = true 
+                };
+
+                if (storage.Add(creds))
+                {
+                    Main_Token_Table.Rows.Add(
+                        creds.IsChecked,
+                        creds.Token,
+                        creds.AppId,
+                        null,
+                        null,
+                        "Idle"
+                    );
+
+                    // Initialize the state tracker for this token
+                    _lastSentStates[creds.Token] = (null, "Idle"); // Initial state: unknown Pnl, Idle status
+
+                    addedCount++;
+                }
+                else
+                {
+                    logger.Warn($"Failed to add token {creds.Token} to TokenStorage (perhaps duplicate?).");
+                }
+            }
+
+            logger.Info($"Successfully added {addedCount} tokens to the main grid.");
+            MessageBox.Show($"Loaded {addedCount} tokens.", "Load Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // Re-enable Add button if limit was reached previously
+            if (storage.Credentials.Count < TokenStorage.MaxTokensCount)
+            {
+                Add_BTN.Enabled = true;
+            }
         }
+
+        private void InitializeTradingPingTimer()
+        {
+            _tradingPingTimer?.Dispose();
+            _tradingPingTimer = new Timer();
+            _tradingPingTimer.Interval = TRADING_PING_INTERVAL_MS;
+            _tradingPingTimer.Tick += TradingPing_Tick;
+        }
+
+        private async void TradingPing_Tick(object sender, EventArgs e)
+        {
+            _tradingPingTimer.Enabled = false;
+
+            try
+            {
+                if (_backendApiService == null || !_isOperatorLoggedIn)
+                {
+                    return;
+                }
+
+                List<string> tradingTokens = new List<string>();
+
+                foreach (DataGridViewRow row in Main_Token_Table.Rows)
+                {
+                    var status = row.Cells[5].Value?.ToString();
+                    if (status == TRADING_STATUS)
+                    {
+                        var token = row.Cells[1].Value?.ToString();
+                        if (!string.IsNullOrEmpty(token))
+                        {
+                            tradingTokens.Add(token);
+                        }
+                    }
+                }
+
+                foreach (var token in tradingTokens)
+                {
+                    try
+                    {
+                        await _backendApiService.SendTradingPingAsync(token);
+                        logger.Debug($"Trading ping sent for token {token}");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, $"Failed to send trading ping for token {token}");
+                        // Don't rethrow - we want to continue with other tokens even if one fails
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Error in trading ping timer tick");
+            }
+            finally
+            {
+                _tradingPingTimer.Enabled = storage.IsTradingAllowed;
+            }
+        }
+
 
         public FxWorth()
         {
@@ -348,7 +468,6 @@ namespace FxWorth
             Duration_TXT.Value = layout.TradingParameters.Duration;
             Duration0_CMBX.SelectedIndex = Duration0_CMBX.Items.IndexOf(layout.TradingParameters.DurationType);
             Stake_TXT.Value = layout.TradingParameters.Stake;
-            //Take_Profit_TXT.Value = layout.TradingParameters.TakeProfit;
             Max_Drawdown_TXT1.Value = layout.TradingParameters.MaxDrawdown;
             Martingale_Level_TXT.Value = layout.TradingParameters.MartingaleLevel;
             Stake_TXT2.Value = layout.TradingParameters.InitialStake4Layer1;
@@ -367,6 +486,7 @@ namespace FxWorth
             }
         }
 
+        /// Raises event when internet speed changes. It checks if the latency is within the acceptable range.
         private void OnInternetSpeedChanged(object sender, EventArgs e)
         {
             this.InvokeIfRequired(() =>
@@ -388,10 +508,9 @@ namespace FxWorth
                 {
                     if (sw.IsRunning)
                     {
-                        logger.Info("<=> Internet latency exceeded threshold. Pausing trades & stopwatch.");
                         sw.Stop();
                     }
-                    if (isTrading && // Only show if currently trading
+                    if (isTrading &&
                         OwnedForms.Length == 0 &&
                         WindowState != FormWindowState.Minimized &&
                         (DateTime.Now - lastNoInternetShown) > noInternetDelay)
@@ -405,11 +524,10 @@ namespace FxWorth
                     }
                 }
 
-                else // Internet speed is okay
+                else
                 {
                     if (!sw.IsRunning && storage.IsTradingAllowed && !tradingSessionCompleted)
                     {
-                        logger.Info("<=> Internet latency back within threshold. Resuming trades & stopwatch.");
                         sw.Start();
                     }
                     if (OwnedForms.Length > 0 && OwnedForms[0] is No_Internet)
@@ -427,64 +545,119 @@ namespace FxWorth
             {
                 Valid_Tokens_LBL.Text = string.Format("Valid Accounts: {0}", storage.Clients.Count(x => x.Value.IsOnline));
 
-                if (tradingSessionCompleted)
-                {
-                    return;
-                }
-
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     var token = row.Cells[1].Value?.ToString();
                     var appId = row.Cells[2].Value?.ToString();
-                    var key = storage.Clients.Keys.FirstOrDefault(x => x.AppId == appId && x.Token == token);
+                    var key = storage.Credentials.FirstOrDefault(x => x.AppId == appId && x.Token == token);
 
-                    if (key == null)
+                    if (key == null || !storage.Clients.TryGetValue(key, out var client))
                     {
                         continue;
                     }
 
-                    var client = storage.Clients[key];
+                    var credentials = key;
+
                     row.Cells[3].Value = client.Balance;
                     row.Cells[4].Value = client.Pnl;
 
-                    if (client.TradingParameters == null)
+                    string currentStatus = row.Cells[5].Value?.ToString();
+
+                    if (string.IsNullOrEmpty(currentStatus))
                     {
-                        row.Cells[5].Value = "Standby";
-                        continue;
+                        currentStatus = client.IsOnline ? "Standby" : "Offline";
+                        row.Cells[5].Value = currentStatus;
                     }
 
-                    bool isSelected = (bool)row.Cells[0].Value;
-                    string currentStatus = row.Cells[5].Value?.ToString();
+                    string newStatus = currentStatus;
 
                     if (currentStatus == "Invalid")
                     {
-                        // Maintain "Invalid" status.
+                        newStatus = "Invalid";
                     }
-                    else if (!client.IsOnline)
+                    else
                     {
-                        row.Cells[5].Value = "Offline";
-                    }
-                    else // Client is online
-                    {
-                        if (client.Pnl <= -client.TradingParameters.Stoploss || client.Balance < 2 * client.TradingParameters.DynamicStake)
+                        var clientParams = client.TradingParameters;
+                        bool isSelected = (bool)row.Cells[0].Value;
+
+                        if (currentStatus == "Stoploss" || currentStatus == "Completed")
                         {
-                            row.Cells[5].Value = "Stoploss";
+                            newStatus = currentStatus;
                         }
-                        else if (client.Pnl >= client.TradingParameters.TakeProfit)
+                        else if (client.Pnl >= credentials.ProfitTarget)
                         {
-                            row.Cells[5].Value = "TakeProfit";
+                            newStatus = "TakeProfit";
                         }
-                        else if (storage.IsTradingAllowed && isSelected)
+                        else if (clientParams != null)
                         {
-                            row.Cells[5].Value = "Trading";
-                        }
-                        else if (!storage.IsTradingAllowed)
-                        {
-                            row.Cells[5].Value = "Analyzing";
+                            if (storage.IsTradingAllowed && isSelected)
+                            {
+                                newStatus = "Trading";
+                            }
+                            else if (client.Balance < 2 * clientParams.DynamicStake && currentStatus != "Standby")
+                            {
+                                newStatus = "Margin Call";
+                            }
+                            else if (!storage.IsTradingAllowed && (currentStatus == "Trading" || currentStatus == "Analyzing"))
+                            {
+                                newStatus = "Analyzing";
+                            }
+                            else
+                            {
+                                newStatus = "Standby";
+                            }
                         }
                         else
                         {
-                            row.Cells[5].Value = "Standby";
+                            newStatus = "Standby";
+                        }
+                    }
+
+                    // Update status in UI if changed
+                    if (row.Cells[5].Value?.ToString() != newStatus)
+                    {
+                        row.Cells[5].Value = newStatus;
+                    }
+
+                    // Backend synchronization logic
+                    if (_backendApiService != null && _isOperatorLoggedIn)
+                    {
+                        // Check if we have tracked this token before
+                        if (!_lastSentStates.ContainsKey(token))
+                        {
+                            _lastSentStates[token] = (null, null);
+                        }
+
+                        var (lastSentPnl, lastSentStatus) = _lastSentStates[token];
+
+                        // Check if PnL has changed and needs to be sent
+                        if (lastSentPnl == null || client.Pnl != lastSentPnl)
+                        {
+                            try
+                            {
+                                _backendApiService.SendProfitUpdateAsync(token, client.Pnl).ConfigureAwait(false);
+                                _lastSentStates[token] = (client.Pnl, lastSentStatus);
+                                logger.Debug($"PnL update sent for token {token}: {client.Pnl}");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, $"Failed to send PnL update for token {token}");
+                            }
+                        }
+
+                        // Check if status has changed and needs to be sent
+                        if (lastSentStatus == null || newStatus != lastSentStatus)
+                        {
+                            try
+                            {
+                                _backendApiService.SendStatusUpdateAsync(token, newStatus).ConfigureAwait(false);
+                                _lastSentStates[token] = (lastSentPnl, newStatus);
+                                logger.Debug($"Status update sent for token {token}: {newStatus}");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, $"Failed to send status update for token {token}");
+                            }
                         }
                     }
                 }
@@ -501,27 +674,29 @@ namespace FxWorth
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
-                    if ((bool)row.Cells[0].Value && storage.Clients.ContainsKey(storage.Credentials[row.Index]) && storage.Clients[storage.Credentials[row.Index]].TradingParameters != null)
+                    if ((bool)row.Cells[0].Value)
                     {
                         var status = row.Cells[5].Value?.ToString();
-                        if (status == "Trading" || status == "Analyzing")
+
+                        bool isTerminal = status == "TakeProfit" || status == "Stoploss" ||
+                                          status == "Completed" || status == "Offline" ||
+                                          status == "Invalid";
+
+                        if (!isTerminal)
                         {
-                            anyClientTrading = true;
                             allClientsCompleted = false;
-                            break;
-                        }
-                        else if (status != "TakeProfit" && status != "Stoploss" && status != "Offline" && status != "Invalid")
-                        {
-                            allClientsCompleted = false;
-                            break;
+
+                            if (status == "Trading" || status == "Analyzing")
+                            {
+                                anyClientTrading = true;
+                            }
                         }
                     }
                 }
 
-                // Only consider session completed if no clients are trading AND all clients have reached a final state
-                if (!anyClientTrading && allClientsCompleted)
+                if (allClientsCompleted)
                 {
-                    logger.Info("<=> Trading session completed on all accounts. Stopping timer!");
+                    logger.Info("<=> Trading session completed on all selected accounts. Stopping timer!");
                     sw.Stop();
                     tradingSessionCompleted = true;
 
@@ -773,6 +948,9 @@ namespace FxWorth
                 Choose_Asset_CMBX.Text);
 
             storage.IsTradingAllowed = true;
+            InitializeTradingPingTimer();
+            _tradingPingTimer.Start();
+
             var layout = new Layout()
             {
                 MarketDataParameters = md,
@@ -851,23 +1029,57 @@ namespace FxWorth
 
         private void Stop_BTN_Click(object sender, EventArgs e)
         {
+            _tradingPingTimer?.Stop();
             sw.Stop();
             storage.IsTradingAllowed = false;
             tradingSessionCompleted = true;
+            storage.StopAll();
 
-            // Update DataGrid status *before* stopping the clients
             foreach (DataGridViewRow row in Main_Token_Table.Rows)
             {
-                if (((row.Cells[5].Value?.ToString() == "Trading" || row.Cells[5].Value?.ToString() == "Analyzing") && storage.Clients.ContainsKey(storage.Credentials[row.Index]) && storage.Clients[storage.Credentials[row.Index]].IsOnline) || row.Cells[5].Value?.ToString() == "Standby")
+                var token = row.Cells[1].Value?.ToString();
+                var appId = row.Cells[2].Value?.ToString();
+                var key = storage.Credentials.FirstOrDefault(x => x.AppId == appId && x.Token == token);
+
+                if (key == null) continue;
+
+                if (key.IsChecked)
                 {
-                    row.Cells[5].Value = "Completed";
+                    if (!storage.Clients.TryGetValue(key, out var client))
+                        continue;
+
+                    string currentStatus = row.Cells[5].Value?.ToString();
+
+                    if (currentStatus == "Invalid")
+                        continue;
+
+                    if (!client.IsOnline)
+                    {
+                        row.Cells[5].Value = "Offline";
+                        continue;
+                    }
+
+                    switch (currentStatus)
+                    {
+                        case "Margin Call":
+                            row.Cells[5].Value = "Stoploss";
+                            break;
+                        case "Trading":
+                        case "Analyzing":
+                        case "TakeProfit":
+                            row.Cells[5].Value = "Completed";
+                        break;
+                     default:
+                     break;
+                    }
                 }
             }
 
-            storage.StopAll();
             Pause_BTN.Text = "Pause";
             EnableAll();
             storage.MarketDataClient.UnsubscribeAll();
+
+            // Relax system resources
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
             PowerManager.AllowSleep();
         }
@@ -884,6 +1096,7 @@ namespace FxWorth
                 storage.IsTradingAllowed = false;
                 Pause_BTN.Text = "Resume";
                 sw.Stop();
+                _tradingPingTimer?.Stop();
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
@@ -911,6 +1124,7 @@ namespace FxWorth
             }
             else // Resuming trading
             {
+                _tradingPingTimer?.Start();
                 sw.Start();
                 storage.IsTradingAllowed = true;
                 Pause_BTN.Text = "Pause";
