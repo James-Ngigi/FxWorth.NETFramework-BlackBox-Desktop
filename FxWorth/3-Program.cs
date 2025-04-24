@@ -26,6 +26,7 @@ namespace FxWorth
             Application.Run(new FxWorth());
         }
 
+        // Handles unhandled exceptions in the application.
         private static void HandleUnhandled(object sender, UnhandledExceptionEventArgs e)
         {
             logger.Error((Exception)e.ExceptionObject, "Fatal exception");

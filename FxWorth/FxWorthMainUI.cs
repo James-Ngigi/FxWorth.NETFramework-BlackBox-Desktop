@@ -42,6 +42,21 @@ namespace FxWorth
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            var frm = new Exit_Application();
+
+            if (WindowState == FormWindowState.Minimized)
+            {
+                frm.StartPosition = FormStartPosition.CenterScreen;
+            }
+
+            DialogResult result = frm.ShowDialog(this);
+
+            if (result != DialogResult.Yes)
+            {
+                e.Cancel = true;
+                return;
+            }
+
             _tradingPingTimer?.Stop();
             _tradingPingTimer?.Dispose();
 
@@ -50,10 +65,8 @@ namespace FxWorth
                 PowerManager.AllowSleep();
             }
 
-            if (e.Cancel == false)
-            {
-                _backendApiService?.Dispose();
-            }
+            _backendApiService?.Dispose();
+
             base.OnFormClosing(e);
         }
 
@@ -101,19 +114,17 @@ namespace FxWorth
 
             logger.Info($"Attempting to load {fetchedData.Count} tokens from fetch dialogue.");
 
-            // --- Clear existing state before loading new set ---
             if (storage.IsTradingAllowed)
             {
                 Stop_BTN.PerformClick();
                 MessageBox.Show("Trading stopped to load new token set.", "Load Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
-            // Clear the main UI grid
             Main_Token_Table.Rows.Clear();
             _lastSentStates.Clear();
 
-            // --- End Clearing ---
             int addedCount = 0;
+
             foreach (var data in fetchedData)
             {
                 var creds = new Credentials
@@ -238,7 +249,6 @@ namespace FxWorth
             storage = new TokenStorage("tokens.json");
             storage.ClientsStateChanged += ClientsStateChanged;
             storage.InternetSpeedChanged += OnInternetSpeedChanged;
-            /// storage.TradeUpdated += OnTradeUpdate;
             storage.AuthFailed += OnAuthFailed;
             phase1Parameters = new PhaseParameters();
             phase2Parameters = new PhaseParameters();
@@ -256,11 +266,9 @@ namespace FxWorth
             catch (ArgumentNullException ex)
             {
                 MessageBox.Show($"Backend API URL is not configured correctly: {ex.Message}", "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                // Handle error appropriately, maybe disable features or close app
-                // For now, disable the fetch button if service fails to initialize
-                Fetch.Enabled = false; // Assuming 'Fetch' is the design name of your label/button
+                Fetch.Enabled = false;
             }
-            catch (Exception ex) // Catch other potential exceptions during initialization
+            catch (Exception ex)
             {
                 MessageBox.Show($"Failed to initialize Backend API Service: {ex.Message}", "Initialization Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Fetch.Enabled = false;
@@ -364,8 +372,8 @@ namespace FxWorth
                                 if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
-
                                     decimal initialStakeForNextLayer;
+
                                     if (nextLayer == 2)
                                     {
                                         initialStakeForNextLayer = storage.customLayerConfigs.ContainsKey(nextLayer) ?
@@ -379,9 +387,7 @@ namespace FxWorth
                                             currentLevel.InitialStake;
                                     }
 
-
                                     storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
-
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
                                     storage.hierarchyNavigator.currentLevelId = nextLevelId;
                                     storage.hierarchyNavigator.LoadLevelTradingParameters(nextLevelId, client, client.TradingParameters);
@@ -400,11 +406,10 @@ namespace FxWorth
             {
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
-
                     var creds = storage.Clients.FirstOrDefault(x => x.Value == sender).Key;
 
-
                     if (creds == null) continue;
+
                     if (row.Cells[1].Value?.ToString() == creds.Token &&
                         row.Cells[2].Value?.ToString() == creds.AppId)
                     {
@@ -418,7 +423,6 @@ namespace FxWorth
 
                         break;
                     }
-
                 }
             });
         }
@@ -637,7 +641,6 @@ namespace FxWorth
                             {
                                 _backendApiService.SendProfitUpdateAsync(token, client.Pnl).ConfigureAwait(false);
                                 _lastSentStates[token] = (client.Pnl, lastSentStatus);
-                                logger.Debug($"PnL update sent for token {token}: {client.Pnl}");
                             }
                             catch (Exception ex)
                             {
@@ -737,32 +740,11 @@ namespace FxWorth
             Minimize_Notification.BalloonTipTitle = "Keeping It Slick";
         }
 
-        private void OnFormClosing(object sender, FormClosingEventArgs e)
-        {
-            var frm = new Exit_Application();
-
-            if (WindowState == FormWindowState.Minimized)
-            {
-                frm.StartPosition = FormStartPosition.CenterScreen;
-            }
-
-            DialogResult result = frm.ShowDialog(this);
-
-            if (result == DialogResult.Yes)
-            {
-                storage.Dispose();
-                return;
-            }
-
-            e.Cancel = true;
-        }
-
         private void Add_BTN_Click(object sender, EventArgs e)
         {
             var frm = new Adding_New_Token();
             var result = frm.ShowDialog(this);
 
-            // Use DialogResult.OK for confirmation
             if (result != DialogResult.OK)
             {
                 return;
@@ -930,7 +912,7 @@ namespace FxWorth
                 DynamicStake = Stake_TXT.Value,
                 HierarchyLevels = (int)Hierarchy_Levels_TXT.Value,
                 MaxHierarchyDepth = (int)Max_Depth_TXT.Value,
-                InitialStake4Layer1 = (int)Stake_TXT2.Value // Ensure this is captured if needed elsewhere
+                InitialStake4Layer1 = (int)Stake_TXT2.Value
             };
 
             storage.SetHierarchyParameters(phase1Parameters, phase2Parameters, customLayerConfigs);
@@ -1316,7 +1298,6 @@ namespace FxWorth
         {
             if (_isOperatorLoggedIn) return true;
 
-            // Show your Admin_Authorization form as a dialogue
             using (var loginDialog = new Admin_Authorization())
             {
                 var result = loginDialog.ShowDialog(this); 
@@ -1341,7 +1322,6 @@ namespace FxWorth
                     catch (Exception ex)
                     {
                         MessageBox.Show($"An error occurred during login: {ex.Message}", "Login Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        // Log the full exception details
                     }
                     finally
                     {
@@ -1369,12 +1349,11 @@ namespace FxWorth
                     }
                     else
                     {
-                        // Login failed message is shown by LoginOperatorAsync or caught exception
                         _isOperatorLoggedIn = false;
                         return false;
                     }
                 }
-                else // User cancelled the login dialogue
+                else
                 {
                     return false;
                 }
@@ -1397,13 +1376,8 @@ namespace FxWorth
                 using (var dialog = new Subscriber_Fetch(_backendApiService))
                 {
                     dialog.ShowDialog(this);
-
-                    // Optional: Handle any result from the dialogue if needed
-                    // if (dialog.DialogResult == DialogResult.OK) { ... }
                 }
             }
-            // If not loggedIn, the EnsureOperatorLogin method already handled showing errors or cancellation.
-            // No further action needed here if login failed or was cancelled.
         }
     }
 

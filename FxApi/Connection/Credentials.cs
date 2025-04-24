@@ -7,13 +7,9 @@
     public class Credentials
     {
         public string Name { get; set; }
-
         public string Token { get; set; }
-        
         public string AppId { get; set; }
-
         public bool IsChecked { get; set; }
-
         public decimal ProfitTarget { get; set; }
     }
 }

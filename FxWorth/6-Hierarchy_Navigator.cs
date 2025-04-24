@@ -7,6 +7,10 @@ using NLog;
 
 namespace FxWorth.Hierarchy
 {
+    /// <summary>
+    /// The `HierarchyNavigator` class manages the hierarchy of trading levels for a recovery strategy.
+    /// Its engaged once an api token exceeds its MaxDrawdown.
+    /// </summary>
     public class HierarchyNavigator
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
@@ -22,6 +26,9 @@ namespace FxWorth.Hierarchy
         internal int layer1CompletedLevels = 0;
         private Dictionary<string, AuthClient> levelClients = new Dictionary<string, AuthClient>();
 
+        /// <summary>
+        /// Initializes a new instance of the `HierarchyNavigator` class to navigate through the layers and thier levels of the hierarchy instance engaged
+        /// </summary>
         public HierarchyNavigator(decimal amountToBeRecovered, TradingParameters tradingParameters, PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1, TokenStorage storage)
         {
             this.hierarchyLevelsCount = tradingParameters.HierarchyLevels;
@@ -39,6 +46,7 @@ namespace FxWorth.Hierarchy
             }
         }
 
+        // This method is used to assign a client to a specific level in the hierarchy.
         public void AssignClientToLevel(string levelId, AuthClient client)
         {
             if (hierarchyLevels.ContainsKey(levelId))
@@ -47,12 +55,20 @@ namespace FxWorth.Hierarchy
                 LoadLevelTradingParameters(levelId, client, client.TradingParameters);
             }
         }
-
+        // This method is used to retrieve the client associated with a specific level in the hierarchy.
         public AuthClient GetClientForLevel(string levelId)
         {
             return levelClients.TryGetValue(levelId, out var client) ? client : null;
         }
 
+        /// <summary>
+        /// Method called when a clients api token exceeds its MaxDrawdown, creating a hierarchy of levels and layer to aid recovery.
+        /// Exits Root level trading and enters the hierarchy mode.
+        /// </summary>
+        /// <param name="amountToBeRecovered"> This is the amount to be recovered from the previous level.</param>
+        /// <param name="tradingParameters"> Takes in the trading parameters of the client.</param>
+        /// <param name="customLayerConfigs"> Infers the custom layer configurations for the client from the storage.</param>
+        /// <param name="initialStakeLayer1"> This is the initial stake to be used for the first layer.</param>
         private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1)
         {
             IsInHierarchyMode = true; // Enter hierarchy mode
@@ -71,6 +87,7 @@ namespace FxWorth.Hierarchy
             currentLevelId = "1.1";
         }
 
+        /// This Create Layer method is called when the maximum drawdown in a level is reached.
         public void CreateLayer(int layerNumber, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
         {
             CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, customLayerConfigs);
@@ -120,6 +137,9 @@ namespace FxWorth.Hierarchy
             }
         }
 
+        /// <summary>
+        /// The `HierarchyLevel` class represents a single level in the hierarchy of the trading strategy.
+        /// </summary>
         public class HierarchyLevel
         {
             public string LevelId { get; set; }
@@ -143,6 +163,7 @@ namespace FxWorth.Hierarchy
             }
         }
 
+        // This method moves through the hierarchy levels based on the current level ID.
         public void MoveToNextLevel(AuthClient client)
         {
             logger.Info($"Exiting Level: {currentLevelId}");
@@ -188,6 +209,7 @@ namespace FxWorth.Hierarchy
             logger.Info($"Moving up to parent level: {currentLevelId}");
         }
 
+        /// This method is responsible for loading the necessary trading parameters to be used inside the hierarchy.
         public void LoadLevelTradingParameters(string levelId, AuthClient client, TradingParameters tradingParameters)
         {
             if (!hierarchyLevels.TryGetValue(levelId, out HierarchyLevel level))

@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
-// Define a DTO for the login response (adjust properties based on actual backend response)
 public class LoginResponseDto
 {
     [JsonProperty("token")]
@@ -25,7 +24,10 @@ public class TradingQueueItemDto
     public decimal ProfitTargetAmount { get; set; }
 }
 
-
+/// <summary>
+/// This Class is responsible for managing the connection to the backend API and SignalR.
+/// Connects to the FxWorth Backend Service responsible for fetching subsrcribers to allow for easy communication between account manger and clients
+/// </summary>
 namespace FxBackendClient
 {
     public class BackendApiService : IDisposable
@@ -146,7 +148,7 @@ namespace FxBackendClient
                 Console.WriteLine($"SignalR connection closed: {error?.Message}");
                 if (!_isDisposed)
                 {
-                    ScheduleSignalRReconnect();
+                    await Task.Run(() => ScheduleSignalRReconnect());
                 }
             };
 
@@ -168,6 +170,7 @@ namespace FxBackendClient
             await StartSignalRWithRetryAsync();
         }
 
+        /// Attempts to start the SignalR connection with retry logic.
         private async Task StartSignalRWithRetryAsync()
         {
             if (_signalRConnection == null || _isDisposed) return;
@@ -187,6 +190,7 @@ namespace FxBackendClient
             }
         }
 
+        /// Schedules a reconnection attempt with exponential backoff and jitter.
         private void ScheduleSignalRReconnect()
         {
             if (_reconnectionTimer.Enabled || _isDisposed) return;
@@ -206,12 +210,10 @@ namespace FxBackendClient
             else
             {
                 Console.WriteLine("Max SignalR reconnection attempts reached. Will not retry automatically for a while.");
-                // Optionally, schedule a longer-term retry (e.g., 5 minutes)
-                // _reconnectionTimer.Interval = 300000;
-                // _reconnectionTimer.Start();
             }
         }
 
+        /// Attempts to reconnect SignalR when the timer elapses.
         private async Task AttemptSignalRReconnect()
         {
             if (!_isDisposed)
@@ -221,18 +223,12 @@ namespace FxBackendClient
             }
         }
 
-
-        /// <summary>
         /// Gracefully stops the SignalR connection.
-        /// </summary>
         public async Task DisconnectSignalRAsync()
         {
             if (_signalRConnection != null)
             {
                 _reconnectionTimer.Stop();
-                //_signalRConnection.Closed -= SignalRConnection_Closed;
-                //_signalRConnection.Reconnecting -= SignalRConnection_Reconnecting;
-                //_signalRConnection.Reconnected -= SignalRConnection_Reconnected;
 
                 if (_signalRConnection.State != HubConnectionState.Disconnected)
                 {
@@ -246,7 +242,6 @@ namespace FxBackendClient
                         Console.WriteLine($"Error stopping SignalR connection: {ex.Message}");
                     }
                 }
-                //_signalRConnection.Dispose();
                 _signalRConnection = null;
                 _isSignalRConnected = false;
                 Console.WriteLine("SignalR connection disposed.");
@@ -303,14 +298,12 @@ namespace FxBackendClient
             }
         }
 
-
-        // --- Placeholder Methods for Sending Updates via SignalR (maybe called from your FxApi/Trading Logic) ---
-
+        // --- Placeholder Methods for Sending Updates via SignalR ---
         public async Task SendProfitUpdateAsync(string apiTokenValue, decimal newProfit)
         {
             if (!_isSignalRConnected || _signalRConnection == null)
             {
-                Console.WriteLine($"SignalR not connected. Cannot send profit update for {apiTokenValue}.");
+                //Console.WriteLine($"SignalR not connected. Cannot send profit update for {apiTokenValue}.");
                 return;
             }
             try
@@ -324,6 +317,7 @@ namespace FxBackendClient
             }
         }
 
+        /// Sends a status update to the SignalR hub.
         public async Task SendStatusUpdateAsync(string apiTokenValue, string newStatus)
         {
             if (!_isSignalRConnected || _signalRConnection == null)
@@ -342,6 +336,7 @@ namespace FxBackendClient
             }
         }
 
+        /// Sends a trading ping to the SignalR hub.
         public async Task SendTradingPingAsync(string apiTokenValue)
         {
             if (!_isSignalRConnected || _signalRConnection == null)

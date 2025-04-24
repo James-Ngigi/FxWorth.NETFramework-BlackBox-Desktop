@@ -73,7 +73,7 @@
             this.No_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.No_BTN.Name = "No_BTN";
             this.No_BTN.Size = new System.Drawing.Size(120, 33);
-            this.No_BTN.TabIndex = 25;
+            this.No_BTN.TabIndex = 2;
             this.No_BTN.Text = "  Nope";
             this.No_BTN.UseVisualStyleBackColor = false;
             // 
@@ -89,7 +89,7 @@
             this.Yes_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Yes_BTN.Name = "Yes_BTN";
             this.Yes_BTN.Size = new System.Drawing.Size(120, 33);
-            this.Yes_BTN.TabIndex = 20;
+            this.Yes_BTN.TabIndex = 1;
             this.Yes_BTN.Text = "  Yeah";
             this.Yes_BTN.UseVisualStyleBackColor = false;
             // 

@@ -83,7 +83,7 @@
             this.Load_Layer_Config_BTN.Location = new System.Drawing.Point(172, 15);
             this.Load_Layer_Config_BTN.Name = "Load_Layer_Config_BTN";
             this.Load_Layer_Config_BTN.Size = new System.Drawing.Size(250, 45);
-            this.Load_Layer_Config_BTN.TabIndex = 2;
+            this.Load_Layer_Config_BTN.TabIndex = 7;
             this.Load_Layer_Config_BTN.Text = "Load Configuration";
             this.Load_Layer_Config_BTN.UseVisualStyleBackColor = false;
             this.Load_Layer_Config_BTN.Click += new System.EventHandler(this.Load_Layer_Config_BTN_Click);
@@ -95,7 +95,7 @@
             this.Select_Layer_CMBX.Location = new System.Drawing.Point(345, 158);
             this.Select_Layer_CMBX.Name = "Select_Layer_CMBX";
             this.Select_Layer_CMBX.Size = new System.Drawing.Size(178, 33);
-            this.Select_Layer_CMBX.TabIndex = 3;
+            this.Select_Layer_CMBX.TabIndex = 1;
             // 
             // Barrier_Offset_LBL3
             // 
@@ -176,7 +176,7 @@
             131072});
             this.Barrier_Offset_TXT3.Name = "Barrier_Offset_TXT3";
             this.Barrier_Offset_TXT3.Size = new System.Drawing.Size(178, 34);
-            this.Barrier_Offset_TXT3.TabIndex = 17;
+            this.Barrier_Offset_TXT3.TabIndex = 3;
             this.Barrier_Offset_TXT3.ThousandsSeparator = true;
             this.Barrier_Offset_TXT3.Value = new decimal(new int[] {
             30,
@@ -201,7 +201,7 @@
             0});
             this.Martingale_Level_TXT3.Name = "Martingale_Level_TXT3";
             this.Martingale_Level_TXT3.Size = new System.Drawing.Size(177, 34);
-            this.Martingale_Level_TXT3.TabIndex = 18;
+            this.Martingale_Level_TXT3.TabIndex = 5;
             this.Martingale_Level_TXT3.ThousandsSeparator = true;
             this.Martingale_Level_TXT3.Value = new decimal(new int[] {
             1,
@@ -221,7 +221,7 @@
             0});
             this.Hierarchy_Levels_TXT2.Name = "Hierarchy_Levels_TXT2";
             this.Hierarchy_Levels_TXT2.Size = new System.Drawing.Size(178, 34);
-            this.Hierarchy_Levels_TXT2.TabIndex = 19;
+            this.Hierarchy_Levels_TXT2.TabIndex = 4;
             this.Hierarchy_Levels_TXT2.ThousandsSeparator = true;
             this.Hierarchy_Levels_TXT2.Value = new decimal(new int[] {
             2,
@@ -247,7 +247,7 @@
             0});
             this.Max_Drawdown_TXT3.Name = "Max_Drawdown_TXT3";
             this.Max_Drawdown_TXT3.Size = new System.Drawing.Size(178, 34);
-            this.Max_Drawdown_TXT3.TabIndex = 20;
+            this.Max_Drawdown_TXT3.TabIndex = 6;
             this.Max_Drawdown_TXT3.ThousandsSeparator = true;
             this.Max_Drawdown_TXT3.Value = new decimal(new int[] {
             8,
@@ -297,7 +297,7 @@
             65536});
             this.Stake_TXT3.Name = "Stake_TXT3";
             this.Stake_TXT3.Size = new System.Drawing.Size(178, 34);
-            this.Stake_TXT3.TabIndex = 23;
+            this.Stake_TXT3.TabIndex = 2;
             this.Stake_TXT3.ThousandsSeparator = true;
             this.Stake_TXT3.Value = new decimal(new int[] {
             4,

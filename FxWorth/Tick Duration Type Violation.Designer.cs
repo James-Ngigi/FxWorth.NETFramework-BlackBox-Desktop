@@ -60,7 +60,7 @@
             this.Okay_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Okay_BTN.Name = "Okay_BTN";
             this.Okay_BTN.Size = new System.Drawing.Size(129, 34);
-            this.Okay_BTN.TabIndex = 18;
+            this.Okay_BTN.TabIndex = 1;
             this.Okay_BTN.TabStop = false;
             this.Okay_BTN.Text = "Okay";
             this.Okay_BTN.UseVisualStyleBackColor = false;
