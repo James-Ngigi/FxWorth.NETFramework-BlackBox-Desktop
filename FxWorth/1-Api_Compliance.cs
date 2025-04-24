@@ -40,6 +40,7 @@ namespace FxWorth
             DeleteOldArchivedFiles();
         }
 
+        // Moves log files older than 24 hrs to archive folder
         private void MoveOldLogFiles()
         {
             try
@@ -70,6 +71,7 @@ namespace FxWorth
             }
         }
 
+        // Deletes log files older than 72 hrs 10 minutes into trading
         private void DeleteOldArchivedFiles()
         {
             try

@@ -18,22 +18,10 @@ namespace FxApi
     /// </summary>
     public class AuthClient : BinaryClientBase
     {
-        // Logger for recording authentication, balance, trade placement, and outcome information.
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
-        // Holds the authorization information received from the Deriv API after successful authentication.
-        // Contains details about the account, balance, and permissions.
         private Authorize authInfo;
-
-        // Event raised when the account balance changes. Used to notify the UI or other components about balance updates.
         public EventHandler<EventArgs> BalanceChanged;
-
-        // Event raised when authentication with the Deriv API fails. 
-        // Indicates an issue with the provided API token or App ID.
         public EventHandler<EventArgs> AuthFailed;
-
-        // Event raised when a trade's state changes (e.g., new trade placed, trade closed, trade outcome updated). 
-        // Used to notify the UI or other components about trade updates.
         public EventHandler<TradeEventArgs> TradeChanged;
 
         public string GetToken()
@@ -52,44 +40,21 @@ namespace FxApi
             tradeIdCounter = initialCounter;
         }
 
-        // The trading parameters associated with this client, defining the trading strategy and risk management rules.
         public virtual TradingParameters TradingParameters { get; set; }
-
-        // The current account balance, updated as trades are executed and balance updates are received from the Deriv API.
         public decimal Balance { get; set; }
-
-        // The current profit and loss (P&L) for this client, calculated based on the outcomes of executed trades.
         public decimal Pnl { get; set; }
-
-        // Timestamp of the last losing trade. Used for implementing time-based trading restrictions (e.g., preventing consecutive trades after a loss).
         public DateTime LossTradeTime { get; set; }
-
-        // Timestamp of the last trade, regardless of outcome. Used for implementing time-based trading restrictions.
         public DateTime AnyTradeTime { get; set; }
-
-        // A counter used to generate unique trade IDs for each trade placed by this client.
         private int tradeIdCounter;
-
-        // A set of request IDs for "buy" requests that are currently pending completion (waiting for a response from the server).
         private HashSet<int> waitingClosedIds = new HashSet<int>();
-
-        // A set of contract IDs for trades that are currently open (waiting for a sell transaction to be received).
         private HashSet<long> waitingContradctIds = new HashSet<long>();
-
-        // A flag indicating whether this client is currently engaged in a trade (a trade is considered "in progress" if the `model` is not null).
         public bool IsTrading => model != null;
-
-        // A counter for tracking the number of transactions processed by this client.
         public int transactionsCounter = 0;
-
-        // Temporary storage for contract ID.
         private long currentContractId;
-
-        // Temporary storage for Transaction time
         private int currentTransactionTime;
 
 
-        /*---------------------------------------------------------------------------------------------------------------------*/
+        /*-------------------------------------------------------TRADING OPERATIONS COMPONENT--------------------------------------------------------------*/
 
 
         /// A `TradeModel` object representing the current trade in progress.
@@ -480,7 +445,7 @@ namespace FxApi
                         return;
                     }
 
-                    //// Log the relevant trade information
+                    //// Log the relevant trade information for client trades
                     //logger.Info("<=> Deal Active....... => Client-ID-> {0} :: Contract ID-> {1} :: Symbol: {2}              :: Acc Balance-> {3:C} :: Stake placed-> {4:C}.",
                     //    Credentials.AppId, // App ID
                     //    trans.transaction.contract_id, // Contract ID
@@ -584,7 +549,6 @@ namespace FxApi
                 else
                 {
                     logger.Error("Failed to parse AppId to integer.");
-                    // Handle the error appropriately (e.g., display an error message, stop trading)
                 }
             }
 
@@ -605,6 +569,7 @@ namespace FxApi
             StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
         }
 
+        // Event handler for when the trading parameters are changed/null.
         private void InitializeTradingParameters(TradingParameters parameters)
         {
             if (TradingParameters != null)
@@ -621,6 +586,7 @@ namespace FxApi
             }
         }
 
+        // Event handler for when the take profit target is reached.
         private void OnTakeProfitReached(object sender, decimal totalProfit)
         {
             // Stop trading by clearing the model and waiting IDs
@@ -628,10 +594,8 @@ namespace FxApi
             waitingClosedIds.Clear();
             waitingContradctIds.Clear();
             
-            // Log the achievement of take profit target
             logger.Info($"<=> Take profit target reached! Total Profit: {totalProfit:C}");
             
-            // Notify the UI that trading has stopped
             StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
         }
     }
@@ -650,231 +614,123 @@ namespace FxApi
     /// </summary>
     public class PriceProposal
     {
-        // The amount to be staked on the trade.
         public decimal amount { get; set; } = 1;
-
-        // The price barrier offset for the trade.
         public string barrier { get; set; }
-
-        // The basis for the trade payout. Typically set to "stake" for binary options.
         public string basis { get; set; } = "stake";
-
-        // The type of contract ("CALL" for Buy/Higher, "PUT" for Sell/Lower).
         public string contract_type { get; set; }
-
-        // The currency in which the trade will be executed (e.g., "USD").
         public string currency { get; set; }
-
-        // The duration of the trade.
         public int duration { get; set; }
-
-        // The unit of time for the trade duration (e.g., "t", "s", "m", "h", "d" for Ticks, Seconds, Minutes, Hours, Days).
         public string duration_unit { get; set; }
-
-        // The trading symbol for the trade (e.g., "1HZ50V").
         public string symbol { get; set; }
     }
 
     /// Represents an individual account within the authorized user's account list.
     public class AccountList
     {
-        // The currency of the account (e.g., "USD, EUR or even crypto").
         public string currency { get; set; }
-
-        // A flag indicating whether the account is disabled.
         public int is_disabled { get; set; }
-
-        // A flag indicating whether the account is a virtual (demo) account.
         public int is_virtual { get; set; }
-
-        // The name of the landing company associated with the account.
         public string landing_company_name { get; set; }
-
-        // The login ID of the account.
         public string loginid { get; set; }
     }
 
     /// <summary>
-    /// Contains detailed information about the authorized user, including their accounts, balance, and permissions.
+    /// DTO containing detailed information about the authorized user, including their accounts, balance, and permissions.
     /// This information is received in response to a successful authorization request.
     /// </summary>
     public class Authorize
     {
-        // A list of accounts associated with the authorized user.
         public List<AccountList> account_list { get; set; }
-
-        // The account balance of the authorized user.
         public decimal balance { get; set; }
-
-        // The country of the authorized user.
         public string country { get; set; }
-
-        // The currency of the authorized user's main account.
         public string currency { get; set; }
-
-        // The email address of the authorized user.
         public string email { get; set; }
-
-        // The full name of the authorized user.
         public string fullname { get; set; }
-
-        // A flag indicating whether the authorized user's main account is a virtual account.
         public int is_virtual { get; set; }
-
-        // The full name of the landing company associated with the authorized user.
         public string landing_company_fullname { get; set; }
-
-        // The name of the landing company associated with the authorized user.
         public string landing_company_name { get; set; }
-
-        // Local currencies information (if applicable).
         public object local_currencies { get; set; }
-
-        // The login ID of the authorized user.
         public string loginid { get; set; }
-
-        // A list of permissions granted to the authorized user.
         public List<string> scopes { get; set; }
-
-        // A list of landing companies that the authorized user can upgrade to.
         public List<string> upgradeable_landing_companies { get; set; }
-
-        // The user ID of the authorized user.
         public int user_id { get; set; }
     }
 
     /// Represents the server's response to an authorization request.
     public class AuthResponse
     {
-        // The authorization information for the authenticated user.
         public Authorize authorize { get; set; }
-
-        // An echo of the original request (if applicable).
         public object echo_req { get; set; }
-
-        // The message type, indicating the purpose of the message. For authorization responses, this is "authorize".
         public string msg_type { get; set; }
     }
 
     /// Represents a request to buy a contract (place a trade).
     public class BuyContractRequest
     {
-        // A flag indicating that this is a buy request.
         public string buy { get; set; } = "1";
-
-        /// The price proposal parameters for the trade.
         public PriceProposal parameters { get; set; }
-
-        // The price (stake) to be used for the contract.
         public decimal price { get; set; }
-
-        // A unique request ID for this buy request. Used to match the request with the server's response.
         public int req_id { get; set; } = Environment.TickCount;
     }
 
     /// Represents a request to get the current account balance.
     public class BalanceRequest
     {
-        // The account for which the balance is requested. Typically set to "current" for the main account.
         public string account { get; set; } = "current";
-
-        // A flag indicating that this is a balance request.
         public decimal balance { get; set; } = 1;
     }
 
     /// Represents a request to get the profit table for completed trades.
     public class ProfitTableRequest
     {
-        // A flag indicating that this is a profit table request.
         public int profit_table { get; set; } = 1;
-
-        // A flag indicating whether to include descriptions in the profit table.
         public int description { get; set; } = 0;
     }
 
     /// Represents the account balance information.
     public class Balance
     {
-        /// The current account balance.
         public decimal balance { get; set; }
-
-        /// The currency of the balance.
         public string currency { get; set; }
-
-        /// The login ID of the account.
         public string loginid { get; set; }
     }
 
     /// Represents a message from the server containing the account balance information.
     public class BalanceMessage
     {
-        /// The balance information for the account.
         public Balance balance { get; set; }
-
-        /// The message type, indicating the purpose of the message. For balance updates, this is "balance".
         public string msg_type { get; set; }
     }
 
     /// Represents a request to subscribe to transaction updates (including trade outcomes).
     public class TransactionsRequest
     {
-        /// A flag indicating that this is a transaction request.
         public int transaction { get; set; } = 1;
-
-        /// A flag indicating that the client wants to subscribe to transaction updates.
         public int subscribe { get; set; } = 1;
     }
 
     /// Represents a transaction on the account, including trade openings, closings, and other balance adjustments.
     public class Transaction
     {
-        // The type of transaction (e.g., "buy", "sell", "deposit", "withdrawal").
         public string action { get; set; }
-
-        // The amount of the transaction.
         public decimal amount { get; set; }
-
-        // The account balance after the transaction.
         public decimal balance { get; set; }
-
-        // The price barrier offset for the transaction (if applicable).
         public string barrier { get; set; }
-
-        // The ID of the contract associated with the transaction (if applicable).
         public long contract_id { get; set; }
-
-        // The currency of the transaction (e.g., "USD").
         public string currency { get; set; }
-
-        // The expiry date of the contract (if applicable).
         public int date_expiry { get; set; }
-
-        // The display name of the transaction (if applicable).
         public string display_name { get; set; }
-
-        // The transaction ID.
         public string id { get; set; }
-
-        // A long code describing the transaction (if applicable).
         public string longcode { get; set; }
-
-        // The trading symbol for the transaction (if applicable).
         public string symbol { get; set; }
-
-        // The server-generated transaction ID.
         public long transaction_id { get; set; }
-
-        // The timestamp of the transaction (in Unix time).
         public int transaction_time { get; set; }
     }
 
     /// Represents a message from the server containing transaction information.
     public class TransactionMessage
     {
-        // The message type, indicating the purpose of the message. For transaction notifications, this is "transaction".
         public string msg_type { get; set; }
-
-        // The transaction details.
         public Transaction transaction { get; set; }
     }
 
@@ -884,10 +740,7 @@ namespace FxApi
     /// </summary>
     public class TradeModel
     {
-        // The API token associated with the account that placed the trade.
         public string Token { get; set; }
-
-        // The unique ID of the trade.
         public int Id { get; set; }
 
         // The current state of the trade (e.g., Buying, Purchased).
@@ -896,25 +749,13 @@ namespace FxApi
         // The result of the trade (e.g., In-The-Money (ITM), Out-of-The-Money (OTM)).
         public TradeResult TradeResult => Profit > 0 ? TradeResult.ITM : TradeResult.OTM;
 
-        // The profit or loss of the trade.
         public decimal Profit { get; set; }
-
-        // The stake amount for the trade.
         public decimal Stake { get; set; }
-
-        // A flag indicating whether the trade is closed (completed).
         public bool IsClosed { get; set; }
-
-        // A flag indicating whether the trade failed (e.g., due to an error).
         public bool IsFailed { get; set; }
 
-        // A list of potential payouts for the trade (used for calculating estimated profits).
         public List<decimal> Payouts = new List<decimal>();
-
-        /// <summary>
         /// Returns a string representation of the trade model, including all relevant details.
-        /// <returns>A string representation of the trade model.</returns>
-        /// </summary>
         public override string ToString()
         {
             return $"{nameof(Payouts)}: {string.Join(";", Payouts)}, {nameof(Token)}: {Token}, {nameof(Id)}: {Id}, {nameof(TradeState)}: {TradeState}, {nameof(TradeResult)}: {TradeResult}, {nameof(Profit)}: {Profit}, {nameof(Stake)}: {Stake}, {nameof(IsClosed)}: {IsClosed}, {nameof(IsFailed)}: {IsFailed}";
@@ -948,10 +789,6 @@ namespace FxApi
         public TradeModel Model { get; }
         public AuthClient Client { get; }
 
-        /// <summary>
-        /// Constructor for `TradeEventArgs`.
-        /// <param name="model">The updated trade model.</param>
-        /// </summary>
         public TradeEventArgs(TradeModel model, AuthClient client)
         {
             Model = model;
@@ -962,48 +799,27 @@ namespace FxApi
     /// Represents the server's response to a profit table request.
     public class ProfitTableResponse
     {
-        // The message type, indicating the purpose of the message. For profit table responses, this is "profit_table".
         public string msg_type { get; set; }
-
-        // The profit table containing information about completed trades.
         public ProfitTable profit_table { get; set; }
     }
 
     /// Represents the profit table containing details about completed trades.
     public class ProfitTable
     {
-        // The number of trades in the profit table.
         public int count { get; set; }
-
-        // A list of historical transactions representing completed trades.
         public List<HistoryTransaction> transactions { get; set; }
     }
 
     /// Represents a historical transaction, typically retrieved from the profit table.
     public class HistoryTransaction
     {
-        // The application ID associated with the trade.
         public int app_id { get; set; }
-
-        // The buy price of the contract.
         public decimal buy_price { get; set; }
-
-        // The contract ID for the trade.
         public long contract_id { get; set; }
-
-        // The payout amount for the trade.
         public decimal payout { get; set; }
-
-        // The timestamp of the trade purchase (in Unix time).
         public long purchase_time { get; set; }
-
-        // The sell price of the contract.
         public decimal sell_price { get; set; }
-
-        // The timestamp of the trade sell (in Unix time).
         public long sell_time { get; set; }
-
-        // The server-generated transaction ID for the trade.
         public long transaction_id { get; set; }
     }
 }

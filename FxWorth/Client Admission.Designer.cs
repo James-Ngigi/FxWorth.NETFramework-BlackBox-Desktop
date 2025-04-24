@@ -141,7 +141,7 @@
             this.Add_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Add_BTN.Name = "Add_BTN";
             this.Add_BTN.Size = new System.Drawing.Size(115, 32);
-            this.Add_BTN.TabIndex = 3;
+            this.Add_BTN.TabIndex = 4;
             this.Add_BTN.Text = "+ Add";
             this.Add_BTN.UseVisualStyleBackColor = false;
             // 
@@ -157,7 +157,7 @@
             this.Cancel_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Cancel_BTN.Name = "Cancel_BTN";
             this.Cancel_BTN.Size = new System.Drawing.Size(115, 32);
-            this.Cancel_BTN.TabIndex = 4;
+            this.Cancel_BTN.TabIndex = 5;
             this.Cancel_BTN.Text = "Cancel";
             this.Cancel_BTN.UseVisualStyleBackColor = false;
             // 
@@ -189,7 +189,7 @@
             this.ProfitTargetTXT.Margin = new System.Windows.Forms.Padding(4);
             this.ProfitTargetTXT.Name = "ProfitTargetTXT";
             this.ProfitTargetTXT.Size = new System.Drawing.Size(260, 31);
-            this.ProfitTargetTXT.TabIndex = 23;
+            this.ProfitTargetTXT.TabIndex = 3;
             // 
             // label2
             // 

@@ -43,9 +43,9 @@
             // pictureBox1
             // 
             this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
-            this.pictureBox1.Location = new System.Drawing.Point(202, 52);
+            this.pictureBox1.Location = new System.Drawing.Point(170, 29);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(140, 134);
+            this.pictureBox1.Size = new System.Drawing.Size(203, 177);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
@@ -53,7 +53,7 @@
             // Email_LBL
             // 
             this.Email_LBL.AutoSize = true;
-            this.Email_LBL.Location = new System.Drawing.Point(33, 254);
+            this.Email_LBL.Location = new System.Drawing.Point(32, 225);
             this.Email_LBL.Name = "Email_LBL";
             this.Email_LBL.Size = new System.Drawing.Size(168, 25);
             this.Email_LBL.TabIndex = 19;
@@ -62,7 +62,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(33, 319);
+            this.label1.Location = new System.Drawing.Point(32, 291);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(146, 25);
             this.label1.TabIndex = 20;
@@ -70,27 +70,27 @@
             // 
             // emailTextBox
             // 
-            this.emailTextBox.Location = new System.Drawing.Point(234, 250);
+            this.emailTextBox.Location = new System.Drawing.Point(233, 221);
             this.emailTextBox.Name = "emailTextBox";
             this.emailTextBox.Size = new System.Drawing.Size(278, 32);
-            this.emailTextBox.TabIndex = 21;
+            this.emailTextBox.TabIndex = 1;
             // 
             // passwordTextBox
             // 
-            this.passwordTextBox.Location = new System.Drawing.Point(234, 315);
+            this.passwordTextBox.Location = new System.Drawing.Point(233, 287);
             this.passwordTextBox.Name = "passwordTextBox";
             this.passwordTextBox.Size = new System.Drawing.Size(278, 32);
-            this.passwordTextBox.TabIndex = 22;
+            this.passwordTextBox.TabIndex = 2;
             // 
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.GhostWhite;
             this.panel1.Controls.Add(this.btnLogin);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel1.Location = new System.Drawing.Point(0, 408);
+            this.panel1.Location = new System.Drawing.Point(0, 346);
             this.panel1.Margin = new System.Windows.Forms.Padding(4);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(545, 83);
+            this.panel1.Size = new System.Drawing.Size(543, 83);
             this.panel1.TabIndex = 23;
             // 
             // btnLogin
@@ -101,11 +101,11 @@
             this.btnLogin.FlatAppearance.BorderColor = System.Drawing.SystemColors.InactiveBorder;
             this.btnLogin.FlatAppearance.BorderSize = 0;
             this.btnLogin.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnLogin.Location = new System.Drawing.Point(197, 25);
+            this.btnLogin.Location = new System.Drawing.Point(196, 24);
             this.btnLogin.Margin = new System.Windows.Forms.Padding(4);
             this.btnLogin.Name = "btnLogin";
             this.btnLogin.Size = new System.Drawing.Size(150, 35);
-            this.btnLogin.TabIndex = 20;
+            this.btnLogin.TabIndex = 3;
             this.btnLogin.Text = "Login";
             this.btnLogin.UseVisualStyleBackColor = false;
             // 
@@ -114,7 +114,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.Window;
-            this.ClientSize = new System.Drawing.Size(545, 491);
+            this.ClientSize = new System.Drawing.Size(543, 429);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.passwordTextBox);
             this.Controls.Add(this.emailTextBox);
@@ -122,6 +122,7 @@
             this.Controls.Add(this.Email_LBL);
             this.Controls.Add(this.pictureBox1);
             this.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.HelpButton = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.MaximizeBox = false;

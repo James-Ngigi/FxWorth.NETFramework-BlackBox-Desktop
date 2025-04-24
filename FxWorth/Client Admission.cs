@@ -15,13 +15,11 @@ namespace FxWorth
         {
             get
             {
-                // Use InvariantCulture for consistent decimal parsing
                 if (decimal.TryParse(ProfitTargetTXT.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal target))
                 {
                     return target;
                 }
-                // Return a default or signal an error if parsing fails
-                return 0m; // Or perhaps throw an exception or return null if the property is nullable
+                return 0m;
             }
         }
 
@@ -32,6 +30,7 @@ namespace FxWorth
                 Clipboard.SetText(tokenTextBox.Text);
                 tokenTextBox.Text = string.Empty;
             }
+
             if (appTextBox.Focused)
             {
                 Clipboard.SetText(appTextBox.Text);
@@ -45,6 +44,7 @@ namespace FxWorth
             {
                 Clipboard.SetText(tokenTextBox.Text);
             }
+
             if (appTextBox.Focused)
             {
                 Clipboard.SetText(appTextBox.Text);
@@ -57,6 +57,7 @@ namespace FxWorth
             {
                 tokenTextBox.Text = Clipboard.GetText();
             }
+
             if (appTextBox.Focused)
             {
                 appTextBox.Text = Clipboard.GetText();

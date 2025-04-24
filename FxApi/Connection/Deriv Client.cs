@@ -69,7 +69,6 @@ namespace FxApi
                 logger.Warn("<=> WebSocket is not open. Cannot send data.");
                 return; 
             }
-
             try
             {
                 await reconnectLock.WaitAsync();
@@ -81,7 +80,6 @@ namespace FxApi
                     sock.Send(str);
                 }
             }
-
             catch (Exception ex)
             {
                 if (!isDisposed)
@@ -94,7 +92,6 @@ namespace FxApi
                     AttemptReconnectWithBackoff();
                 }
             }
-
             finally
             {
                 reconnectLock.Release();
@@ -108,7 +105,6 @@ namespace FxApi
                 logger.Warn("<=> WebSocket is not open. Cannot send data.");
                 return;
             }
-
             try
             {
                 await reconnectLock.WaitAsync();
@@ -154,13 +150,11 @@ namespace FxApi
 
             try
             {
-                // Create a new WebSocket instance with specified parameters.
                 sock = new WebSocket(websocketPath, sslProtocols: SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls)
                 {
                     NoDelay = true // Disable Nagle's algorithm for better latency.
                 };
 
-                // Attach event handlers for WebSocket events.
                 sock.Opened += SockOnOpened;
                 sock.Error += SockOnError;
                 sock.Closed += SockOnClosed;
@@ -168,10 +162,8 @@ namespace FxApi
                 sock.DataReceived += SockOnDataReceived;
 
                 connectionTimeoutTimer = new Timer(OnConnectionTimeout, null, TimeSpan.FromSeconds(10), Timeout.InfiniteTimeSpan);
-
                 sock.Open();
             }
-
             catch (Exception ex)
             {
                 logger.Error(ex, "<=> Error creating WebSocket instance.");
@@ -204,7 +196,6 @@ namespace FxApi
             logger.Info("<=> Server - Client {0} link terminated. Attempting Reconnection", Credentials.Name);
             IsOnline = false;
 
-
             if (!isDisposed)
             {
                 var closedEventArgs = e as ClosedEventArgs;
@@ -224,7 +215,6 @@ namespace FxApi
                     {
                         AttemptReconnectWithBackoff();
                     }
-
                 }
 
                 else
@@ -232,7 +222,6 @@ namespace FxApi
                     AttemptReconnectWithBackoff();
                 }
             }
-
         }
 
         /// <summary>
@@ -249,8 +238,8 @@ namespace FxApi
             {
                 int reconnectDelayMs = (int)(Math.Pow(2, reconnectAttempts - 1) * reconnectDelayIncrement.TotalMilliseconds);
                 reconnectDelayMs = new Random().Next(reconnectDelayMs / 2, reconnectDelayMs * 3 / 2);
-
                 int maxReconnectDelayMs = (int)maxReconnectDelay.TotalMilliseconds;
+
                 if (reconnectDelayMs > maxReconnectDelayMs)
                 {
                     reconnectDelayMs = maxReconnectDelayMs;
@@ -265,14 +254,12 @@ namespace FxApi
                     {
                         StartInternal();
                     }
-
                 }
                 catch (TaskCanceledException)
                 {
                     logger.Info("<=> Reconnection attempt cancelled.");
                 }
             }
-
             else
             {
                 logger.Error($"<=> Maximum reconnection attempts reached or client disposed ({reconnectAttempts}). Stopping further attempts.");

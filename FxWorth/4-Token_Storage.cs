@@ -521,14 +521,13 @@ namespace FxWorth
         public List<Credentials> Credentials { get; set; } = new List<Credentials>();
         public bool IsTradingAllowed { get; set; }
 
-        // Renamed parameter for clarity, added comments
+        /// Sets the trading parameters for each managed `AuthClient` instance based on the provided base parameters.
         public void SetTradingParameters(TradingParameters baseParameters)
         {
-            // Iterate through the dictionary to easily access both Credentials (key) and AuthClient (value)
             foreach (var clientPair in clients)
             {
-                var credentials = clientPair.Key; // The Credentials object holding the individual ProfitTarget
-                var client = clientPair.Value;    // The AuthClient instance
+                var credentials = clientPair.Key;
+                var client = clientPair.Value;
 
                 // Unsubscribe from the old TradingParameters event if we are replacing it
                 if (client.TradingParameters != null)
@@ -536,27 +535,19 @@ namespace FxWorth
                     client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
                 }
 
-                // Clone the base parameters (from UI) to create an independent object for this client
                 var clientParameters = (TradingParameters)baseParameters.Clone();
-
-                // --- Modification Start ---
-                // Override the TakeProfit in the cloned object with the specific value
-                // stored in this client's Credentials.
+                
                 clientParameters.TakeProfit = credentials.ProfitTarget;
-                // --- Modification End ---
-
-
-                // Subscribe the event handler to the *new* client-specific parameters object
+                
                 clientParameters.TakeProfitReached += OnTakeProfitReached;
 
-                // Assign the fully configured, client-specific parameters object to the client
                 client.TradingParameters = clientParameters;
 
-                // Optional: Log the applied TakeProfit for verification
                 logger.Debug($"<=> Applied TakeProfit {clientParameters.TakeProfit} to client {credentials.AppId}");
             }
         }
 
+        /// Event handler triggered when the take profit target is reached for a managed `AuthClient` instance.
         private void OnTakeProfitReached(object sender, decimal totalProfit)
         {
             var tradingParameters = (TradingParameters)sender;
@@ -579,6 +570,7 @@ namespace FxWorth
             ClientsStateChanged?.Raise(client, EventArgs.Empty);
         }
 
+        /// Event handler triggered when a trade update is received from a managed `AuthClient` instance.
         private void OnTradeUpdate(object sender, TradeEventArgs e)
         {
             lock (tradeUpdateLock)
@@ -612,6 +604,7 @@ namespace FxWorth
             }
         }
 
+        // Handles trade updates in hierarchy mode, processing the trade model and updating the hierarchy level.
         private void HandleHierarchyTradeUpdate(TradeModel model, AuthClient client)
         {
             HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
@@ -647,6 +640,7 @@ namespace FxWorth
             }
         }
 
+        // Creates a new layer in the hierarchy based on the current level and assigns the client to it.
         private void CreateNewLayer(HierarchyLevel currentLevel, AuthClient client)
         {
             int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
@@ -673,6 +667,7 @@ namespace FxWorth
             logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
         }
 
+        // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
             client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
@@ -683,6 +678,7 @@ namespace FxWorth
             }
         }
 
+        // Enters hierarchy mode for a specific client, initializing the hierarchy navigator and assigning the client to the first level.
         private void EnterHierarchyMode(AuthClient client)
         {
             hierarchyClient = client;

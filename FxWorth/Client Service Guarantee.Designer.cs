@@ -51,7 +51,7 @@
             this.Okay_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Okay_BTN.Name = "Okay_BTN";
             this.Okay_BTN.Size = new System.Drawing.Size(129, 35);
-            this.Okay_BTN.TabIndex = 20;
+            this.Okay_BTN.TabIndex = 1;
             this.Okay_BTN.Text = "Noted";
             this.Okay_BTN.UseVisualStyleBackColor = false;
             // 

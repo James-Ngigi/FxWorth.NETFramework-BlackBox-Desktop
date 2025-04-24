@@ -14,11 +14,13 @@ namespace FxWorth
     {
         public string EnteredEmail => emailTextBox.Text;
         public string EnteredPassword => passwordTextBox.Text;
+        public bool LoginRequested { get; private set; }
 
         public Admin_Authorization()
         {
             InitializeComponent();
             this.AcceptButton = btnLogin;
+            this.LoginRequested = false;    
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
@@ -27,17 +29,30 @@ namespace FxWorth
             if (string.IsNullOrWhiteSpace(EnteredEmail) || string.IsNullOrWhiteSpace(EnteredPassword))
             {
                 MessageBox.Show("Please enter both email and password.", "Input Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                this.DialogResult = DialogResult.None;
                 return;
             }
 
+            this.LoginRequested = true;
             this.DialogResult = DialogResult.OK;
-            this.Close();
         }
 
         private void Admin_Authorization_Load(object sender, EventArgs e)
         {
 
+        }
+
+        public void DisableControls()
+        {
+            btnLogin.Enabled = false;
+            emailTextBox.Enabled = false;
+            passwordTextBox.Enabled = false;
+        }
+
+        public void EnableControls()
+        {
+            btnLogin.Enabled = true;
+            emailTextBox.Enabled = true;
+            passwordTextBox.Enabled = true;
         }
     }
 }

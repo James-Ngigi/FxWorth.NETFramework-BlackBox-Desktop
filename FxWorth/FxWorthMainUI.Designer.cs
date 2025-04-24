@@ -163,7 +163,7 @@
             this.Setup_GRBX.Name = "Setup_GRBX";
             this.Setup_GRBX.Padding = new System.Windows.Forms.Padding(4);
             this.Setup_GRBX.Size = new System.Drawing.Size(897, 939);
-            this.Setup_GRBX.TabIndex = 3;
+            this.Setup_GRBX.TabIndex = 1;
             this.Setup_GRBX.TabStop = false;
             this.Setup_GRBX.Text = "Setup";
             // 
@@ -184,7 +184,7 @@
             this.RSI_Indicator_Settings_GRBX.Name = "RSI_Indicator_Settings_GRBX";
             this.RSI_Indicator_Settings_GRBX.Padding = new System.Windows.Forms.Padding(4);
             this.RSI_Indicator_Settings_GRBX.Size = new System.Drawing.Size(435, 274);
-            this.RSI_Indicator_Settings_GRBX.TabIndex = 16;
+            this.RSI_Indicator_Settings_GRBX.TabIndex = 5;
             this.RSI_Indicator_Settings_GRBX.TabStop = false;
             this.RSI_Indicator_Settings_GRBX.Text = "RSI Indicator Settings";
             // 
@@ -214,7 +214,7 @@
             this.Close_Interval0_CMBX.Margin = new System.Windows.Forms.Padding(4);
             this.Close_Interval0_CMBX.Name = "Close_Interval0_CMBX";
             this.Close_Interval0_CMBX.Size = new System.Drawing.Size(126, 33);
-            this.Close_Interval0_CMBX.TabIndex = 19;
+            this.Close_Interval0_CMBX.TabIndex = 21;
             // 
             // Oversold_TXT
             // 
@@ -239,13 +239,13 @@
             0});
             this.Oversold_TXT.Name = "Oversold_TXT";
             this.Oversold_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Oversold_TXT.TabIndex = 18;
+            this.Oversold_TXT.TabIndex = 24;
             this.Oversold_TXT.ThousandsSeparator = true;
             this.Oversold_TXT.Value = new decimal(new int[] {
-            525,
+            15,
             0,
             0,
-            65536});
+            0});
             // 
             // Close_Interval0_LBL
             // 
@@ -281,13 +281,13 @@
             0});
             this.Overbought0_TXT.Name = "Overbought0_TXT";
             this.Overbought0_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Overbought0_TXT.TabIndex = 16;
+            this.Overbought0_TXT.TabIndex = 23;
             this.Overbought0_TXT.ThousandsSeparator = true;
             this.Overbought0_TXT.Value = new decimal(new int[] {
-            475,
+            85,
             0,
             0,
-            65536});
+            0});
             // 
             // Period0_TXT
             // 
@@ -306,7 +306,7 @@
             0});
             this.Period0_TXT.Name = "Period0_TXT";
             this.Period0_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Period0_TXT.TabIndex = 15;
+            this.Period0_TXT.TabIndex = 22;
             this.Period0_TXT.ThousandsSeparator = true;
             this.Period0_TXT.Value = new decimal(new int[] {
             2,
@@ -327,7 +327,7 @@
             0});
             this.Close_Interval0_TXT.Name = "Close_Interval0_TXT";
             this.Close_Interval0_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Close_Interval0_TXT.TabIndex = 14;
+            this.Close_Interval0_TXT.TabIndex = 20;
             this.Close_Interval0_TXT.ThousandsSeparator = true;
             this.Close_Interval0_TXT.Value = new decimal(new int[] {
             1,
@@ -378,7 +378,7 @@
             this.Money_Management_GRBX.Name = "Money_Management_GRBX";
             this.Money_Management_GRBX.Padding = new System.Windows.Forms.Padding(4);
             this.Money_Management_GRBX.Size = new System.Drawing.Size(435, 620);
-            this.Money_Management_GRBX.TabIndex = 15;
+            this.Money_Management_GRBX.TabIndex = 6;
             this.Money_Management_GRBX.TabStop = false;
             this.Money_Management_GRBX.Text = "Money Management";
             // 
@@ -419,10 +419,10 @@
             0});
             this.Stake_TXT2.Name = "Stake_TXT2";
             this.Stake_TXT2.Size = new System.Drawing.Size(128, 34);
-            this.Stake_TXT2.TabIndex = 24;
+            this.Stake_TXT2.TabIndex = 28;
             this.Stake_TXT2.ThousandsSeparator = true;
             this.Stake_TXT2.Value = new decimal(new int[] {
-            7,
+            5,
             0,
             0,
             0});
@@ -448,7 +448,7 @@
             this.Custom_Layer_Config_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Custom_Layer_Config_BTN.Name = "Custom_Layer_Config_BTN";
             this.Custom_Layer_Config_BTN.Size = new System.Drawing.Size(370, 34);
-            this.Custom_Layer_Config_BTN.TabIndex = 20;
+            this.Custom_Layer_Config_BTN.TabIndex = 29;
             this.Custom_Layer_Config_BTN.Text = "Custom Layer Configuration";
             this.Custom_Layer_Config_BTN.UseVisualStyleBackColor = false;
             this.Custom_Layer_Config_BTN.Click += new System.EventHandler(this.Custom_Layer_Config_BTN_Click);
@@ -476,7 +476,7 @@
             131072});
             this.Barrier_Offset_TXT2.Name = "Barrier_Offset_TXT2";
             this.Barrier_Offset_TXT2.Size = new System.Drawing.Size(128, 34);
-            this.Barrier_Offset_TXT2.TabIndex = 12;
+            this.Barrier_Offset_TXT2.TabIndex = 27;
             this.Barrier_Offset_TXT2.ThousandsSeparator = true;
             this.Barrier_Offset_TXT2.Value = new decimal(new int[] {
             3565,
@@ -530,7 +530,7 @@
             0});
             this.Max_Drawdown_TXT2.Name = "Max_Drawdown_TXT2";
             this.Max_Drawdown_TXT2.Size = new System.Drawing.Size(128, 34);
-            this.Max_Drawdown_TXT2.TabIndex = 10;
+            this.Max_Drawdown_TXT2.TabIndex = 26;
             this.Max_Drawdown_TXT2.ThousandsSeparator = true;
             this.Max_Drawdown_TXT2.Value = new decimal(new int[] {
             200,
@@ -566,7 +566,7 @@
             0});
             this.Martingale_Level_TXT2.Name = "Martingale_Level_TXT2";
             this.Martingale_Level_TXT2.Size = new System.Drawing.Size(128, 34);
-            this.Martingale_Level_TXT2.TabIndex = 9;
+            this.Martingale_Level_TXT2.TabIndex = 25;
             this.Martingale_Level_TXT2.ThousandsSeparator = true;
             this.Martingale_Level_TXT2.Value = new decimal(new int[] {
             1,
@@ -604,7 +604,7 @@
             0});
             this.Hierarchy_Levels_TXT.Name = "Hierarchy_Levels_TXT";
             this.Hierarchy_Levels_TXT.Size = new System.Drawing.Size(128, 34);
-            this.Hierarchy_Levels_TXT.TabIndex = 15;
+            this.Hierarchy_Levels_TXT.TabIndex = 18;
             this.Hierarchy_Levels_TXT.ThousandsSeparator = true;
             this.Hierarchy_Levels_TXT.Value = new decimal(new int[] {
             2,
@@ -625,10 +625,10 @@
             0});
             this.Max_Depth_TXT.Name = "Max_Depth_TXT";
             this.Max_Depth_TXT.Size = new System.Drawing.Size(128, 34);
-            this.Max_Depth_TXT.TabIndex = 14;
+            this.Max_Depth_TXT.TabIndex = 19;
             this.Max_Depth_TXT.ThousandsSeparator = true;
             this.Max_Depth_TXT.Value = new decimal(new int[] {
-            5,
+            3,
             0,
             0,
             0});
@@ -686,10 +686,10 @@
             0});
             this.Max_Drawdown_TXT1.Name = "Max_Drawdown_TXT1";
             this.Max_Drawdown_TXT1.Size = new System.Drawing.Size(128, 34);
-            this.Max_Drawdown_TXT1.TabIndex = 10;
+            this.Max_Drawdown_TXT1.TabIndex = 17;
             this.Max_Drawdown_TXT1.ThousandsSeparator = true;
             this.Max_Drawdown_TXT1.Value = new decimal(new int[] {
-            150,
+            1500,
             0,
             0,
             0});
@@ -722,7 +722,7 @@
             0});
             this.Martingale_Level_TXT.Name = "Martingale_Level_TXT";
             this.Martingale_Level_TXT.Size = new System.Drawing.Size(128, 34);
-            this.Martingale_Level_TXT.TabIndex = 9;
+            this.Martingale_Level_TXT.TabIndex = 16;
             this.Martingale_Level_TXT.ThousandsSeparator = true;
             this.Martingale_Level_TXT.Value = new decimal(new int[] {
             1,
@@ -746,7 +746,7 @@
             this.API_Token_GRBX.Name = "API_Token_GRBX";
             this.API_Token_GRBX.Padding = new System.Windows.Forms.Padding(4);
             this.API_Token_GRBX.Size = new System.Drawing.Size(879, 275);
-            this.API_Token_GRBX.TabIndex = 20;
+            this.API_Token_GRBX.TabIndex = 3;
             this.API_Token_GRBX.TabStop = false;
             this.API_Token_GRBX.Text = "API Token Management";
             // 
@@ -756,7 +756,7 @@
             this.Fetch.Location = new System.Drawing.Point(844, 246);
             this.Fetch.Name = "Fetch";
             this.Fetch.Size = new System.Drawing.Size(29, 25);
-            this.Fetch.TabIndex = 26;
+            this.Fetch.TabIndex = 10;
             this.Fetch.Text = "⛶";
             this.Fetch.Click += new System.EventHandler(this.Fetch_Click);
             // 
@@ -826,7 +826,7 @@
             this.Main_Token_Table.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.Main_Token_Table.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.Main_Token_Table.Size = new System.Drawing.Size(858, 172);
-            this.Main_Token_Table.TabIndex = 21;
+            this.Main_Token_Table.TabIndex = 9;
             this.Main_Token_Table.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellValueChanged_1);
             // 
             // Column1
@@ -910,7 +910,7 @@
             this.Remove_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Remove_BTN.Name = "Remove_BTN";
             this.Remove_BTN.Size = new System.Drawing.Size(129, 34);
-            this.Remove_BTN.TabIndex = 19;
+            this.Remove_BTN.TabIndex = 8;
             this.Remove_BTN.Text = " - Remove";
             this.Remove_BTN.UseVisualStyleBackColor = false;
             this.Remove_BTN.Click += new System.EventHandler(this.Remove_BTN_Click);
@@ -926,7 +926,7 @@
             this.Add_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Add_BTN.Name = "Add_BTN";
             this.Add_BTN.Size = new System.Drawing.Size(129, 34);
-            this.Add_BTN.TabIndex = 18;
+            this.Add_BTN.TabIndex = 7;
             this.Add_BTN.Text = "+ Add";
             this.Add_BTN.UseVisualStyleBackColor = false;
             this.Add_BTN.Click += new System.EventHandler(this.Add_BTN_Click);
@@ -948,7 +948,7 @@
             this.Trading_Parameters_GRBX.Name = "Trading_Parameters_GRBX";
             this.Trading_Parameters_GRBX.Padding = new System.Windows.Forms.Padding(4);
             this.Trading_Parameters_GRBX.Size = new System.Drawing.Size(435, 276);
-            this.Trading_Parameters_GRBX.TabIndex = 14;
+            this.Trading_Parameters_GRBX.TabIndex = 4;
             this.Trading_Parameters_GRBX.TabStop = false;
             this.Trading_Parameters_GRBX.Text = "Trading Parameters";
             // 
@@ -978,7 +978,7 @@
             this.Duration0_CMBX.Margin = new System.Windows.Forms.Padding(4);
             this.Duration0_CMBX.Name = "Duration0_CMBX";
             this.Duration0_CMBX.Size = new System.Drawing.Size(126, 33);
-            this.Duration0_CMBX.TabIndex = 9;
+            this.Duration0_CMBX.TabIndex = 13;
             // 
             // Stake_TXT
             // 
@@ -1003,7 +1003,7 @@
             65536});
             this.Stake_TXT.Name = "Stake_TXT";
             this.Stake_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Stake_TXT.TabIndex = 13;
+            this.Stake_TXT.TabIndex = 15;
             this.Stake_TXT.ThousandsSeparator = true;
             this.Stake_TXT.Value = new decimal(new int[] {
             123,
@@ -1039,7 +1039,7 @@
             this.Choose_Asset_CMBX.Margin = new System.Windows.Forms.Padding(4);
             this.Choose_Asset_CMBX.Name = "Choose_Asset_CMBX";
             this.Choose_Asset_CMBX.Size = new System.Drawing.Size(248, 33);
-            this.Choose_Asset_CMBX.TabIndex = 14;
+            this.Choose_Asset_CMBX.TabIndex = 11;
             // 
             // Stake_LBL
             // 
@@ -1075,7 +1075,7 @@
             131072});
             this.Barrier_Offset_TXT.Name = "Barrier_Offset_TXT";
             this.Barrier_Offset_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Barrier_Offset_TXT.TabIndex = 11;
+            this.Barrier_Offset_TXT.TabIndex = 14;
             this.Barrier_Offset_TXT.ThousandsSeparator = true;
             this.Barrier_Offset_TXT.Value = new decimal(new int[] {
             35,
@@ -1112,7 +1112,7 @@
             0});
             this.Duration_TXT.Name = "Duration_TXT";
             this.Duration_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Duration_TXT.TabIndex = 8;
+            this.Duration_TXT.TabIndex = 12;
             this.Duration_TXT.ThousandsSeparator = true;
             this.Duration_TXT.Value = new decimal(new int[] {
             5,
@@ -1153,7 +1153,7 @@
             this.Start_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Start_BTN.Name = "Start_BTN";
             this.Start_BTN.Size = new System.Drawing.Size(130, 35);
-            this.Start_BTN.TabIndex = 17;
+            this.Start_BTN.TabIndex = 30;
             this.Start_BTN.Text = "Start";
             this.Start_BTN.UseVisualStyleBackColor = false;
             this.Start_BTN.Click += new System.EventHandler(this.Start_BTN_Click);
@@ -1169,7 +1169,7 @@
             this.Stop_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Stop_BTN.Name = "Stop_BTN";
             this.Stop_BTN.Size = new System.Drawing.Size(130, 35);
-            this.Stop_BTN.TabIndex = 18;
+            this.Stop_BTN.TabIndex = 32;
             this.Stop_BTN.Text = "Stop";
             this.Stop_BTN.UseVisualStyleBackColor = false;
             this.Stop_BTN.Click += new System.EventHandler(this.Stop_BTN_Click);
@@ -1185,7 +1185,7 @@
             this.Pause_BTN.Margin = new System.Windows.Forms.Padding(4);
             this.Pause_BTN.Name = "Pause_BTN";
             this.Pause_BTN.Size = new System.Drawing.Size(130, 35);
-            this.Pause_BTN.TabIndex = 19;
+            this.Pause_BTN.TabIndex = 31;
             this.Pause_BTN.Text = "Pause";
             this.Pause_BTN.UseVisualStyleBackColor = false;
             this.Pause_BTN.Click += new System.EventHandler(this.Pause_BTN_Click);
@@ -1201,7 +1201,7 @@
             this.Trade_Logs_GRBX.Name = "Trade_Logs_GRBX";
             this.Trade_Logs_GRBX.Padding = new System.Windows.Forms.Padding(4);
             this.Trade_Logs_GRBX.Size = new System.Drawing.Size(446, 936);
-            this.Trade_Logs_GRBX.TabIndex = 4;
+            this.Trade_Logs_GRBX.TabIndex = 2;
             this.Trade_Logs_GRBX.TabStop = false;
             this.Trade_Logs_GRBX.Text = "Trade table report";
             // 
@@ -1431,7 +1431,6 @@
             this.Name = "FxWorth";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "FxWorth";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.OnFormClosing);
             this.Load += new System.EventHandler(this.FxWorth_Load);
             this.Resize += new System.EventHandler(this.FxWorth_Resize);
             this.Setup_GRBX.ResumeLayout(false);

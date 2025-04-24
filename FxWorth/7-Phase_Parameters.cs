@@ -1,5 +1,7 @@
 ﻿namespace FxWorth
 {
+    /// <summary>
+    /// Class representing the parameters for a trading phase. Distingishes between the first phase and subsequent phase.
     public class PhaseParameters
     {
         public decimal Barrier { get; set; }
