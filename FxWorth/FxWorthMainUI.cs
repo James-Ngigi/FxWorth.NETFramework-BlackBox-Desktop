@@ -543,16 +543,68 @@ namespace FxWorth
             });
         }
 
+        /// <summary>
+        /// Determines the runtime status of a client based on its current state and trading parameters.
+        /// This method enforces the priority of statuses according to the defined rules.
+        /// </summary>
+        /// <param name="client">The AuthClient instance.</param>
+        /// <param name="credentials">The Credentials for the client.</param>
+        /// <param name="currentGridStatus">The status currently displayed in the grid for this client.</param>
+        /// <param name="isTradingAllowedGlobally">Flag indicating if trading is globally enabled.</param>
+        /// <returns>The determined status string.</returns>
+        private string DetermineClientRuntimeStatus(AuthClient client, Credentials credentials, string currentGridStatus, bool isTradingAllowedGlobally)
+        {
+            if (currentGridStatus == "Invalid")
+            {
+                return "Invalid";
+            }
+
+            if (!client.IsOnline)
+            {
+                if (isTradingAllowedGlobally || currentGridStatus == "Trading" || currentGridStatus == "Analyzing" || currentGridStatus == "Margin Call")
+                {
+                    return "Offline";
+                }
+            }
+
+            if (credentials.ProfitTarget > 0 && client.Pnl >= credentials.ProfitTarget)
+            {
+                return "TakeProfit";
+            }
+
+            var clientParams = client.TradingParameters;
+            bool isSelected = credentials.IsChecked;
+
+            if (isTradingAllowedGlobally && isSelected && clientParams != null)
+            {
+                return "Trading";
+            }
+
+            if (clientParams != null && client.Balance < 2 * clientParams.DynamicStake)
+            {
+                return "Margin Call";
+            }
+
+            if (!isTradingAllowedGlobally && (currentGridStatus == "Trading" || currentGridStatus == "Analyzing"))
+            {
+                return "Analyzing";
+            }
+
+            return "Standby";
+        }
+
         private void ClientsStateChanged(object sender, EventArgs e)
         {
             this.InvokeIfRequired(() =>
             {
                 Valid_Tokens_LBL.Text = string.Format("Valid Accounts: {0}", storage.Clients.Count(x => x.Value.IsOnline));
 
+                // --- Loop through each row in the grid ---
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
                     var token = row.Cells[1].Value?.ToString();
                     var appId = row.Cells[2].Value?.ToString();
+
                     var key = storage.Credentials.FirstOrDefault(x => x.AppId == appId && x.Token == token);
 
                     if (key == null || !storage.Clients.TryGetValue(key, out var client))
@@ -567,66 +619,27 @@ namespace FxWorth
 
                     string currentStatus = row.Cells[5].Value?.ToString();
 
-                    if (string.IsNullOrEmpty(currentStatus))
+                    if (tradingSessionCompleted && (currentStatus == "Completed" || currentStatus == "Incompleted"))
+                    {
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(currentStatus) || currentStatus == "Spooling")
                     {
                         currentStatus = client.IsOnline ? "Standby" : "Offline";
                         row.Cells[5].Value = currentStatus;
                     }
 
-                    string newStatus = currentStatus;
+                    string newStatus = DetermineClientRuntimeStatus(client, credentials, currentStatus, storage.IsTradingAllowed);
 
-                    if (currentStatus == "Invalid")
-                    {
-                        newStatus = "Invalid";
-                    }
-                    else
-                    {
-                        var clientParams = client.TradingParameters;
-                        bool isSelected = (bool)row.Cells[0].Value;
-
-                        if (currentStatus == "Stoploss" || currentStatus == "Completed")
-                        {
-                            newStatus = currentStatus;
-                        }
-                        else if (client.Pnl >= credentials.ProfitTarget)
-                        {
-                            newStatus = "TakeProfit";
-                        }
-                        else if (clientParams != null)
-                        {
-                            if (storage.IsTradingAllowed && isSelected)
-                            {
-                                newStatus = "Trading";
-                            }
-                            else if (client.Balance < 2 * clientParams.DynamicStake && currentStatus != "Standby")
-                            {
-                                newStatus = "Margin Call";
-                            }
-                            else if (!storage.IsTradingAllowed && (currentStatus == "Trading" || currentStatus == "Analyzing"))
-                            {
-                                newStatus = "Analyzing";
-                            }
-                            else
-                            {
-                                newStatus = "Standby";
-                            }
-                        }
-                        else
-                        {
-                            newStatus = "Standby";
-                        }
-                    }
-
-                    // Update status in UI if changed
-                    if (row.Cells[5].Value?.ToString() != newStatus)
+                    if (currentStatus != newStatus)
                     {
                         row.Cells[5].Value = newStatus;
                     }
 
-                    // Backend synchronization logic
-                    if (_backendApiService != null && _isOperatorLoggedIn)
+                    // --- Backend Synchronization Logic ---
+                    if (_backendApiService != null && _isOperatorLoggedIn && !string.IsNullOrEmpty(token))
                     {
-                        // Check if we have tracked this token before
                         if (!_lastSentStates.ContainsKey(token))
                         {
                             _lastSentStates[token] = (null, null);
@@ -634,7 +647,6 @@ namespace FxWorth
 
                         var (lastSentPnl, lastSentStatus) = _lastSentStates[token];
 
-                        // Check if PnL has changed and needs to be sent
                         if (lastSentPnl == null || client.Pnl != lastSentPnl)
                         {
                             try
@@ -644,27 +656,27 @@ namespace FxWorth
                             }
                             catch (Exception ex)
                             {
-                                logger.Error(ex, $"Failed to send PnL update for token {token}");
+                                logger.Error(ex, $"Failed to initiate PnL update for token {token}");
                             }
                         }
 
-                        // Check if status has changed and needs to be sent
                         if (lastSentStatus == null || newStatus != lastSentStatus)
                         {
                             try
                             {
                                 _backendApiService.SendStatusUpdateAsync(token, newStatus).ConfigureAwait(false);
-                                _lastSentStates[token] = (lastSentPnl, newStatus);
+                                _lastSentStates[token] = (lastSentPnl ?? client.Pnl, newStatus);
                                 logger.Debug($"Status update sent for token {token}: {newStatus}");
                             }
                             catch (Exception ex)
                             {
-                                logger.Error(ex, $"Failed to send status update for token {token}");
+                                logger.Error(ex, $"Failed to initiate status update for token {token}");
                             }
                         }
                     }
                 }
 
+                // --- Check for Overall Session Completion ---
                 TimeSpan minimumTradingTime = TimeSpan.FromSeconds(2);
 
                 if (!sw.IsRunning || sw.Elapsed < minimumTradingTime)
@@ -672,39 +684,34 @@ namespace FxWorth
                     return;
                 }
 
-                bool allClientsCompleted = true;
-                bool anyClientTrading = false;
+                bool allSelectedClientsCompletedOrTerminal = true;
+                bool anySelectedClientWasActive = false;
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
-                    if ((bool)row.Cells[0].Value)
+                    if (row.Cells[0].Value is bool isChecked && isChecked)
                     {
                         var status = row.Cells[5].Value?.ToString();
 
                         bool isTerminal = status == "TakeProfit" || status == "Stoploss" ||
                                           status == "Completed" || status == "Offline" ||
-                                          status == "Invalid";
+                                          status == "Invalid" || status == "Margin Call" || status == "Analyzing";
 
                         if (!isTerminal)
                         {
-                            allClientsCompleted = false;
-
-                            if (status == "Trading" || status == "Analyzing")
-                            {
-                                anyClientTrading = true;
-                            }
+                            allSelectedClientsCompletedOrTerminal = false;
+                        }
+                        if (status == "Trading" || status == "Analyzing")
+                        {
+                            anySelectedClientWasActive = true;
                         }
                     }
                 }
 
-                if (allClientsCompleted)
+                if (allSelectedClientsCompletedOrTerminal)
                 {
-                    logger.Info("<=> Trading session completed on all selected accounts. Stopping timer!");
                     sw.Stop();
                     tradingSessionCompleted = true;
-
-                    Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
-                    PowerManager.AllowSleep();
                 }
             });
         }
@@ -1017,6 +1024,7 @@ namespace FxWorth
             tradingSessionCompleted = true;
             storage.StopAll();
 
+            // --- Set final terminal statuses based on state *before* stopping ---
             foreach (DataGridViewRow row in Main_Token_Table.Rows)
             {
                 var token = row.Cells[1].Value?.ToString();
@@ -1025,37 +1033,48 @@ namespace FxWorth
 
                 if (key == null) continue;
 
-                if (key.IsChecked)
+                string statusBeforeStop = row.Cells[5].Value?.ToString();
+                string finalStatus = statusBeforeStop;
+
+                if (statusBeforeStop == "TakeProfit" || statusBeforeStop == "Margin Call" || statusBeforeStop == "Stoploss")
                 {
-                    if (!storage.Clients.TryGetValue(key, out var client))
-                        continue;
+                    finalStatus = "Completed";
+                }
 
-                    string currentStatus = row.Cells[5].Value?.ToString();
+                else if (statusBeforeStop == "Analyzing" || statusBeforeStop == "Offline" || statusBeforeStop == "Standby" || statusBeforeStop == "Invalid" || statusBeforeStop == "Trading")
+                {
+                    finalStatus = "Incompleted";
+                }
 
-                    if (currentStatus == "Invalid")
-                        continue;
+                // Update the grid cell only if the final status is different
+                if (row.Cells[5].Value?.ToString() != finalStatus)
+                {
+                    row.Cells[5].Value = finalStatus;
 
-                    if (!client.IsOnline)
+                    if (_backendApiService != null && _isOperatorLoggedIn && !string.IsNullOrEmpty(token))
                     {
-                        row.Cells[5].Value = "Offline";
-                        continue;
-                    }
-
-                    switch (currentStatus)
-                    {
-                        case "Margin Call":
-                            row.Cells[5].Value = "Stoploss";
-                            break;
-                        case "Trading":
-                        case "Analyzing":
-                        case "TakeProfit":
-                            row.Cells[5].Value = "Completed";
-                        break;
-                     default:
-                     break;
+                        try
+                        {
+                            if (_lastSentStates.TryGetValue(token, out var lastState) && lastState.lastSentStatus != finalStatus)
+                            {
+                                _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
+                                _lastSentStates[token] = (lastState.lastSentPnl, finalStatus);
+                                logger.Debug($"Final status update sent for token {token}: {finalStatus}");
+                            }
+                            else if (!_lastSentStates.ContainsKey(token))
+                            {
+                                _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
+                                _lastSentStates[token] = (null, finalStatus);
+                                logger.Debug($"Final status update sent for token {token}: {finalStatus}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.Error(ex, $"Failed to send final status update for token {token}");
+                        }
                     }
                 }
-            }
+            } 
 
             Pause_BTN.Text = "Pause";
             EnableAll();
