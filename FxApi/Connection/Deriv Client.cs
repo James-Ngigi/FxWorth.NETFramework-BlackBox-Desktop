@@ -20,7 +20,7 @@ namespace FxApi
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         protected bool isDisposed;
-        public readonly Credentials Credentials;    //should be protected not public, why? it unnecessarily exposes sensitive data, this field should remain encapsulated. but is currently used in FxWorthMainUI.cs
+        protected readonly Credentials Credentials;
         private readonly string websocketPath;
         private WebSocket sock;
         private readonly SemaphoreSlim reconnectLock = new SemaphoreSlim(1, 1);
