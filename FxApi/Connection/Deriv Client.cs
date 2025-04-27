@@ -193,7 +193,7 @@ namespace FxApi
 
         protected virtual void SockOnClosed(object sender, EventArgs e)
         {
-            logger.Info("<=> Server - Client {0} link terminated. Attempting Reconnection", Credentials.Name);
+            logger.Info("<=> Server - Client {0} link terminated. Attempting Reconnection", Credentials.Token);
             IsOnline = false;
 
             if (!isDisposed)
@@ -279,7 +279,7 @@ namespace FxApi
             reconnectAttempts = 0;
             reconnectCancellationTokenSource?.Cancel();
 
-            logger.Info("<=> Server - Client {0} Link established.", Credentials.Name);
+            logger.Info("<=> Server - Client {0} Link established.", Credentials.Token);
             IsOnline = true;
 
             StateChanged?.Raise(this, new StateChangedArgs(true, Credentials));
