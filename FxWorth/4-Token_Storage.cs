@@ -152,7 +152,7 @@ namespace FxWorth
         /// Adds a new trading account to the list of managed lucky clients.
         public bool Add(Credentials creds)
         {
-            logger.Info("<=> Adding client credentials. Client ID - {0}, Key - {1}.", creds.AppId, creds.Token);
+            logger.Info("<=> Adding client credentials. Client ID - {0}, Key - {1}, Profit Target - {2}", creds.AppId, creds.Token, creds.ProfitTarget);
 
             // Dummy proffing! Prevent adding duplicate credentials for the sake 
             if (Credentials.Any(x => x.AppId == creds.AppId && x.Token == creds.Token))
@@ -494,7 +494,7 @@ namespace FxWorth
                 client.AuthFailed -= OnAuthFailed;
             }
 
-            logger.Info("<=> Removing client credentials. Client ID - {0}, Key - {1}", found.AppId, found.Token);
+            logger.Info("<=> Removing client credentials. Client ID - {0}, Key - {1}.", found.AppId, found.Token);
             Save();
         }
 
@@ -564,7 +564,7 @@ namespace FxWorth
                 return;
             }
 
-            logger.Info($"<=> Take profit target reached for client {credentials.AppId}! Total Profit: {totalProfit:C}");
+            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");
 
             client.TradingParameters = null;
             ClientsStateChanged?.Raise(client, EventArgs.Empty);

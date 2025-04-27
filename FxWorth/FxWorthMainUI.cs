@@ -619,7 +619,7 @@ namespace FxWorth
 
                     string currentStatus = row.Cells[5].Value?.ToString();
 
-                    if (tradingSessionCompleted && (currentStatus == "Completed" || currentStatus == "Incompleted"))
+                    if (tradingSessionCompleted && row.Cells[5].Value?.ToString() == currentStatus) // Only skip if status is unchanged
                     {
                         continue;
                     }
@@ -1055,18 +1055,14 @@ namespace FxWorth
                     {
                         try
                         {
-                            if (_lastSentStates.TryGetValue(token, out var lastState) && lastState.lastSentStatus != finalStatus)
+                            _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
+
+                            if (_lastSentStates.ContainsKey(token))
                             {
-                                _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
-                                _lastSentStates[token] = (lastState.lastSentPnl, finalStatus);
-                                logger.Debug($"Final status update sent for token {token}: {finalStatus}");
+                                _lastSentStates.Remove(token);
                             }
-                            else if (!_lastSentStates.ContainsKey(token))
-                            {
-                                _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
-                                _lastSentStates[token] = (null, finalStatus);
-                                logger.Debug($"Final status update sent for token {token}: {finalStatus}");
-                            }
+
+                            logger.Debug($"Final status update sent for token {token}: {finalStatus}");
                         }
                         catch (Exception ex)
                         {

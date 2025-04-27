@@ -249,7 +249,7 @@ namespace FxApi
             }
 
             // Log a message indicating that the connection to the specified Application ID is established.
-            logger.Info("<=> Link to Client ID {0} established. Authorizing now...", Credentials.Name);
+            logger.Info("<=> Link to subscriber Api Token : {0} established. Authorizing now...", Credentials.Token);
 
             // Send an authorization request to the server using the API token from the credentials.
             Send(new AuthorizeMessage() { Authorize = Credentials.Token });
@@ -358,8 +358,8 @@ namespace FxApi
                         string errorMessage = jMessage["error"]["message"]?.Value<string>() ?? "No message provided.";
 
                         // Log a more informative error message including the error code and message from the server.
-                        logger.Error("<=> Authorization failed for Client ID: {0}. Error Code: {1}, Message: {2}",
-                                     Credentials.Name, errorCode, errorMessage);
+                        logger.Error("<=> Authorization failed for Api Token: {0}. Error Code: {1}, Message: {2}",
+                                     Credentials.Token, errorCode, errorMessage);
 
                         AuthFailed.Raise(this, EventArgs.Empty);
                         OnStatusChanged("Invalid");
@@ -367,7 +367,7 @@ namespace FxApi
                         return;
                     }
 
-                    logger.Info("<=> Authentication successful for Client ID : {0}.", Credentials.Name);
+                    logger.Info("<=> Authentication successful for Api Token : {0}.", Credentials.Token);
 
                     // Deserialize the authorization information from the response.
                     authInfo = jMessage.ToObject<AuthResponse>().authorize;
