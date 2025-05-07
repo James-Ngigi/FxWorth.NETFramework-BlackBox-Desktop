@@ -15,6 +15,8 @@ using static FxWorth.Hierarchy.HierarchyNavigator;
 using FxBackendClient;
 using System.Threading.Tasks;
 using System.Globalization;
+using static System.Net.WebRequestMethods;
+using File = System.IO.File;
 
 namespace FxWorth
 {
@@ -85,7 +87,7 @@ namespace FxWorth
         private HierarchyNavigator hierarchyNavigator;
         private BackendApiService _backendApiService;
         private bool _isOperatorLoggedIn = false;
-        private string _backendApiUrl = "http://localhost:8080"; // Later configured from App.config
+        private string _backendApiUrl = "https://fxworth-api-backend.onrender.com"; // Later configured from App.config
         private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
         private Timer _tradingPingTimer;
@@ -449,6 +451,7 @@ namespace FxWorth
         /// This method loads a previously saved trading layout or configuration file and applies its settings to a 
         /// the UI controls. It's designed to streamline resuming work with saved preferences, minimizing manual setup.
         /// </summary>
+        
         private void LoadLayout()
         {
             if (!File.Exists(layoutPath))
@@ -660,7 +663,8 @@ namespace FxWorth
                             }
                         }
 
-                        if (lastSentStatus == null || newStatus != lastSentStatus)
+                        // Only send status updates if the new status is not Completed or Incompleted
+                        if ((lastSentStatus == null || newStatus != lastSentStatus) && newStatus != "Completed" && newStatus != "Incompleted")
                         {
                             try
                             {
@@ -1055,7 +1059,11 @@ namespace FxWorth
                     {
                         try
                         {
-                            _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
+                            // Only send status update if the final status is not Completed or Incompleted
+                            if (finalStatus != "Completed" && finalStatus != "Incompleted")
+                            {
+                                _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
+                            }
 
                             if (_lastSentStates.ContainsKey(token))
                             {
@@ -1066,7 +1074,7 @@ namespace FxWorth
                         }
                         catch (Exception ex)
                         {
-                            logger.Error(ex, $"Failed to send final status update for token {token}");
+                            logger.Error(ex, $"Failed to send final status update for token {token}: {ex.Message}");
                         }
                     }
                 }

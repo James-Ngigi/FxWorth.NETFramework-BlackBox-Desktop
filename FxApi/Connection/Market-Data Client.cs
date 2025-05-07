@@ -80,6 +80,9 @@ namespace FxApi
             // Call the base class's `SockOnOpened` method to handle general connection setup.
             base.SockOnOpened(sender, e);
 
+            // Always set IsOnline = true for operator/monitoring use
+            IsOnline = true;
+
             // Send a request to the server to get the full list of active symbols.
             Send(new GetActiveSymbolsFullMessage());
         }

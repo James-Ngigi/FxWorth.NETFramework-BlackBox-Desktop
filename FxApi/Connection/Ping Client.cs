@@ -54,6 +54,9 @@ namespace FxApi
             gotPong = true;
             pingCancellationTokenSource = new CancellationTokenSource();
 
+            // Always set IsOnline = true for operator/monitoring use
+            IsOnline = true;
+
             // Start the repeating ping task with an interval of 100 milliseconds.
             // This means a ping message will be sent every 100ms(Tenth of a second) to measure latency.
             RepeatAction(pingCancellationTokenSource.Token, PingChannel, 100);

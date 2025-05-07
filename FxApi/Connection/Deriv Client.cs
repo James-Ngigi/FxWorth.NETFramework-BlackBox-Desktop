@@ -202,7 +202,6 @@ namespace FxApi
 
                 if (closedEventArgs != null)
                 {
-
                     if (closedEventArgs.Code >= 1003 && closedEventArgs.Code <= 1015)
                     {
                         logger.Error("<=> Websocket closure error detected. Stopping the client. Error code: " + closedEventArgs.Code);
@@ -210,13 +209,11 @@ namespace FxApi
                         StopInternal();
                         return;
                     }
-
                     else if (closedEventArgs.Code == 1002 || closedEventArgs.Code != 1000)
                     {
                         AttemptReconnectWithBackoff();
                     }
                 }
-
                 else
                 {
                     AttemptReconnectWithBackoff();
@@ -270,7 +267,8 @@ namespace FxApi
         protected virtual void SockOnError(object sender, ErrorEventArgs e)
         {
             logger.Error(e.Exception, "<=> {0} Data error.", Credentials.Name);
-            StateChanged?.Raise(this, new StateChangedArgs(true, Credentials));
+            IsOnline = false;
+            StateChanged?.Raise(this, new StateChangedArgs(false, Credentials));
         }
 
         /// Event handler triggered when the WebSocket connection is successfully opened.
@@ -280,9 +278,7 @@ namespace FxApi
             reconnectCancellationTokenSource?.Cancel();
 
             logger.Info("<=> Server - Client {0} Link established.", Credentials.Token);
-            IsOnline = true;
-
-            StateChanged?.Raise(this, new StateChangedArgs(true, Credentials));
+            StateChanged?.Raise(this, new StateChangedArgs(false, Credentials));
         }
 
         /// Stops the WebSocket connection, detaches event handlers, and releases resources.
