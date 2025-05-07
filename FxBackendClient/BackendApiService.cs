@@ -35,7 +35,7 @@ namespace FxBackendClient
         private readonly HttpClient _restClient;
         private HubConnection _signalRConnection;
         private string _operatorJwt;
-        private readonly string _backendBaseUrl; // e.g., "http://localhost:8080" or "https://fxworth-api-backend.onrender.com"
+        private readonly string _backendBaseUrl;
         private bool _isSignalRConnected = false;
         private bool _isDisposed = false;
         private System.Timers.Timer _reconnectionTimer;

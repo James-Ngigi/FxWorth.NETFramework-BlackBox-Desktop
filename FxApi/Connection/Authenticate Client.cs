@@ -254,7 +254,8 @@ namespace FxApi
             // Send an authorization request to the server using the API token from the credentials.
             Send(new AuthorizeMessage() { Authorize = Credentials.Token });
 
-            StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
+            // Don't set IsOnline here - wait for successful authentication
+            StateChanged?.Raise(this, new StateChangedArgs(false, Credentials));
         }
 
         /// <summary>
@@ -361,9 +362,8 @@ namespace FxApi
                         logger.Error("<=> Authorization failed for Api Token: {0}. Error Code: {1}, Message: {2}",
                                      Credentials.Token, errorCode, errorMessage);
 
-                        AuthFailed.Raise(this, EventArgs.Empty);
                         OnStatusChanged("Invalid");
-
+                        IsOnline = false; // Ensure IsOnline is false on auth failure
                         return;
                     }
 
@@ -383,7 +383,7 @@ namespace FxApi
                     Send(new TransactionsRequest());
                     Send(new ProfitTableRequest());
 
-                    // Set the online status to true, indicating a successful connection and authorization.
+                    // Set the online status to true only after successful authentication
                     IsOnline = true;
                     break;
                 case "balance":
