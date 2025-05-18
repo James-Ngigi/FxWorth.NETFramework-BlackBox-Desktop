@@ -295,7 +295,7 @@
             this.Period0_TXT.Location = new System.Drawing.Point(162, 99);
             this.Period0_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Period0_TXT.Maximum = new decimal(new int[] {
-            50,
+            4999,
             0,
             0,
             0});
@@ -309,7 +309,7 @@
             this.Period0_TXT.TabIndex = 22;
             this.Period0_TXT.ThousandsSeparator = true;
             this.Period0_TXT.Value = new decimal(new int[] {
-            2,
+            1,
             0,
             0,
             0});

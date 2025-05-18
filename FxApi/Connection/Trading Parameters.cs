@@ -36,6 +36,7 @@ namespace FxApi.Connection
         public decimal TempBarrier { get; set; }
         public decimal InitialStake4Layer1 { get; set; }
         public decimal TotalProfit { get; private set; }
+        public decimal LevelInitialStake { get; set; }
 
         public event EventHandler<decimal> TakeProfitReached;
 
@@ -53,20 +54,26 @@ namespace FxApi.Connection
         {
             // Clear recovery results for the new level
             recoveryResults.Clear();
-            
+
             // Reset previous profit to ensure fresh calculation
             PreviousProfit = 0;
-            
+
             // Reset recovery mode flags
             IsRecoveryMode = false;
             AmountToBeRecoverd = 0;
-            
+
             // Reset dynamic stake to initial stake
             DynamicStake = Stake;
-            
+
+            // When transitioning to a new level in hierarchy, store the current stake as the level's initial stake if not already set
+            if (LevelInitialStake == 0)
+            {
+                LevelInitialStake = Stake;
+            }
+
             // Note: We no longer reset TempBarrier here as it should persist throughout the level
-            
-            logger.Info($"Reset trading parameters for hierarchy transition. New stake: {Stake}, MartingaleLevel: {MartingaleLevel}");
+
+            logger.Info($"Reset trading parameters for hierarchy transition. New stake: {Stake}, Level initial stake: {LevelInitialStake}, MartingaleLevel: {MartingaleLevel}");
         }
 
         /// <summary>
@@ -158,15 +165,17 @@ namespace FxApi.Connection
                     }
                     else
                     {
-                        // In hierarchy mode, keep recovery mode active but reset stake
-                        DynamicStake = Stake;
-                        logger.Info("Recovery target met but staying in recovery mode for hierarchy level");
+                        // In hierarchy mode, keep recovery mode active but reset stake to the level's initial stake
+                        // Use LevelInitialStake if it's set, otherwise fall back to Stake
+                        decimal resetStake = LevelInitialStake > 0 ? LevelInitialStake : Stake;
+                        DynamicStake = resetStake;
+                        logger.Info($"Recovery target met in hierarchy mode. Reset dynamic stake to level's initial stake: {resetStake}");
                     }
                 }
             }
             else if (!IsRecoveryMode)
             {
-            TempBarrier = 0;
+                TempBarrier = 0;
             }
 
             // Format and log the transaction
