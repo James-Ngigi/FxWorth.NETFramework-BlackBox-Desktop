@@ -58,11 +58,46 @@ namespace FxWorth
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
         public decimal InitialStakeLayer1 { get; set; }
-        public void SetHierarchyParameters(PhaseParameters phase1Params, PhaseParameters phase2Params, Dictionary<int, CustomLayerConfig> customLayerConfigs)
+        public void SetHierarchyParameters(PhaseParameters phase1, PhaseParameters phase2, Dictionary<int, CustomLayerConfig> configs)
         {
-            this.phase1Parameters = phase1Params;
-            this.phase2Parameters = phase2Params;
-            this.customLayerConfigs = customLayerConfigs;
+            phase1Parameters = phase1;
+            phase2Parameters = phase2;
+            
+            // Validate and set custom layer configs
+            if (configs != null)
+            {
+                customLayerConfigs.Clear();
+                foreach (var kvp in configs)
+        {
+                    if (kvp.Key > 1) // Only process configs for layers beyond Layer 1
+                    {
+                        if (kvp.Value.BarrierOffset == null)
+                        {
+                            logger.Warn($"Layer {kvp.Key} missing barrier offset. Using phase1 barrier as default.");
+                            kvp.Value.BarrierOffset = phase1.Barrier;
+                        }
+                        if (kvp.Value.InitialStake == null)
+                        {
+                            logger.Warn($"Layer {kvp.Key} missing initial stake.");
+                        }
+                        if (kvp.Value.MartingaleLevel == null)
+                        {
+                            logger.Warn($"Layer {kvp.Key} missing martingale level. Using phase1 martingale level as default.");
+                            kvp.Value.MartingaleLevel = phase1.MartingaleLevel;
+                        }
+                        if (kvp.Value.MaxDrawdown == null)
+                        {
+                            logger.Warn($"Layer {kvp.Key} missing max drawdown. Using phase1 max drawdown as default.");
+                            kvp.Value.MaxDrawdown = phase1.MaxDrawdown;
+                        }
+                        customLayerConfigs[kvp.Key] = kvp.Value;
+                    }
+                }
+            }
+            else
+            {
+                customLayerConfigs.Clear();
+            }
         }
 
         /// <summary>
@@ -332,7 +367,7 @@ namespace FxWorth
                         {
                             hierarchyNavigator.LoadLevelTradingParameters(currentLevel.LevelId, value, clientParams);
 
-                            logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToBeRecovered}, Stake: {clientParams.DynamicStake}, Barrier: {clientParams.TempBarrier}");
+                            logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToRecover}, Stake: {clientParams.DynamicStake}, Barrier: {clientParams.TempBarrier}");
 
                             Task.Factory.StartNew(() =>
                             {
@@ -459,11 +494,28 @@ namespace FxWorth
             foreach (var client in clients.Values)
             {
                 client.Stop();
+                
+                // Reset trading parameters
+                if (client.TradingParameters != null)
+                {
+                    client.TradingParameters.IsRecoveryMode = false;
+                    client.TradingParameters.DynamicStake = client.TradingParameters.Stake;
+                    client.TradingParameters.TempBarrier = 0;
+                    client.TradingParameters.RecoveryResults.Clear();
+                    client.TradingParameters.AmountToBeRecoverd = 0;
+                }
+                
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
             }
 
+            // Reset hierarchy state
+            hierarchyNavigator = null;
+            hierarchyClient = null;
+            currentLevelId = null;
+            hierarchyLevels.Clear();
+
             isTradingGloballyAllowed = true;
-            logger.Info("<=> Global trading flag has been reset!");
+            logger.Info("<=> Global trading flag has been reset and hierarchy state cleared!");
         }
 
         /// Event handler triggered when the state of a managed AuthClient changes and notifies listeners
@@ -611,31 +663,135 @@ namespace FxWorth
 
             if (currentLevel != null)
             {
-                client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+                // Use the maximum payout from the model's Payouts list
+                decimal maxPayout = model.Payouts.Max();
 
-                if (!client.TradingParameters.IsRecoveryMode)
+                // Store original recovery state for diagnostic logging
+                bool wasInRecoveryMode = client.TradingParameters.IsRecoveryMode;
+                decimal originalDynamicStake = client.TradingParameters.DynamicStake;
+                decimal originalAmountToRecover = client.TradingParameters.AmountToBeRecoverd;
+
+                // Process the trade result - this handles recovery state automatically
+                client.TradingParameters.Process(model.Profit, maxPayout, int.Parse(client.GetToken()), model.Id, 0);
+
+                // Log recovery state changes
+                if (!wasInRecoveryMode && client.TradingParameters.IsRecoveryMode)
                 {
-                    currentLevel.IsCompleted = true;
-                    hierarchyNavigator.MoveToNextLevel(client);
-
-                    if (hierarchyNavigator.currentLevelId == "0")
-                    {
-                        logger.Info("Returned to root level trading.");
-                    }
-                    else
-                    {
-                        logger.Info($"Moved to next level: {hierarchyNavigator.currentLevelId}");
-                    }
+                    logger.Info($"Entered recovery mode: Amount to recover {client.TradingParameters.AmountToBeRecoverd}, Dynamic stake {client.TradingParameters.DynamicStake}");
                 }
-                else
+                else if (wasInRecoveryMode && !client.TradingParameters.IsRecoveryMode)
                 {
-                    currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
+                    logger.Info($"Exited recovery mode: Recovery successful");
+                }
+                else if (wasInRecoveryMode && client.TradingParameters.IsRecoveryMode)
+                {
+                    logger.Info($"Updated recovery: Amount change {originalAmountToRecover} -> {client.TradingParameters.AmountToBeRecoverd}, Stake change {originalDynamicStake} -> {client.TradingParameters.DynamicStake}");
+                }
 
-                    decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? phase2Parameters.MaxDrawdown : phase1Parameters.MaxDrawdown);
-                    if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < MaxHierarchyDepth + 1)
+                // Update the level with the current trading parameters (including recovery state)
+                currentLevel.UpdateFromTradingParameters(client.TradingParameters);
+
+                // Check if level needs to create new layer due to MaxDrawdown
+                if (currentLevel.HasExceededMaxDrawdown)
+                {
+                    decimal maxDrawdown = currentLevel.MaxDrawdown ?? 
+                        (currentLevel.LevelId.StartsWith("1.") ? phase2Parameters.MaxDrawdown : phase1Parameters.MaxDrawdown);
+
+                    if (currentLevel.CurrentRecoveryAmount > maxDrawdown && 
+                        currentLevel.LevelId.Split('.').Length < hierarchyNavigator.maxHierarchyDepth)
                     {
                         CreateNewLayer(currentLevel, client);
                     }
+                    return; // Don't proceed with level transition if we created a new layer
+                }
+
+                // Handle level transitions when recovery is complete
+                bool shouldAttemptLevelTransition = false;
+                
+                // ALWAYS track trades for the current level, regardless of recovery mode
+                // This ensures profits are tracked even when IsRecoveryMode=False
+                if (model.Profit != 0)
+                {
+                    // Update the level's recovery results with this trade
+                    if (!currentLevel.recoveryResults.Contains(model.Profit))
+                    {
+                        currentLevel.recoveryResults.Add(model.Profit);
+                        logger.Info($"Added trade result ${model.Profit:F2} to level {currentLevel.LevelId}'s results");
+                    }
+                    
+                    // Force the level into recovery mode if needed
+                    if (!client.TradingParameters.IsRecoveryMode && model.Profit < 0)
+                    {
+                        logger.Info($"Forcing level {currentLevel.LevelId} into recovery mode to track trades properly");
+                        client.TradingParameters.IsRecoveryMode = true;
+                        client.TradingParameters.AmountToBeRecoverd = currentLevel.AmountToRecover;
+                    }
+                }
+                
+                // Check if we should try moving to the next level
+                decimal totalProfit = currentLevel.GetTotalProfit();
+                decimal totalLoss = currentLevel.GetTotalLoss();
+                decimal amountNeeded = currentLevel.AmountToRecover;
+                
+                // Log recovery status for debugging
+                logger.Info($"Recovery status for level {currentLevel.LevelId}: Profit=${totalProfit:F2}, Loss=${totalLoss:F2}, Target=${amountNeeded:F2}, Level completions: {hierarchyNavigator.layer1CompletedLevels}/{hierarchyNavigator.hierarchyLevelsCount}");
+                
+                // Level should be completed if profit meets or exceeds needed amount
+                if (totalProfit >= amountNeeded)
+                {
+                    logger.Info($"Level {currentLevel.LevelId} should be completed - target amount recovered (${totalProfit:F2} >= ${amountNeeded:F2})");
+                    currentLevel.IsCompleted = true;
+                    shouldAttemptLevelTransition = true;
+                }
+                
+                // Try moving to next level if recovery is complete
+                if (shouldAttemptLevelTransition || 
+                    (currentLevel.IsRecoverySuccessful && !client.TradingParameters.IsRecoveryMode))
+                {
+                    // Store the current level ID before attempting to move
+                    string previousLevelId = hierarchyNavigator.currentLevelId;
+                    
+                    // Log attempt to move levels
+                    logger.Info($"Attempting to move from level {previousLevelId} (IsCompleted: {currentLevel.IsCompleted}, IsRecoverySuccessful: {currentLevel.IsRecoverySuccessful})");
+                    
+                    // Attempt to move to next level
+                    bool moved = hierarchyNavigator.MoveToNextLevel(client);
+
+                    // Only proceed with parameter loading if the level actually changed
+                    if (moved && hierarchyNavigator.currentLevelId != previousLevelId)
+                    {
+                        if (hierarchyNavigator.currentLevelId == "0")
+                        {
+                            logger.Info("Returned to root level trading.");
+                        }
+                        else
+                        {
+                            hierarchyNavigator.LoadLevelTradingParameters(hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                            logger.Info($"Successfully moved to next level: {hierarchyNavigator.currentLevelId}");
+                        }
+                    }
+                    else
+                    {
+                        logger.Info($"Failed to move from level {previousLevelId}. Current level remains {hierarchyNavigator.currentLevelId}");
+                    }
+                }
+                
+                // Always ensure we're using the correct parameters for the current level
+                // but only if we haven't created a new layer (which would have already loaded parameters)
+                HierarchyLevel updatedLevel = hierarchyNavigator.GetCurrentLevel();
+                if (updatedLevel != null && updatedLevel.LevelId == currentLevel.LevelId)
+                {
+                    // No need to reload parameters if we just processed a trade and are in recovery mode
+                    // This is the key - let the recovery system work without interference
+                    if (!client.TradingParameters.IsRecoveryMode)
+                    {
+                        hierarchyNavigator.LoadLevelTradingParameters(hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                    }
+                    
+                    logger.Info($"Trading in level {hierarchyNavigator.currentLevelId}, " +
+                                $"Amount to recover: {updatedLevel.CurrentRecoveryAmount}, " +
+                                $"IsRecoveryMode: {client.TradingParameters.IsRecoveryMode}, " +
+                                $"DynamicStake: {client.TradingParameters.DynamicStake}");
                 }
             }
         }
@@ -659,7 +815,7 @@ namespace FxWorth
                     currentLevel.InitialStake;
             }
 
-            hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
             hierarchyNavigator.currentLevelId = nextLevelId;
@@ -670,7 +826,8 @@ namespace FxWorth
         // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
-            client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+            decimal maxPayout = model.Payouts.Max();
+            client.TradingParameters.Process(model.Profit, maxPayout, int.Parse(client.GetToken()), model.Id, 0);
 
             if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
             {

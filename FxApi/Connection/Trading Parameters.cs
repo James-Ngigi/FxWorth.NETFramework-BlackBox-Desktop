@@ -34,7 +34,7 @@ namespace FxApi.Connection
         public decimal PreviousProfit { get; set; }
         public int RecoveryAttemptsLeft { get; set; }
         public decimal TempBarrier { get; set; }
-        public int InitialStake4Layer1 { get; set; }
+        public decimal InitialStake4Layer1 { get; set; }
         public decimal TotalProfit { get; private set; }
 
         public event EventHandler<decimal> TakeProfitReached;
@@ -46,8 +46,28 @@ namespace FxApi.Connection
             set => recoveryResults = value;
         }
 
-        /*------------------------------------------------------------------------------------------------------------------------*/
-
+        /// <summary>
+        /// Resets the trading parameters state for a new hierarchy level
+        /// </summary>
+        public void ResetForHierarchyTransition()
+        {
+            // Clear recovery results for the new level
+            recoveryResults.Clear();
+            
+            // Reset previous profit to ensure fresh calculation
+            PreviousProfit = 0;
+            
+            // Reset recovery mode flags
+            IsRecoveryMode = false;
+            AmountToBeRecoverd = 0;
+            
+            // Reset dynamic stake to initial stake
+            DynamicStake = Stake;
+            
+            // Note: We no longer reset TempBarrier here as it should persist throughout the level
+            
+            logger.Info($"Reset trading parameters for hierarchy transition. New stake: {Stake}, MartingaleLevel: {MartingaleLevel}");
+        }
 
         /// <summary>
         /// Processes the outcome of a completed trade, adjusting the `DynamicStake`, entering or exiting recovery mode,
@@ -68,102 +88,90 @@ namespace FxApi.Connection
                 return;
             }
 
-            // If not in recovery mode and the trade was profitable, update the PreviousProfit.
+            // If not in recovery mode and the trade was profitable, update the PreviousProfit
             if (!IsRecoveryMode && mlp > 0)
             {
                 PreviousProfit = mlp;
             }
 
-            // If the PreviousProfit is zero, use the estimated profit value for recovery calculations.
+            // If the PreviousProfit is zero, use the estimated profit value
             if (PreviousProfit == 0)
             {
                 PreviousProfit = estimate;
+                logger.Debug($"Using estimated profit: {estimate} for recovery calculations");
             }
 
             // If the trade resulted in a loss...
             if (mlp < 0)
             {
-                // Add the loss to the recoveryResults list.
+                // Add the loss to the recoveryResults list
                 recoveryResults.Add(mlp);
 
-                // If not already in recovery mode, enter recovery mode and set the initial amount to be recovered.
+                // If not already in recovery mode, enter recovery mode
                 if (!IsRecoveryMode)
                 {
                     IsRecoveryMode = true;
-
-                    // We multiply the AmountToBeRecoverd by 2 to respect the pair trade strategy logic.
                     AmountToBeRecoverd = 2 * Stake;
+                    logger.Debug($"Entering recovery mode. Initial amount to recover: {AmountToBeRecoverd}");
                 }
-
                 else
                 {
-                    // If already in recovery mode, update the amount to be recovered.
+                    // Update amount to be recovered based on accumulated losses
                     AmountToBeRecoverd = -recoveryResults.Sum();
+                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd}");
                 }
 
-                /// Calculate the stake required to recover the losses, considering previous profit.
-                /// <summary>   
-                /// Stake to be used is calculated to recover all previous losses, aiming to return to a net profit state.
-                /// This is done based on the historical performance represented by the PreviousProfit(mlp/estimate).
-                ///  By dividing by the PreviousProfit, the formula automatically adjusts the stake based  on the average win payout observerd in previous trades.
-                /// </summary>
+                // Calculate recovery stake using Martingale strategy
                 var stakeToBeUsed = AmountToBeRecoverd * Stake / PreviousProfit;
-
-                /// Determine the Martingale multiplier based on the stake required and the base stake.
-                /// <summary>
-                /// The Martingale value represents the multiplier needed to achieve this recovery.
-                /// By saying "this" i mean the stakeToBeUsed determined above, which is the stake needed to return to a net profit state.
-                /// The formula calculates a multiplier tht represents how much the base stake needs to be multiplied to reach the stakeToBeUsed.
-                /// It essentially qunatifies the "Martingale effect" and provides a clear measure of how aggressive the system is responding to losses.
-                /// </summary>
                 var martingaleValue = stakeToBeUsed / Stake;
 
-                // Calculate the dynamic stake, rounded to two decimal places.
+                // Apply Martingale level to control progression
                 DynamicStake = Math.Round(Stake * martingaleValue / MartingaleLevel, 2);
 
-                // Apply lower limit to the DynamicStake (Derivs stake lower limit of 0.35 )
+                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {martingaleValue}, Level: {MartingaleLevel})");
+
+                // Apply lower limit to the DynamicStake
                 if (IsRecoveryMode)
                 {
                     DynamicStake = Math.Max(DynamicStake, 0.35m);
                 }
-
             }
-
-            // If currently in recovery mode and the trade was profitable...
             else if (IsRecoveryMode)
             {
-                // Add the profit to the recoveryResults list.
+                // Add the profit to recoveryResults
                 recoveryResults.Add(mlp);
-
-                // Update the amount to be recovered.
                 AmountToBeRecoverd = -recoveryResults.Sum();
-
-                // Decrement the remaining recovery attempts counter.
                 RecoveryAttemptsLeft--;
 
-                // Calculate the total profit achieved during the recovery attempt.
                 decimal recoveryProfit = mlp + recoveryResults.Sum();
 
-                // If the recovery profit meets or exceeds the target, or if all recovery attempts have been used, exit recovery mode.
+                // Check if recovery is complete
                 if (recoveryProfit >= AmountToBeRecoverd || RecoveryAttemptsLeft == 0)
                 {
-                    // Reset the dynamic stake to the initial stake.
-                    DynamicStake = Stake;
-                    // Exit recovery mode.
-                    IsRecoveryMode = false;
-                    // Clear the recovery results list.
-                    recoveryResults.Clear();
+                    // Only exit recovery mode if we're not in a hierarchy level
+                    if (TempBarrier == 0)
+                    {
+                        DynamicStake = Stake;
+                        IsRecoveryMode = false;
+                        recoveryResults.Clear();
+                        logger.Info("Exiting recovery mode - recovery complete");
+                    }
+                    else
+                    {
+                        // In hierarchy mode, keep recovery mode active but reset stake
+                        DynamicStake = Stake;
+                        logger.Info("Recovery target met but staying in recovery mode for hierarchy level");
+                    }
                 }
             }
-
-            // Reset TempBarrier to 0 after each trade to ensure it doesn't interfere with subsequent trades outside the hierarchy
+            else if (!IsRecoveryMode)
+            {
             TempBarrier = 0;
+            }
 
-            // Format the transaction time
+            // Format and log the transaction
             string formattedTransactionTime = DateTimeOffset.FromUnixTimeSeconds(transactionTime).ToString("dd-MM-yyyy @ HH:mm:ss");
-
-            // Log the processed trade outcome and relevant trading parameters. STT = Server Transaction Time.
-            //logger.Info($"<=> Deal Processed.... => Client-ID-> {appId} :: Contract ID-> {contractId} :: STT-> {formattedTransactionTime} :: Profit/Loss-> {mlp:C}    :: Recovery Mode-> {(IsRecoveryMode ? "Yes" : "No")}.");
+            logger.Debug($"Trade processed - Client: {appId}, Contract: {contractId}, Time: {formattedTransactionTime}, P/L: {mlp:C}, Recovery: {(IsRecoveryMode ? "Yes" : "No")}");
         }
 
         /// Returns a string representation of the trading parameters, including all relevant values.
