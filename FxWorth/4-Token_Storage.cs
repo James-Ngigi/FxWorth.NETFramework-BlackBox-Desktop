@@ -713,9 +713,9 @@ namespace FxWorth
                 if (model.Profit != 0)
                 {
                     // Update the level's recovery results with this trade
-                    if (!currentLevel.recoveryResults.Contains(model.Profit))
+                    if (!currentLevel.RecoveryResults.Contains(model.Profit))
                     {
-                        currentLevel.recoveryResults.Add(model.Profit);
+                        currentLevel.RecoveryResults.Add(model.Profit);
                         logger.Info($"Added trade result ${model.Profit:F2} to level {currentLevel.LevelId}'s results");
                     }
                     

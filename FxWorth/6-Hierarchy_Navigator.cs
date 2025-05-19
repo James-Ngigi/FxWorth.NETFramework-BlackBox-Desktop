@@ -55,6 +55,7 @@ namespace FxWorth.Hierarchy
                 LoadLevelTradingParameters(levelId, client, client.TradingParameters);
             }
         }
+
         // This method is used to retrieve the client associated with a specific level in the hierarchy.
         public AuthClient GetClientForLevel(string levelId)
         {
@@ -117,8 +118,8 @@ namespace FxWorth.Hierarchy
                 barrierOffset
             );
 
-                hierarchyLevels[levelId] = newLevel;
-                levelOrder.Add(levelId);
+            hierarchyLevels[levelId] = newLevel;
+            levelOrder.Add(levelId);
 
             logger.Info($"Created Level {levelId}: AmountToRecover={amountPerLevel:F2}, " +
                        $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
@@ -151,6 +152,7 @@ namespace FxWorth.Hierarchy
             return defaultInitialStake;
         }
 
+
         /// <summary>
         /// The `HierarchyLevel` class represents a single level in the hierarchy of the trading strategy.
         /// </summary>
@@ -159,25 +161,28 @@ namespace FxWorth.Hierarchy
             public string LevelId { get; set; }
             public decimal AmountToRecover { get; set; }
             public decimal InitialStake { get; set; }
-            public int? MartingaleLevel { get; set; }
+            public int? MartingaleLevel { get; set; }            
             public decimal? MaxDrawdown { get; set; }
             public decimal? BarrierOffset { get; set; }
-            public List<decimal> recoveryResults { get; set; } = new List<decimal>();
+            private List<decimal> recoveryResults = new List<decimal>();
+            public List<decimal> RecoveryResults 
+            {
+                get => recoveryResults;
+                set => recoveryResults = value;
+            }
             public bool IsCompleted { get; set; }
             public bool HasExceededMaxDrawdown => GetTotalLoss() > (MaxDrawdown ?? decimal.MaxValue);
             public decimal CurrentRecoveryAmount => GetTotalLoss();
             public bool IsRecoverySuccessful => GetTotalProfit() >= AmountToRecover;
-            
-            // Get total loss (as a positive number) from negative trade results
             public decimal GetTotalLoss()
             {
-                return recoveryResults.Where(r => r < 0).Sum(r => -r);
+                return RecoveryResults.Where(r => r < 0).Sum(r => -r);
             }
             
             // Get total profit from positive trade results
             public decimal GetTotalProfit()
             {
-                return recoveryResults.Where(r => r > 0).Sum();
+                return RecoveryResults.Where(r => r > 0).Sum();
             }
             // Cache the latest dynamic stake used in recovery
             public decimal CurrentDynamicStake { get; set; }
@@ -192,14 +197,14 @@ namespace FxWorth.Hierarchy
                 MaxDrawdown = maxDrawdown;
                 BarrierOffset = barrierOffset;
                 IsCompleted = false;
-            }
-
+            }            
+            
             public void UpdateRecoveryResults(List<decimal> newResults)
             {
                 if (newResults == null || !newResults.Any())
                     return;
 
-                recoveryResults = new List<decimal>(newResults);
+                RecoveryResults = new List<decimal>(newResults);
                 IsCompleted = IsRecoverySuccessful;
             }
 
@@ -212,7 +217,7 @@ namespace FxWorth.Hierarchy
                 // Update recovery results
                 if (tradingParameters.RecoveryResults.Any())
                 {
-                    recoveryResults = new List<decimal>(tradingParameters.RecoveryResults);
+                    RecoveryResults = new List<decimal>(tradingParameters.RecoveryResults);
                     
                     // Log recovery progress using correct metrics
                     decimal profitAmount = GetTotalProfit();
@@ -243,11 +248,9 @@ namespace FxWorth.Hierarchy
                 
                 // Force update completion state
                 IsCompleted = IsRecoverySuccessful;
-            }
-
-            public void Reset()
+            }            public void Reset()
             {
-                recoveryResults.Clear();
+                RecoveryResults.Clear();
                 IsCompleted = false;
                 CurrentDynamicStake = InitialStake;
             }
@@ -323,9 +326,9 @@ namespace FxWorth.Hierarchy
                 logger.Error($"Cannot move to next level: Current level {currentLevelId} not found");
                 return false;
             }
-
+            
             // Calculate if the level should be considered completed based on recovery results
-            if (currentLevel.recoveryResults.Any())
+            if (currentLevel.RecoveryResults.Any())
             {
                 decimal profitAmount = currentLevel.GetTotalProfit();
                 decimal lossAmount = currentLevel.GetTotalLoss();
@@ -340,7 +343,7 @@ namespace FxWorth.Hierarchy
             }
             
             // Don't move if level hasn't processed any trades or isn't completed
-            if (!currentLevel.recoveryResults.Any() || !currentLevel.IsCompleted)
+            if (!currentLevel.RecoveryResults.Any() || !currentLevel.IsCompleted)
             {
                 logger.Info($"Cannot move from level {currentLevelId}: Level has not processed trades or is not completed");
                 return false;
