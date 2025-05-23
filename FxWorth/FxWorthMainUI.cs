@@ -349,29 +349,51 @@ namespace FxWorth
 
                         if (currentLevel != null)
                         {
-                            // Pass the current level's recoveryResults to Process
-                            client.TradingParameters.Process(model.Profit, model.Payouts.Max(), int.Parse(client.GetToken()), model.Id, 0);
+                            decimal maxPayout = model.Payouts.Any() ? model.Payouts.Max() : client.TradingParameters.Stake * 0.95m;
+                            if (int.TryParse(client.GetAppId(), out int appId))
+                            {
+                                client.TradingParameters.Process(model.Profit, maxPayout, appId, model.Id, 0);
+                            }
+                            else
+                            {
+                                logger.Error($"Failed to parse AppId '{client.GetAppId()}' to integer for client token {client.GetToken()}");
+                                return;
+                            }
 
                             if (!client.TradingParameters.IsRecoveryMode)
                             {
+                                // Store the current level ID before attempting to move
+                                string previousLevelId = storage.hierarchyNavigator.currentLevelId;
+                                
+                                // Attempt to move to next level
                                 storage.hierarchyNavigator.MoveToNextLevel(client);
 
-                                if (storage.hierarchyNavigator.currentLevelId == "0")
+                                // Only log and proceed with parameter loading if the level actually changed
+                                if (storage.hierarchyNavigator.currentLevelId != previousLevelId)
                                 {
-                                    logger.Info("Returned to root level trading.");
+                                    if (storage.hierarchyNavigator.currentLevelId == "0")
+                                    {
+                                        logger.Info("Returned to root level trading.");
+                                    }
+                                    else
+                                    {
+                                        storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                        logger.Info($"Successfully moved to next level: {storage.hierarchyNavigator.currentLevelId}");
+                                    }
                                 }
                                 else
                                 {
-                                    storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
-                                    logger.Info($"Moved to next level: {storage.hierarchyNavigator.currentLevelId}");
+                                    // If the level didn't change, ensure parameters are correctly loaded
+                                    //storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                    logger.Info($"Trading in level {storage.hierarchyNavigator.currentLevelId}");
                                 }
                             }
                             else
                             {
-                                currentLevel.AmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
+                                currentLevel.AmountToRecover = client.TradingParameters.AmountToBeRecoverd;
 
                                 decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
-                                if (currentLevel.AmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
+                                if (currentLevel.AmountToRecover > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
                                     decimal initialStakeForNextLayer;
@@ -389,7 +411,7 @@ namespace FxWorth
                                             currentLevel.InitialStake;
                                     }
 
-                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToBeRecovered, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
+                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
                                     storage.hierarchyNavigator.currentLevelId = nextLevelId;
                                     storage.hierarchyNavigator.LoadLevelTradingParameters(nextLevelId, client, client.TradingParameters);
@@ -923,7 +945,7 @@ namespace FxWorth
                 DynamicStake = Stake_TXT.Value,
                 HierarchyLevels = (int)Hierarchy_Levels_TXT.Value,
                 MaxHierarchyDepth = (int)Max_Depth_TXT.Value,
-                InitialStake4Layer1 = (int)Stake_TXT2.Value
+                InitialStake4Layer1 = Stake_TXT2.Value
             };
 
             storage.SetHierarchyParameters(phase1Parameters, phase2Parameters, customLayerConfigs);

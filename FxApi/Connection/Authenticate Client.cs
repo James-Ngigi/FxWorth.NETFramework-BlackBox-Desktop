@@ -29,6 +29,11 @@ namespace FxApi
             return this.Credentials.Token;
         }
 
+        public string GetAppId()
+        {
+            return this.Credentials.AppId;
+        }
+
         /// <summary>
         /// Constructor for the `AuthClient` class.
         /// <param name="credentials">The API credentials (token and App ID) used for authentication.</param>
@@ -139,6 +144,9 @@ namespace FxApi
             request.amount = stake;
             // Set the barrier offset.
             request.barrier = contractType == "CALL" ? TradingParameters.BuyBarrier : TradingParameters.SellBarrier;
+
+            // Log barrier values
+            logger.Info($"Setting barrier for {contractType}: {request.barrier} (TempBarrier: {TradingParameters.TempBarrier}, Barrier: {TradingParameters.Barrier})");
 
             // Create a new BuyContractRequest object, which will be sent to the server.
             var contract = new BuyContractRequest();

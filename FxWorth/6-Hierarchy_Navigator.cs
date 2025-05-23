@@ -17,7 +17,7 @@ namespace FxWorth.Hierarchy
         private Dictionary<string, HierarchyLevel> hierarchyLevels;
         private List<string> levelOrder;
         public string currentLevelId { get; set; }
-        private int hierarchyLevelsCount;
+        public int hierarchyLevelsCount { get; private set; }
         public int maxHierarchyDepth { get; private set; }
         private PhaseParameters phase1Params;
         private PhaseParameters phase2Params;
@@ -55,6 +55,7 @@ namespace FxWorth.Hierarchy
                 LoadLevelTradingParameters(levelId, client, client.TradingParameters);
             }
         }
+
         // This method is used to retrieve the client associated with a specific level in the hierarchy.
         public AuthClient GetClientForLevel(string levelId)
         {
@@ -73,69 +74,84 @@ namespace FxWorth.Hierarchy
         {
             IsInHierarchyMode = true; // Enter hierarchy mode
 
+            // Only create Layer 1 initially
             CreateLayer(1, amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
-
-            for (int i = 2; i <= maxHierarchyDepth; i++)
-            {
-                if (ExistsCustomConfigForLayer(i, customLayerConfigs))
-                {
-                    decimal initialStakeForLayer = hierarchyLevels.TryGetValue($"{i - 1}.1", out var previousLayerLevel) ? previousLayerLevel.InitialStake : initialStakeLayer1;
-                    CreateLayer(i, amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeForLayer);
-                }
-            }
-
             currentLevelId = "1.1";
         }
 
         /// This Create Layer method is called when the maximum drawdown in a level is reached.
         public void CreateLayer(int layerNumber, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
         {
+            logger.Info($"Creating Layer {layerNumber} for amount {amountToBeRecovered:F2}");
+            
             CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, customLayerConfigs);
 
-            int hierarchyLevelsForLayer = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
-            decimal amountPerLevel = amountToBeRecovered / hierarchyLevelsForLayer;
+            // Determine number of levels for this layer and store for later use
+            hierarchyLevelsCount = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
+            decimal amountPerLevel = Math.Round(amountToBeRecovered / hierarchyLevelsCount, 2);
 
-            for (int i = 1; i <= hierarchyLevelsForLayer; i++)
-            {
-                string levelId = $"{layerNumber}.{i}";
+            logger.Info($"Layer {layerNumber} will have {hierarchyLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
 
-                int? martingaleLevel = customConfig?.MartingaleLevel ?? phase2Params.MartingaleLevel;
-                decimal? maxDrawdown = customConfig?.MaxDrawdown ?? phase2Params.MaxDrawdown;
-                decimal? barrierOffset = customConfig?.BarrierOffset ?? phase2Params.Barrier;
+            // Create just the first level of this layer - others will be created as needed
+            string levelId = $"{layerNumber}.1";
 
-                decimal levelInitialStake;
-                if (customConfig?.InitialStake != null)
+            // Get parameters, prioritizing custom config over phase parameters
+            int? martingaleLevel = customConfig?.MartingaleLevel ?? 
+                (layerNumber == 1 ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
+            
+            decimal? maxDrawdown = customConfig?.MaxDrawdown ?? 
+                (layerNumber == 1 ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
+            
+            decimal? barrierOffset = customConfig?.BarrierOffset ?? 
+                (layerNumber == 1 ? phase2Params.Barrier : phase1Params.Barrier);
+
+            // Determine initial stake for this level
+            decimal levelInitialStake = DetermineLevelInitialStake(layerNumber, customConfig, initialStake);
+
+            // Create and configure the new level
+            HierarchyLevel newLevel = new HierarchyLevel(
+                levelId,
+                amountPerLevel,
+                levelInitialStake,
+                martingaleLevel,
+                maxDrawdown,
+                barrierOffset
+            );
+
+            hierarchyLevels[levelId] = newLevel;
+            levelOrder.Add(levelId);
+
+            logger.Info($"Created Level {levelId}: AmountToRecover={amountPerLevel:F2}, " +
+                       $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
+                       $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
+
+            // Check if this level's amount exceeds its MaxDrawdown and needs to create a new layer
+            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && layerNumber < maxHierarchyDepth)
                 {
-                    levelInitialStake = customConfig.InitialStake.Value;
-                }
-                else if (layerNumber > 1)
-                {
-                    if (hierarchyLevels.TryGetValue($"{layerNumber - 1}.1", out var previousLayerLevel))
-                    {
-                        levelInitialStake = previousLayerLevel.InitialStake;
-                    }
-                    else
-                    {
-                        levelInitialStake = initialStake;
-                    }
-                }
-                else
-                {
-                    levelInitialStake = initialStake;
-                }
-
-                HierarchyLevel newLevel = new HierarchyLevel(levelId, amountPerLevel, levelInitialStake, martingaleLevel, maxDrawdown, barrierOffset);
-                hierarchyLevels[levelId] = newLevel;
-                levelOrder.Add(levelId);
-
-                decimal levelMaxDrawdown = customConfig?.MaxDrawdown ?? phase2Params.MaxDrawdown;
-
-                if (amountPerLevel > levelMaxDrawdown && layerNumber < maxHierarchyDepth)
-                {
+                logger.Info($"Level {levelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Creating new layer.");
                     CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, levelInitialStake);
                 }
             }
+
+        private decimal DetermineLevelInitialStake(int layerNumber, CustomLayerConfig customConfig, decimal defaultInitialStake)
+        {
+            // For Layer 1, use the provided defaultInitialStake if no custom config
+            if (layerNumber == 1)
+            {
+                return customConfig?.InitialStake ?? defaultInitialStake;
+            }
+
+            // For layers beyond Layer 1, must use custom config's initial stake
+            if (customConfig?.InitialStake != null)
+            {
+                return customConfig.InitialStake.Value;
+            }
+
+            // If no custom config for higher layers, log warning and use a safe default
+            logger.Warn($"No custom configuration found for Layer {layerNumber}. This may lead to incorrect stake values.");
+            return defaultInitialStake;
         }
+
 
         /// <summary>
         /// The `HierarchyLevel` class represents a single level in the hierarchy of the trading strategy.
@@ -143,70 +159,284 @@ namespace FxWorth.Hierarchy
         public class HierarchyLevel
         {
             public string LevelId { get; set; }
-            public decimal AmountToBeRecovered { get; set; }
+            public decimal AmountToRecover { get; set; }
             public decimal InitialStake { get; set; }
-            public int? MartingaleLevel { get; set; }
+            public int? MartingaleLevel { get; set; }            
             public decimal? MaxDrawdown { get; set; }
             public decimal? BarrierOffset { get; set; }
-            public List<decimal> recoveryResults { get; set; } = new List<decimal>();
+            private List<decimal> recoveryResults = new List<decimal>();
+            public List<decimal> RecoveryResults 
+            {
+                get => recoveryResults;
+                set => recoveryResults = value;
+            }
             public bool IsCompleted { get; set; }
+            public bool HasExceededMaxDrawdown => GetTotalLoss() > (MaxDrawdown ?? decimal.MaxValue);
+            public decimal CurrentRecoveryAmount => GetTotalLoss();
+            public bool IsRecoverySuccessful => GetTotalProfit() >= AmountToRecover;
+            public decimal GetTotalLoss()
+            {
+                return RecoveryResults.Where(r => r < 0).Sum(r => -r);
+            }
+            
+            // Get total profit from positive trade results
+            public decimal GetTotalProfit()
+            {
+                return RecoveryResults.Where(r => r > 0).Sum();
+            }
+            // Cache the latest dynamic stake used in recovery
+            public decimal CurrentDynamicStake { get; set; }
 
             public HierarchyLevel(string levelId, decimal amountToBeRecovered, decimal initialStake, int? martingaleLevel, decimal? maxDrawdown, decimal? barrierOffset)
             {
                 LevelId = levelId;
-                AmountToBeRecovered = amountToBeRecovered;
+                AmountToRecover = amountToBeRecovered;
                 InitialStake = initialStake;
+                CurrentDynamicStake = initialStake;
                 MartingaleLevel = martingaleLevel;
                 MaxDrawdown = maxDrawdown;
                 BarrierOffset = barrierOffset;
                 IsCompleted = false;
+            }            
+            
+            public void UpdateRecoveryResults(List<decimal> newResults)
+            {
+                if (newResults == null || !newResults.Any())
+                    return;
+
+                RecoveryResults = new List<decimal>(newResults);
+                IsCompleted = IsRecoverySuccessful;
+            }
+
+            // Update level state from trading parameters to keep them synchronized
+            public void UpdateFromTradingParameters(TradingParameters tradingParameters)
+            {
+                if (tradingParameters == null)
+                    return;
+                
+                // Update recovery results
+                if (tradingParameters.RecoveryResults.Any())
+                {
+                    RecoveryResults = new List<decimal>(tradingParameters.RecoveryResults);
+                    
+                    // Log recovery progress using correct metrics
+                    decimal profitAmount = GetTotalProfit();
+                    decimal lossAmount = GetTotalLoss();
+                    decimal netAmount = profitAmount - lossAmount;
+                    
+                    logger.Info($"Level {LevelId} recovery progress: Total Profit=${profitAmount:F2}, Total Loss=${lossAmount:F2}, Net=${netAmount:F2}, Target=${AmountToRecover:F2}");
+                    
+                    // Check if recovery is successful (total profit exceeds target)
+                    if (profitAmount >= AmountToRecover)
+                    {
+                        logger.Info($"Level {LevelId} recovery target met: ${profitAmount:F2} >= ${AmountToRecover:F2} (required amount)");
+                        IsCompleted = true;
+                    }
+                }
+                
+                // Update amount to be recovered
+                if (tradingParameters.IsRecoveryMode)
+                {
+                    AmountToRecover = tradingParameters.AmountToBeRecoverd;
+                }
+                
+                // Update dynamic stake - keep track of the current stake being used
+                if (tradingParameters.DynamicStake > 0)
+                {
+                    CurrentDynamicStake = tradingParameters.DynamicStake;
+                }
+                
+                // Force update completion state
+                IsCompleted = IsRecoverySuccessful;
+            }            public void Reset()
+            {
+                RecoveryResults.Clear();
+                IsCompleted = false;
+                CurrentDynamicStake = InitialStake;
             }
         }
 
-        // This method moves through the hierarchy levels based on the current level ID.
-        public void MoveToNextLevel(AuthClient client)
+        // This method creates the next level in the same layer (e.g., from 1.1 to 1.2)
+        public string CreateNextLevelInLayer(string currentLevelId)
         {
-            logger.Info($"Exiting Level: {currentLevelId}");
-
-            string[] parts = currentLevelId.Split('.');
-            int currentLayer = parts.Length;
-            int currentLevelNumber = int.Parse(parts.Last());
-
-            if (currentLevelNumber < hierarchyLevelsCount)
+            if (string.IsNullOrEmpty(currentLevelId) || !currentLevelId.Contains("."))
             {
-                currentLevelNumber++;
-                parts[parts.Length - 1] = currentLevelNumber.ToString();
-                currentLevelId = string.Join(".", parts);
-                AssignClientToLevel(currentLevelId, client);
-                logger.Info($"Entering Level: {currentLevelId}");
-                return;
+                logger.Error($"Cannot create next level: Invalid level ID format {currentLevelId}");
+                return null;
             }
 
-            if (currentLayer == 1)
+            string[] parts = currentLevelId.Split('.');
+            int currentLayer = int.Parse(parts[0]);
+            int currentLevelNumber = int.Parse(parts[1]);
+            
+            // Check if we're at the max level count for this layer
+            if (currentLevelNumber >= hierarchyLevelsCount)
             {
-                layer1CompletedLevels++;
-                if (layer1CompletedLevels >= hierarchyLevelsCount)
+                logger.Info($"Cannot create next level in layer {currentLayer}: Already at max level {currentLevelNumber} of {hierarchyLevelsCount}");
+                return null;
+            }
+            
+            string nextLevelId = $"{currentLayer}.{currentLevelNumber + 1}";
+            
+            // Don't create if it already exists
+            if (hierarchyLevels.ContainsKey(nextLevelId))
+            {
+                logger.Info($"Level {nextLevelId} already exists, not creating it again");
+                return nextLevelId;
+            }
+            
+            // Find the parameters from the current level to use as a template
+            HierarchyLevel currentLevel = hierarchyLevels[currentLevelId];
+            
+            // Get the appropriate custom config
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(currentLayer, storage.customLayerConfigs);
+            
+            // Create new level with the same parameters
+            HierarchyLevel newLevel = new HierarchyLevel(
+                nextLevelId,
+                currentLevel.AmountToRecover, // Same amount as current level
+                currentLevel.InitialStake,
+                currentLevel.MartingaleLevel,
+                currentLevel.MaxDrawdown,
+                currentLevel.BarrierOffset
+            );
+            
+            hierarchyLevels[nextLevelId] = newLevel;
+            levelOrder.Add(nextLevelId);
+            
+            logger.Info($"Created next Level {nextLevelId}: AmountToRecover={newLevel.AmountToRecover:F2}, " +
+                       $"InitialStake={newLevel.InitialStake:F2}, MartingaleLevel={newLevel.MartingaleLevel}, " +
+                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, BarrierOffset={newLevel.BarrierOffset:F2}");
+                       
+            return nextLevelId;
+        }
+
+        // This method moves through the hierarchy levels based on the current level ID.
+        public bool MoveToNextLevel(AuthClient client)
+        {
+            if (string.IsNullOrEmpty(currentLevelId) || currentLevelId == "0")
+        {
+                logger.Error("Cannot move to next level: Invalid current level ID");
+                return false;
+            }
+
+            var currentLevel = GetCurrentLevel();
+            if (currentLevel == null)
+            {
+                logger.Error($"Cannot move to next level: Current level {currentLevelId} not found");
+                return false;
+            }
+            
+            // Calculate if the level should be considered completed based on recovery results
+            if (currentLevel.RecoveryResults.Any())
+            {
+                decimal profitAmount = currentLevel.GetTotalProfit();
+                decimal lossAmount = currentLevel.GetTotalLoss();
+                
+                logger.Info($"Level {currentLevelId} movement check: Profit=${profitAmount:F2}, Loss=${lossAmount:F2}, Target=${currentLevel.AmountToRecover:F2}");
+                
+                if (profitAmount >= currentLevel.AmountToRecover)
                 {
-                    IsInHierarchyMode = false;
-                    currentLevelId = "0";
-                    layer1CompletedLevels = 0;
-                    logger.Info("Layer 1 recovered. Returning to root level trading.");
-                    return;
+                    logger.Info($"Level {currentLevelId} has recovered ${profitAmount:F2} which exceeds needed amount ${currentLevel.AmountToRecover:F2}");
+                    currentLevel.IsCompleted = true;
+                }
+            }
+            
+            // Don't move if level hasn't processed any trades or isn't completed
+            if (!currentLevel.RecoveryResults.Any() || !currentLevel.IsCompleted)
+            {
+                logger.Info($"Cannot move from level {currentLevelId}: Level has not processed trades or is not completed");
+                return false;
+            }
+
+            // Log exit from current level
+            logger.Info($"Exiting Level: {currentLevelId} (Completed: {currentLevel.IsCompleted}, " +
+                        $"Recovery Amount: {currentLevel.CurrentRecoveryAmount}, MaxDrawdown: {currentLevel.MaxDrawdown})");
+
+            string[] parts = currentLevelId.Split('.');
+            int currentLayer = int.Parse(parts[0]);
+            int currentLevelNumber = int.Parse(parts[1]);
+            string newLevelId = null;
+
+            // If we're in a nested layer (layer > 1), first try to move up to parent level
+            if (currentLayer > 1 && currentLevel.IsCompleted)
+            {
+                // Get parent level ID by removing the last part
+                newLevelId = string.Join(".", parts.Take(parts.Length - 1));
+                logger.Info($"Moving up from nested layer {currentLevelId} to parent level {newLevelId}");
+            }
+            // If in Layer 1
+            else if (currentLayer == 1)
+            {
+                if (currentLevel.IsCompleted)
+                {
+                    layer1CompletedLevels++;
+                    logger.Info($"Completed level {currentLevelId} - that's {layer1CompletedLevels} of {hierarchyLevelsCount} levels in Layer 1");
+                    
+                    if (layer1CompletedLevels >= hierarchyLevelsCount)
+                    {
+                        // All Layer 1 levels completed - exit hierarchy mode
+                        IsInHierarchyMode = false;
+                        newLevelId = "0";
+                        layer1CompletedLevels = 0;
+                        
+                        // Reset trading parameters to root level
+                        client.TradingParameters.ResetForHierarchyTransition();
+                        client.TradingParameters.IsRecoveryMode = false;
+                        client.TradingParameters.DynamicStake = client.TradingParameters.Stake;
+                        client.TradingParameters.TempBarrier = 0;
+                        
+                        logger.Info("Layer 1 fully recovered. Returning to root level trading.");
+                    }
+                    else
+                    {
+                        // Create and move to next level in Layer 1
+                        newLevelId = CreateNextLevelInLayer(currentLevelId);
+                        if (newLevelId != null)
+                        {
+                            logger.Info($"Moving to next Level 1 position. Entering Level: {newLevelId}");
+                            
+                            // Reset trading parameters for new level
+                            client.TradingParameters.ResetForHierarchyTransition();
+                            client.TradingParameters.RecoveryResults.Clear();
+                        }
+                        else
+                        {
+                            logger.Error($"Failed to create next level after {currentLevelId}");
+                            return false;
+                        }
+                    }
+                }
+            }
+            // If we get here and the level is completed, create and move to next level in same layer
+            else if (currentLevel.IsCompleted && currentLevelNumber < hierarchyLevelsCount)
+            {
+                newLevelId = CreateNextLevelInLayer(currentLevelId);
+                if (newLevelId != null)
+                {
+                    logger.Info($"Moving to next level in same layer. Entering Level: {newLevelId}");
                 }
                 else
                 {
-                    currentLevelNumber = layer1CompletedLevels + 1;
-                    currentLevelId = $"1.{currentLevelNumber}";
-                    AssignClientToLevel(currentLevelId, client);
-                    logger.Info($"Entering Level: {currentLevelId}");
-                    return;
+                    logger.Error($"Failed to create next level after {currentLevelId}");
+                    return false;
                 }
             }
 
-            parts = parts.Take(parts.Length - 1).ToArray();
-            currentLevelId = string.Join(".", parts);
-            AssignClientToLevel(currentLevelId, client);
-            logger.Info($"Moving up to parent level: {currentLevelId}");
+            // Only update the current level ID if we've determined a valid new level
+            if (!string.IsNullOrEmpty(newLevelId))
+            {
+                currentLevelId = newLevelId;
+                if (newLevelId != "0")  // Don't assign client for root level
+                {
+                    AssignClientToLevel(newLevelId, client);
+                }
+                return true;
+            }
+
+            // If we get here, we're staying in the current level
+            logger.Info($"No movement: Staying in current level {currentLevelId}");
+            return false;
         }
 
         /// This method is responsible for loading the necessary trading parameters to be used inside the hierarchy.
@@ -218,21 +448,66 @@ namespace FxWorth.Hierarchy
                 return;
             }
 
-            CustomLayerConfig customConfig = GetCustomConfigForLayer(int.Parse(levelId.Split('.')[0]), storage.customLayerConfigs);
+            // Store original values that shouldn't be modified
+            decimal originalStake = tradingParameters.Stake;
+            var originalSymbol = tradingParameters.Symbol;
+            int originalDuration = tradingParameters.Duration;
+            string originalDurationType = tradingParameters.DurationType;
+            
+            // Only reset if this is the first entry into the level (no recovery results yet)
+            bool isFirstEntry = tradingParameters.RecoveryResults == null || !tradingParameters.RecoveryResults.Any();
 
-            tradingParameters.MartingaleLevel = customConfig?.MartingaleLevel ?? level.MartingaleLevel ?? (levelId.StartsWith("1.") ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
-            tradingParameters.MaxDrawdown = customConfig?.MaxDrawdown ?? level.MaxDrawdown ?? (levelId.StartsWith("1.") ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
-            tradingParameters.Barrier = customConfig?.BarrierOffset ?? level.BarrierOffset ?? (levelId.StartsWith("1.") ? phase2Params.Barrier : phase1Params.Barrier);
-            tradingParameters.TempBarrier = level.BarrierOffset ?? tradingParameters.Barrier;
-            tradingParameters.AmountToBeRecoverd = level.AmountToBeRecovered;
-
-            if (tradingParameters.DynamicStake == 0 || tradingParameters.DynamicStake == tradingParameters.Stake)
+            if (isFirstEntry)
             {
+                tradingParameters.ResetForHierarchyTransition();
+                tradingParameters.RecoveryResults.Clear();
+                tradingParameters.IsRecoveryMode = true;
+                tradingParameters.AmountToBeRecoverd = level.AmountToRecover;
                 tradingParameters.DynamicStake = level.InitialStake;
+                logger.Info($"Initializing level {levelId} in recovery mode with amount: {level.AmountToRecover:F2} and initial stake: {level.InitialStake:F2}");
+            }
+            else
+            {
+                // Preserve current recovery state (do not reset stake or results)
+                logger.Info($"Preserving recovery state for level {levelId}. Amount: {tradingParameters.AmountToBeRecoverd}, Stake: {tradingParameters.DynamicStake}");
             }
 
-            // Update the level's recovery results with the client's current recovery results
-            level.recoveryResults = new List<decimal>(tradingParameters.RecoveryResults);
+            logger.Info($"Reset trading parameters for level transition. Base stake: {originalStake}, Initial recovery stake: {level.InitialStake}, MartingaleLevel: {tradingParameters.MartingaleLevel}");
+
+            int layerNumber = int.Parse(levelId.Split('.')[0]);
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, storage.customLayerConfigs);
+
+            // Apply hierarchy level parameters with proper precedence:
+            // 1. Custom layer config (if exists and layer > 1)
+            // 2. Level-specific parameters
+            // 3. Phase parameters based on layer number
+
+            if (layerNumber > 1 && customConfig != null)
+            {
+                tradingParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
+                tradingParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
+                tradingParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
+            }
+            else // Layer 1 or no custom config
+            {
+                tradingParameters.MartingaleLevel = level.MartingaleLevel ?? (layerNumber == 1 ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
+                tradingParameters.MaxDrawdown = level.MaxDrawdown ?? (layerNumber == 1 ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
+                tradingParameters.TempBarrier = level.BarrierOffset ?? (layerNumber == 1 ? phase2Params.Barrier : phase1Params.Barrier);
+            }
+
+            // Always restore original values that shouldn't be modified
+            tradingParameters.Stake = originalStake;
+            tradingParameters.Symbol = originalSymbol;
+            tradingParameters.Duration = originalDuration;
+            tradingParameters.DurationType = originalDurationType;
+
+            // Update the level with the current trading parameters state
+            level.UpdateFromTradingParameters(tradingParameters);
+
+            logger.Info($"Loaded parameters for level {levelId}: MartingaleLevel={tradingParameters.MartingaleLevel}, " +
+                        $"MaxDrawdown={tradingParameters.MaxDrawdown}, BarrierOffset={tradingParameters.TempBarrier}, " +
+                        $"AmountToBeRecovered={tradingParameters.AmountToBeRecoverd}, DynamicStake={tradingParameters.DynamicStake}, " +
+                        $"IsRecoveryMode={tradingParameters.IsRecoveryMode}");
         }
 
         public HierarchyLevel GetCurrentLevel()
@@ -275,7 +550,7 @@ namespace FxWorth.Hierarchy
             {
                 if (level.LevelId.StartsWith("1."))
                 {
-                    total += level.AmountToBeRecovered;
+                    total += level.AmountToRecover;
                 }
             }
             return total;
