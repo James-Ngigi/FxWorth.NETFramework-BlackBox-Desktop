@@ -35,12 +35,12 @@ namespace FxApi.Connection
         public int RecoveryAttemptsLeft { get; set; }
         public decimal TempBarrier { get; set; }
         public decimal InitialStake4Layer1 { get; set; }
-        public decimal TotalProfit { get; private set; }
+        public decimal TotalProfit { get; private set; }        
         public decimal LevelInitialStake { get; set; }
 
         public event EventHandler<decimal> TakeProfitReached;
 
-        public List<decimal> recoveryResults = new List<decimal>();
+        private List<decimal> recoveryResults = new List<decimal>();
         public List<decimal> RecoveryResults
         {
             get => recoveryResults;
@@ -65,7 +65,8 @@ namespace FxApi.Connection
             // Reset dynamic stake to initial stake
             DynamicStake = Stake;
 
-            // When transitioning to a new level in hierarchy, store the current stake as the level's initial stake if not already set
+            // When transitioning to a new level in hierarchy, store the current stake
+            // as the level's initial stake if not already set
             if (LevelInitialStake == 0)
             {
                 LevelInitialStake = Stake;

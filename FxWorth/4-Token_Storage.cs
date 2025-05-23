@@ -342,7 +342,7 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (clientParams.AmountToBeRecoverd > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
+                    if (clientParams.TotalProfit > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
                         decimal initialStakeForHierarchy = clientParams.InitialStake4Layer1 > 0 ? clientParams.InitialStake4Layer1 : clientParams.Stake;
@@ -745,8 +745,7 @@ namespace FxWorth
                 }
                 
                 // Try moving to next level if recovery is complete
-                if (shouldAttemptLevelTransition || 
-                    (currentLevel.IsRecoverySuccessful && !client.TradingParameters.IsRecoveryMode))
+                if (shouldAttemptLevelTransition || (currentLevel.IsRecoverySuccessful && !client.TradingParameters.IsRecoveryMode))
                 {
                     // Store the current level ID before attempting to move
                     string previousLevelId = hierarchyNavigator.currentLevelId;
@@ -775,19 +774,12 @@ namespace FxWorth
                         logger.Info($"Failed to move from level {previousLevelId}. Current level remains {hierarchyNavigator.currentLevelId}");
                     }
                 }
-                
+
                 // Always ensure we're using the correct parameters for the current level
                 // but only if we haven't created a new layer (which would have already loaded parameters)
                 HierarchyLevel updatedLevel = hierarchyNavigator.GetCurrentLevel();
-                if (updatedLevel != null && updatedLevel.LevelId == currentLevel.LevelId)
+                if (updatedLevel != null)
                 {
-                    // No need to reload parameters if we just processed a trade and are in recovery mode
-                    // This is the key - let the recovery system work without interference
-                    if (!client.TradingParameters.IsRecoveryMode)
-                    {
-                        hierarchyNavigator.LoadLevelTradingParameters(hierarchyNavigator.currentLevelId, client, client.TradingParameters);
-                    }
-                    
                     logger.Info($"Trading in level {hierarchyNavigator.currentLevelId}, " +
                                 $"Amount to recover: {updatedLevel.CurrentRecoveryAmount}, " +
                                 $"IsRecoveryMode: {client.TradingParameters.IsRecoveryMode}, " +
@@ -829,7 +821,9 @@ namespace FxWorth
             decimal maxPayout = model.Payouts.Max();
             client.TradingParameters.Process(model.Profit, maxPayout, int.Parse(client.GetToken()), model.Id, 0);
 
-            if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
+            // Enter hierarchy mode only when the total profit drops below -MaxDrawdown (negative MaxDrawdown)
+            // This properly checks the net PnL rather than comparing recovery amounts to MaxDrawdown
+            if (client.TradingParameters.TotalProfit < -client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
             {
                 EnterHierarchyMode(client);
             }

@@ -384,7 +384,7 @@ namespace FxWorth
                                 else
                                 {
                                     // If the level didn't change, ensure parameters are correctly loaded
-                                    storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                    //storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
                                     logger.Info($"Trading in level {storage.hierarchyNavigator.currentLevelId}");
                                 }
                             }
