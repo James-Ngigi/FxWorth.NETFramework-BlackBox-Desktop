@@ -45,26 +45,15 @@ namespace FxApi.Connection
         {
             get => recoveryResults;
             set => recoveryResults = value;
-        }
-
-        /// <summary>
+        }        /// <summary>
         /// Resets the trading parameters state for a new hierarchy level
         /// </summary>
         public void ResetForHierarchyTransition()
         {
-            // Clear recovery results for the new level
-            recoveryResults.Clear();
-
-            // Reset previous profit to ensure fresh calculation
-            PreviousProfit = 0;
-
-            // Reset recovery mode flags
-            IsRecoveryMode = false;
-            AmountToBeRecoverd = 0;
-
-            // Reset dynamic stake to initial stake
-            DynamicStake = Stake;
-
+            // DON'T clear recovery results - they should be managed by the hierarchy level
+            // DON'T reset previous profit - it should persist for Martingale calculations
+            // DON'T reset recovery mode flags - they should be managed by hierarchy logic
+            
             // When transitioning to a new level in hierarchy, store the current stake
             // as the level's initial stake if not already set
             if (LevelInitialStake == 0)
@@ -74,7 +63,7 @@ namespace FxApi.Connection
 
             // Note: We no longer reset TempBarrier here as it should persist throughout the level
 
-            logger.Info($"Reset trading parameters for hierarchy transition. New stake: {Stake}, Level initial stake: {LevelInitialStake}, MartingaleLevel: {MartingaleLevel}");
+            logger.Info($"Reset trading parameters for hierarchy transition. Base stake: {Stake}, Level initial stake: {LevelInitialStake}, MartingaleLevel: {MartingaleLevel}");
         }
 
         /// <summary>
@@ -189,6 +178,22 @@ namespace FxApi.Connection
         {
             // Format the trading parameters as a string, including all relevant values.
             return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
+        }
+
+        /// <summary>
+        /// Updates the TotalProfit without triggering the full Process logic.
+        /// This is used in hierarchy mode to track profit without interference.
+        /// </summary>
+        /// <param name="profitAmount">The profit amount to add to total profit</param>
+        public void UpdateTotalProfit(decimal profitAmount)
+        {
+            TotalProfit += profitAmount;
+
+            // Check if take profit target is reached
+            if (TotalProfit >= TakeProfit)
+            {
+                TakeProfitReached?.Invoke(this, TotalProfit);
+            }
         }
 
         /// <summary>
