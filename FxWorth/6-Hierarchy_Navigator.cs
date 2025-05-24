@@ -164,12 +164,7 @@ namespace FxWorth.Hierarchy
             public int? MartingaleLevel { get; set; }            
             public decimal? MaxDrawdown { get; set; }
             public decimal? BarrierOffset { get; set; }
-            private List<decimal> recoveryResults = new List<decimal>();
-            public List<decimal> RecoveryResults 
-            {
-                get => recoveryResults;
-                set => recoveryResults = value;
-            }
+            public List<decimal> RecoveryResults { get; set; } = new List<decimal>();
             public bool IsCompleted { get; set; }
             public bool HasExceededMaxDrawdown => GetTotalLoss() > (MaxDrawdown ?? decimal.MaxValue);
             public decimal CurrentRecoveryAmount => GetTotalLoss();

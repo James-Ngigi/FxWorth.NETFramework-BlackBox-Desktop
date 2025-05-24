@@ -342,7 +342,7 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (clientParams.TotalProfit > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
+                    if (clientParams.TotalProfit < -clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
                         decimal initialStakeForHierarchy = clientParams.InitialStake4Layer1 > 0 ? clientParams.InitialStake4Layer1 : clientParams.Stake;
