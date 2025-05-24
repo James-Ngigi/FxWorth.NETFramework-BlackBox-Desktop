@@ -374,10 +374,9 @@ namespace FxWorth
                                     if (storage.hierarchyNavigator.currentLevelId == "0")
                                     {
                                         logger.Info("Returned to root level trading.");
-                                    }
-                                    else
+                                    }                                    else
                                     {
-                                        storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                        storage.SetHierarchyLevelTradingParameters(client);
                                         logger.Info($"Successfully moved to next level: {storage.hierarchyNavigator.currentLevelId}");
                                     }
                                 }
@@ -409,12 +408,10 @@ namespace FxWorth
                                         initialStakeForNextLayer = storage.customLayerConfigs.ContainsKey(nextLayer) ?
                                             (storage.customLayerConfigs[nextLayer].InitialStake ?? currentLevel.InitialStake) :
                                             currentLevel.InitialStake;
-                                    }
-
-                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
+                                    }                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
                                     storage.hierarchyNavigator.currentLevelId = nextLevelId;
-                                    storage.hierarchyNavigator.LoadLevelTradingParameters(nextLevelId, client, client.TradingParameters);
+                                    storage.SetHierarchyLevelTradingParameters(client);
                                     logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
                                 }
                             }
@@ -708,10 +705,7 @@ namespace FxWorth
                 if (!sw.IsRunning || sw.Elapsed < minimumTradingTime)
                 {
                     return;
-                }
-
-                bool allSelectedClientsCompletedOrTerminal = true;
-                bool anySelectedClientWasActive = false;
+                }                bool allSelectedClientsCompletedOrTerminal = true;
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
                 {
@@ -726,10 +720,6 @@ namespace FxWorth
                         if (!isTerminal)
                         {
                             allSelectedClientsCompletedOrTerminal = false;
-                        }
-                        if (status == "Trading" || status == "Analyzing")
-                        {
-                            anySelectedClientWasActive = true;
                         }
                     }
                 }

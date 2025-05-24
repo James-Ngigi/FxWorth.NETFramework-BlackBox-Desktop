@@ -345,13 +345,13 @@ namespace FxWorth
                     if (clientParams.AmountToBeRecoverd > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
-                        decimal initialStakeForHierarchy = clientParams.InitialStake4Layer1 > 0 ? clientParams.InitialStake4Layer1 : clientParams.Stake;
-                        hierarchyNavigator = new HierarchyNavigator(clientParams.AmountToBeRecoverd, clientParams, phase1Parameters, phase2Parameters, customLayerConfigs, initialStakeForHierarchy, this);
+                        decimal initialStakeForHierarchy = clientParams.InitialStake4Layer1 > 0 ? clientParams.InitialStake4Layer1 : clientParams.Stake;                        hierarchyNavigator = new HierarchyNavigator(clientParams.AmountToBeRecoverd, clientParams, phase1Parameters, phase2Parameters, customLayerConfigs, initialStakeForHierarchy, this);
                         
                         currentLevelId = "1.1";
 
                         hierarchyNavigator.AssignClientToLevel(currentLevelId, value);
-                        hierarchyNavigator.LoadLevelTradingParameters(currentLevelId, value, clientParams);
+                        // Use SetTradingParameters approach for initial hierarchy entry
+                        SetHierarchyLevelTradingParameters(value);
                         clientParams.DynamicStake = hierarchyNavigator.GetCurrentLevel()?.InitialStake ?? clientParams.Stake;
                     }
 
@@ -360,12 +360,11 @@ namespace FxWorth
                         if (hierarchyClient != value) 
                         {
                             continue;
-                        }
-
-                        HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
+                        }                        HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
                         if (currentLevel != null)
                         {
-                            hierarchyNavigator.LoadLevelTradingParameters(currentLevel.LevelId, value, clientParams);
+                            // Use SetTradingParameters approach for hierarchy level refresh
+                            SetHierarchyLevelTradingParameters(value);
 
                             logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToRecover}, Stake: {clientParams.DynamicStake}, Barrier: {clientParams.TempBarrier}");
 
@@ -571,9 +570,10 @@ namespace FxWorth
         }
 
         public List<Credentials> Credentials { get; set; } = new List<Credentials>();
-        public bool IsTradingAllowed { get; set; }
-
+        public bool IsTradingAllowed { get; set; }        
+        
         /// Sets the trading parameters for each managed `AuthClient` instance based on the provided base parameters.
+        /// In hierarchy mode, configures parameters for the current hierarchy level.
         public void SetTradingParameters(TradingParameters baseParameters)
         {
             foreach (var clientPair in clients)
@@ -589,13 +589,97 @@ namespace FxWorth
 
                 var clientParameters = (TradingParameters)baseParameters.Clone();
                 
-                clientParameters.TakeProfit = credentials.ProfitTarget;
+                // Check if this client is in hierarchy mode
+                if (IsHierarchyMode && client == hierarchyClient)
+                {
+                    SetHierarchyLevelParameters(clientParameters, client);
+                }
+                else
+                {
+                    // Normal mode - use credentials profit target
+                    clientParameters.TakeProfit = credentials.ProfitTarget;
+                }
                 
                 clientParameters.TakeProfitReached += OnTakeProfitReached;
 
                 client.TradingParameters = clientParameters;
 
                 logger.Debug($"<=> Applied TakeProfit {clientParameters.TakeProfit} to client {credentials.AppId}");
+            }
+        }       
+        
+        /// Configures trading parameters for the current hierarchy level
+        private void SetHierarchyLevelParameters(TradingParameters clientParameters, AuthClient client)
+        {
+            HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
+            if (currentLevel == null)
+            {
+                logger.Error("Cannot set hierarchy parameters - current level is null");
+                return;
+            }
+
+            // Set take profit to the level's AmountToRecover (this is the level's target)
+            clientParameters.TakeProfit = currentLevel.AmountToRecover;
+            
+            // Configure level-specific parameters
+            clientParameters.Stake = currentLevel.InitialStake;
+            clientParameters.DynamicStake = currentLevel.InitialStake;
+            clientParameters.LevelInitialStake = currentLevel.InitialStake;
+            
+            // Apply level-specific or phase-specific parameters based on layer
+            if (currentLevel.LevelId.StartsWith("1."))
+            {
+                // Phase 2 parameters (level 1.x)
+                clientParameters.Barrier = currentLevel.BarrierOffset ?? phase2Parameters.Barrier;
+                clientParameters.MaxDrawdown = currentLevel.MaxDrawdown ?? phase2Parameters.MaxDrawdown;
+                clientParameters.MartingaleLevel = currentLevel.MartingaleLevel ?? phase2Parameters.MartingaleLevel;
+            }
+            else
+            {
+                // Phase 1 parameters (level 2.x, 3.x, etc.)
+                clientParameters.Barrier = currentLevel.BarrierOffset ?? phase1Parameters.Barrier;
+                clientParameters.MaxDrawdown = currentLevel.MaxDrawdown ?? phase1Parameters.MaxDrawdown;
+                clientParameters.MartingaleLevel = currentLevel.MartingaleLevel ?? phase1Parameters.MartingaleLevel;
+            }
+
+            // Set temp barrier for the level
+            clientParameters.TempBarrier = clientParameters.Barrier;
+            
+            // Reset recovery state for new level
+            clientParameters.IsRecoveryMode = false;
+            clientParameters.AmountToBeRecoverd = 0;
+            clientParameters.RecoveryResults.Clear();
+            
+            logger.Info($"Configured hierarchy level {currentLevel.LevelId} - TakeProfit: ${clientParameters.TakeProfit:F2}, " +
+                       $"Stake: ${clientParameters.Stake:F2}, Barrier: {clientParameters.Barrier}, " +
+                       $"MartingaleLevel: {clientParameters.MartingaleLevel}");
+        }
+
+        /// Sets trading parameters specifically for a hierarchy level transition
+        public void SetHierarchyLevelTradingParameters(AuthClient client)
+        {
+            if (!IsHierarchyMode || client != hierarchyClient)
+                return;
+
+            // Use the existing SetTradingParameters method but only for the hierarchy client
+            if (client.TradingParameters != null)
+            {
+                // Get base parameters from the current trading parameters
+                var baseParameters = (TradingParameters)client.TradingParameters.Clone();
+                
+                // Unsubscribe from old event
+                client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
+                
+                // Configure for hierarchy level
+                SetHierarchyLevelParameters(baseParameters, client);
+                
+                // Subscribe to new event
+                baseParameters.TakeProfitReached += OnTakeProfitReached;
+                
+                // Apply the parameters
+                client.TradingParameters = baseParameters;
+                
+                logger.Info($"Applied hierarchy level parameters for hierarchy client at level {hierarchyNavigator.currentLevelId}");
             }
         }
 
@@ -748,11 +832,10 @@ namespace FxWorth
                                     client.TradingParameters.DynamicStake = client.TradingParameters.Stake;
                                     client.TradingParameters.AmountToBeRecoverd = 0;
                                     client.TradingParameters.RecoveryResults.Clear();
-                                }
-                                else
+                                }                                else
                                 {
-                                    // Load parameters for the new level
-                                    hierarchyNavigator.LoadLevelTradingParameters(hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                    // Use SetTradingParameters approach for level transition
+                                    SetHierarchyLevelTradingParameters(client);
                                     logger.Info($"Successfully moved to level: {hierarchyNavigator.currentLevelId}");
                                 }
                             }
