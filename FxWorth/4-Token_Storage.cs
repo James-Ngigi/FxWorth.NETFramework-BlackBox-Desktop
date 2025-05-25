@@ -660,6 +660,14 @@ namespace FxWorth
             if (!IsHierarchyMode || client != hierarchyClient)
                 return;
 
+            // Find the credentials for this client to get AppId for logging
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials == null)
+            {
+                logger.Error("Cannot find credentials for hierarchy client - unable to apply parameters");
+                return;
+            }
+
             // Ensure client has trading parameters - if not, get base parameters from UI
             TradingParameters baseParameters;
             
@@ -783,89 +791,17 @@ namespace FxWorth
                     {
                         logger.Warn("Trade update received with null client");
                         return;
-                    }
+                    }                    TradeUpdated?.Invoke(this, e);
 
-                    TradeUpdated?.Invoke(this, e);
-
-                    if (IsHierarchyMode)
-                    {
-                        HandleHierarchyTradeUpdate(model, client);
-                    }
-                    else
-                    {
-                        HandleNormalTradeUpdate(model, client);
-                    }
+                    // Unified trade processing - hierarchy mode just has different parameter configurations
+                    // but uses the same trade processing logic as normal mode
+                    HandleNormalTradeUpdate(model, client);
                 }
                 catch (Exception ex)
                 {
                     logger.Error(ex, "Error processing trade update");
                 }
-            }
-        }        // Handles trade updates in hierarchy mode, processing the trade model and updating the hierarchy level.
-        private void HandleHierarchyTradeUpdate(TradeModel model, AuthClient client)
-        {
-            HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
-            if (currentLevel == null) return;
-
-            // Use the maximum payout from the model's Payouts list for Process() method
-            decimal maxPayout = model.Payouts.Max();
-
-            // Let TradingParameters.Process() handle all the recovery logic properly
-            // This is the key fix - use the existing proven logic instead of duplicating it
-            if (int.TryParse(client.GetAppId(), out int appId))
-            {
-                client.TradingParameters.Process(model.Profit, maxPayout, appId, model.Id, 0);
-            }
-            else
-            {
-                logger.Error($"Failed to parse AppId '{client.GetAppId()}' to integer for hierarchy client");
-                return;
-            }
-
-            // Update hierarchy level tracking with the trade result
-            if (model.Profit != 0 && !currentLevel.RecoveryResults.Contains(model.Profit))
-            {
-                currentLevel.RecoveryResults.Add(model.Profit);
-                logger.Info($"Added trade result ${model.Profit:F2} to level {currentLevel.LevelId}'s results");
-            }
-
-            // Sync level state with trading parameters
-            currentLevel.UpdateFromTradingParameters(client.TradingParameters);
-
-            // Check if level target is reached based on total profit tracked by TradingParameters
-            if (client.TradingParameters.TotalProfit >= currentLevel.AmountToRecover && !currentLevel.IsCompleted)
-            {
-                logger.Info($"Level {currentLevel.LevelId} target achieved - TotalProfit: ${client.TradingParameters.TotalProfit:F2} >= Target: ${currentLevel.AmountToRecover:F2}");
-                currentLevel.IsCompleted = true;
-                
-                // Attempt to move to next level
-                string previousLevelId = hierarchyNavigator.currentLevelId;
-                bool moved = hierarchyNavigator.MoveToNextLevel(client);
-                
-                if (moved && hierarchyNavigator.currentLevelId != previousLevelId)
-                {
-                    if (hierarchyNavigator.currentLevelId == "0")
-                    {
-                        logger.Info("All hierarchy levels completed. Returned to root level trading.");
-                        // Exit hierarchy mode completely
-                        hierarchyNavigator = null;
-                        hierarchyClient = null;
-                        currentLevelId = null;
-                    }
-                    else
-                    {
-                        // Set parameters for new level
-                        SetHierarchyLevelTradingParameters(client);
-                        logger.Info($"Successfully moved to level: {hierarchyNavigator.currentLevelId}");
-                    }
-                }
-            }
-
-            logger.Info($"Hierarchy status - Level: {currentLevel.LevelId}, " +
-                        $"TotalProfit: ${client.TradingParameters.TotalProfit:F2}, " +
-                        $"Recovery: {client.TradingParameters.IsRecoveryMode}, " +
-                        $"Stake: ${client.TradingParameters.DynamicStake:F2}");
-        }
+            }        }
 
         // Creates a new layer in the hierarchy based on the current level and assigns the client to it.
         private void CreateNewLayer(HierarchyLevel currentLevel, AuthClient client)
