@@ -660,41 +660,13 @@ namespace FxWorth
             if (!IsHierarchyMode || client != hierarchyClient)
                 return;
 
-            // Find the credentials for this client to get AppId for logging
-            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
-            if (credentials == null)
-            {
-                logger.Error("Cannot find credentials for hierarchy client - unable to apply parameters");
-                return;
-            }
-
-            // Ensure client has trading parameters - if not, get base parameters from UI
-            TradingParameters baseParameters;
+            // Get base parameters from UI configuration for the hierarchy level
+            TradingParameters baseParameters = GetBaseTradingParametersFromUI();
             
-            if (client.TradingParameters != null)
-            {
-                // Get base parameters from the current trading parameters
-                baseParameters = (TradingParameters)client.TradingParameters.Clone();
-                
-                // Unsubscribe from old event
-                client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
-            }
-            else
-            {
-                // Initialize fresh trading parameters from the base configuration
-                // This happens when entering hierarchy mode or creating new levels
-                baseParameters = GetBaseTradingParametersFromUI();
-                logger.Info("Initialized fresh trading parameters for hierarchy level");
-            }
-            
-            // Configure for hierarchy level
-            SetHierarchyLevelParameters(baseParameters, client);
-            
-            // Subscribe to new event
-            baseParameters.TakeProfitReached += OnTakeProfitReached;
-            
-            // Apply the parameters
-            client.TradingParameters = baseParameters;
+            // Use the main SetTradingParameters method to apply parameters
+            // This ensures the hierarchy system uses the same parameter assignment logic
+            // and generates the expected "Applied TakeProfit X to client Y" log
+            SetTradingParameters(baseParameters);
             
             logger.Info($"Applied hierarchy level parameters for hierarchy client at level {hierarchyNavigator.currentLevelId}");
         }        /// Gets base trading parameters from UI configuration for fresh initialization
