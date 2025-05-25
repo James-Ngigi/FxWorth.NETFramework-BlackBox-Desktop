@@ -452,14 +452,20 @@ namespace FxWorth
             {
                 isTradePending = false; 
             }
-        }
-
-        /// <summary>
+        }        /// <summary>
         /// Updates the `isTradingGloballyAllowed` flag based on the current P&L status of all managed accounts.
         /// If all accounts have reached either the Take-Profit or Stop-Loss condition, trading is globally halted.
+        /// In hierarchy mode, only stop trading when completely exiting hierarchy (back to root level).
         /// </summary>
         private void UpdateGlobalTradingStatus()
         {
+            // In hierarchy mode, keep trading until we exit hierarchy completely
+            if (IsHierarchyMode)
+            {
+                isTradingGloballyAllowed = true;
+                return;
+            }
+
             isTradingGloballyAllowed = false;
 
             foreach (var clientPair in Clients)
@@ -660,6 +666,15 @@ namespace FxWorth
             if (!IsHierarchyMode || client != hierarchyClient)
                 return;
 
+            // Check if parameters are already set for this level to avoid duplicate configuration
+            var currentLevel = hierarchyNavigator?.GetCurrentLevel();
+            if (currentLevel != null && client.TradingParameters != null && 
+                Math.Abs(client.TradingParameters.TakeProfit - currentLevel.AmountToRecover) < 0.01m)
+            {
+                logger.Debug($"Trading parameters already configured for level {hierarchyNavigator.currentLevelId}");
+                return;
+            }
+
             // Get base parameters from UI configuration for the hierarchy level
             TradingParameters baseParameters = GetBaseTradingParametersFromUI();
             
@@ -669,7 +684,7 @@ namespace FxWorth
             SetTradingParameters(baseParameters);
             
             logger.Info($"Applied hierarchy level parameters for hierarchy client at level {hierarchyNavigator.currentLevelId}");
-        }        /// Gets base trading parameters from UI configuration for fresh initialization
+        }/// Gets base trading parameters from UI configuration for fresh initialization
         private TradingParameters GetBaseTradingParametersFromUI()
         {
             // First, try to get parameters from UI delegate if available
@@ -729,9 +744,9 @@ namespace FxWorth
             if (credentials == null)
             {
                 return;
-            }
+            }            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");
 
-            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");            // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
+            // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
             if (IsHierarchyMode && client == hierarchyClient)
             {
                 logger.Info("Take profit reached in hierarchy mode - attempting level transition");
@@ -739,9 +754,23 @@ namespace FxWorth
                 // Try to move to the next level in the hierarchy
                 if (hierarchyNavigator != null && hierarchyNavigator.MoveToNextLevel(client))
                 {
-                    logger.Info("Successfully transitioned to next hierarchy level");
-                    // Reset for the new level - parameters will be set by MoveToNextLevel -> AssignClientToLevel
-                    client.TradingParameters.ResetTotalProfit();
+                    // Check if we've exited hierarchy mode (returned to root level)
+                    if (hierarchyNavigator.currentLevelId == "0" || !hierarchyNavigator.IsInHierarchyMode)
+                    {
+                        logger.Info("Hierarchy recovery completed - returning to root level trading");
+                        // Reset hierarchy state
+                        hierarchyNavigator = null;
+                        hierarchyClient = null;
+                        currentLevelId = null;
+                        // Clear trading parameters to stop trading (root level behavior)
+                        client.TradingParameters = null;
+                    }
+                    else
+                    {
+                        logger.Info("Successfully transitioned to next hierarchy level");
+                        // Reset for the new level - parameters will be set by MoveToNextLevel -> AssignClientToLevel
+                        client.TradingParameters.ResetTotalProfit();
+                    }
                 }
                 else
                 {
@@ -810,30 +839,33 @@ namespace FxWorth
             hierarchyNavigator.currentLevelId = nextLevelId;
             hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
             logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
-        }
-          // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
+        }        // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
-            decimal maxPayout = model.Payouts.Max();
-            client.TradingParameters.Process(model.Profit, maxPayout, int.Parse(client.GetToken()), model.Id, 0);
-
-            // In hierarchy mode, update the current hierarchy level with the trade results
-            if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
+            // Avoid processing the same trade multiple times
+            if (model.IsClosed)
             {
-                var currentLevel = hierarchyNavigator.GetCurrentLevel();
-                if (currentLevel != null)
+                decimal maxPayout = model.Payouts.Max();
+                client.TradingParameters.Process(model.Profit, maxPayout, int.Parse(client.GetToken()), model.Id, 0);
+
+                // In hierarchy mode, update the current hierarchy level with the trade results
+                if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
                 {
-                    // Sync hierarchy level state with trading parameters
-                    currentLevel.UpdateFromTradingParameters(client.TradingParameters);
-                    logger.Info($"Updated hierarchy level {hierarchyNavigator.currentLevelId} with trade result: Profit={model.Profit:F2}");
+                    var currentLevel = hierarchyNavigator.GetCurrentLevel();
+                    if (currentLevel != null)
+                    {
+                        // Sync hierarchy level state with trading parameters
+                        currentLevel.UpdateFromTradingParameters(client.TradingParameters);
+                        logger.Info($"Updated hierarchy level {hierarchyNavigator.currentLevelId} with trade result: Profit={model.Profit:F2}");
+                    }
                 }
-            }
 
-            // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown (original design)
-            // This checks the recovery amount benchmark rather than total profit
-            if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
-            {
-                EnterHierarchyMode(client);
+                // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown (original design)
+                // This checks the recovery amount benchmark rather than total profit
+                if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
+                {
+                    EnterHierarchyMode(client);
+                }
             }
         }
 
