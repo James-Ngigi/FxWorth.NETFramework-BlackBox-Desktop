@@ -369,13 +369,13 @@ namespace FxWorth
                             {
                                 logger.Error($"Failed to parse AppId '{client.GetAppId()}' to integer for client token {client.GetToken()}");
                                 return;
-                            }
-
-                            // Re-check for null TradingParameters after Process() call
+                            }                            // Re-check for null TradingParameters after Process() call
                             if (client.TradingParameters == null)
                             {
-                                logger.Warn($"TradingParameters became null after Process() call for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
-                                storage.SetHierarchyLevelTradingParameters(client);
+                                logger.Info($"TradingParameters became null after Process() call - hierarchy completed and exited to root level");
+                                // When TradingParameters becomes null, it means hierarchy has been completed
+                                // and we've returned to root level - no further processing needed
+                                return;
                             }
 
                             if (!client.TradingParameters.IsRecoveryMode)
@@ -401,14 +401,14 @@ namespace FxWorth
                                 {
                                     // If the level didn't change, continue trading in current level
                                     logger.Info($"Trading in level {storage.hierarchyNavigator.currentLevelId}");
-                                }                            }
-                            else
+                                }                            }                            else
                             {
                                 // Ensure TradingParameters are still valid in recovery mode
                                 if (client.TradingParameters == null)
                                 {
-                                    logger.Warn($"TradingParameters null in recovery mode for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
-                                    storage.SetHierarchyLevelTradingParameters(client);
+                                    logger.Info($"TradingParameters became null in recovery mode - hierarchy completed and exited to root level");
+                                    // When TradingParameters becomes null, hierarchy has been completed
+                                    return;
                                 }
 
                                 currentLevel.AmountToRecover = client.TradingParameters.AmountToBeRecoverd;
@@ -435,8 +435,8 @@ namespace FxWorth
                                     // Ensure TradingParameters are still valid before creating new layer
                                     if (client.TradingParameters == null)
                                     {
-                                        logger.Warn($"TradingParameters null before creating new layer {nextLayer}");
-                                        storage.SetHierarchyLevelTradingParameters(client);
+                                        logger.Info($"TradingParameters became null before creating new layer - hierarchy completed");
+                                        return;
                                     }
                                     
                                     storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
