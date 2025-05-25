@@ -44,7 +44,8 @@ namespace FxApi.Connection
         public List<decimal> RecoveryResults
         {
             get => recoveryResults;
-            set => recoveryResults = value;        }
+            set => recoveryResults = value;       
+        }
 
         /// <summary>
         /// Processes the outcome of a completed trade, adjusting the `DynamicStake`, entering or exiting recovery mode,
@@ -182,6 +183,24 @@ namespace FxApi.Connection
         {
             TotalProfit = 0;
             logger.Info("Reset TotalProfit to 0 for hierarchy level transition");
+        }
+
+        /// <summary>
+        /// Completely resets the trading parameters when transitioning between hierarchy levels.
+        /// This ensures a clean state for the new level without any residual data from the previous level.
+        /// </summary>
+        public void ResetForHierarchyTransition()
+        {
+            ResetTotalProfit();
+            IsRecoveryMode = false;
+            AmountToBeRecoverd = 0;
+            PreviousProfit = 0;
+            RecoveryAttemptsLeft = 0;
+            
+            // Don't clear recovery results here - that should be done explicitly when needed
+            // to avoid losing important trade history
+            
+            logger.Info("Reset trading parameters for hierarchy level transition");
         }
 
         /// <summary>

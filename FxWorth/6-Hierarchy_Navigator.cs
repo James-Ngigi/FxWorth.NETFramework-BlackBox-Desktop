@@ -306,7 +306,8 @@ namespace FxWorth.Hierarchy
             return nextLevelId;
         }
 
-        // This method moves through the hierarchy levels based on the current level ID.        public bool MoveToNextLevel(AuthClient client)
+        // This method moves through the hierarchy levels based on the current level ID.        
+        public bool MoveToNextLevel(AuthClient client)
         {
             if (string.IsNullOrEmpty(currentLevelId) || currentLevelId == "0")
             {
