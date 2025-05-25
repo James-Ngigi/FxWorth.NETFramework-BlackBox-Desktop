@@ -734,9 +734,7 @@ namespace FxWorth
             // Last resort: create minimal defaults
             logger.Warn("Creating minimal default trading parameters for hierarchy - UI integration needed");
             return new TradingParameters();
-        }
-
-        /// Event handler triggered when the take profit target is reached for a managed `AuthClient` instance.
+        }        /// Event handler triggered when the take profit target is reached for a managed `AuthClient` instance.
         private void OnTakeProfitReached(object sender, decimal totalProfit)
         {
             var tradingParameters = (TradingParameters)sender;
@@ -755,7 +753,19 @@ namespace FxWorth
 
             logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");
 
-            client.TradingParameters = null;
+            // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
+            if (IsHierarchyMode && client == hierarchyClient)
+            {
+                logger.Info("Take profit reached in hierarchy mode - hierarchy system will handle level transition");
+                // Reset for the current level but keep trading parameters active
+                client.TradingParameters.ResetTotalProfit();
+            }
+            else
+            {
+                // Normal mode: clear trading parameters to stop trading
+                client.TradingParameters = null;
+            }
+            
             ClientsStateChanged?.Raise(client, EventArgs.Empty);
         }
 

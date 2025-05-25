@@ -358,8 +358,7 @@ namespace FxWorth
                                 logger.Info($"Initializing trading parameters for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
                                 storage.SetHierarchyLevelTradingParameters(client);
                             }
-                            
-                            if (int.TryParse(client.GetAppId(), out int appId))
+                              if (int.TryParse(client.GetAppId(), out int appId))
                             {
                                 client.TradingParameters.Process(model.Profit, maxPayout, appId, model.Id, 0);
                             }
@@ -367,6 +366,13 @@ namespace FxWorth
                             {
                                 logger.Error($"Failed to parse AppId '{client.GetAppId()}' to integer for client token {client.GetToken()}");
                                 return;
+                            }
+
+                            // Re-check for null TradingParameters after Process() call
+                            if (client.TradingParameters == null)
+                            {
+                                logger.Warn($"TradingParameters became null after Process() call for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
+                                storage.SetHierarchyLevelTradingParameters(client);
                             }
 
                             if (!client.TradingParameters.IsRecoveryMode)
@@ -392,10 +398,16 @@ namespace FxWorth
                                 {
                                     // If the level didn't change, continue trading in current level
                                     logger.Info($"Trading in level {storage.hierarchyNavigator.currentLevelId}");
-                                }
-                            }
+                                }                            }
                             else
                             {
+                                // Ensure TradingParameters are still valid in recovery mode
+                                if (client.TradingParameters == null)
+                                {
+                                    logger.Warn($"TradingParameters null in recovery mode for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
+                                    storage.SetHierarchyLevelTradingParameters(client);
+                                }
+
                                 currentLevel.AmountToRecover = client.TradingParameters.AmountToBeRecoverd;
 
                                 decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
@@ -415,7 +427,16 @@ namespace FxWorth
                                         initialStakeForNextLayer = storage.customLayerConfigs.ContainsKey(nextLayer) ?
                                             (storage.customLayerConfigs[nextLayer].InitialStake ?? currentLevel.InitialStake) :
                                             currentLevel.InitialStake;
-                                    }                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
+                                    }                                    
+                                    
+                                    // Ensure TradingParameters are still valid before creating new layer
+                                    if (client.TradingParameters == null)
+                                    {
+                                        logger.Warn($"TradingParameters null before creating new layer {nextLayer}");
+                                        storage.SetHierarchyLevelTradingParameters(client);
+                                    }
+                                    
+                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
                                     storage.hierarchyNavigator.currentLevelId = nextLevelId;
                                     storage.SetHierarchyLevelTradingParameters(client);
