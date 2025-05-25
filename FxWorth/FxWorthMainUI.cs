@@ -348,7 +348,9 @@ namespace FxWorth
 
                     if (client != null)
                     {
-                        HierarchyLevel currentLevel = storage.hierarchyNavigator.GetCurrentLevel();                        if (currentLevel != null)
+                        HierarchyLevel currentLevel = storage.hierarchyNavigator.GetCurrentLevel();                        
+                        
+                        if (currentLevel != null)
                         {
                             decimal maxPayout = model.Payouts.Any() ? model.Payouts.Max() : client.TradingParameters?.Stake * 0.95m ?? 0;
                             
@@ -358,7 +360,8 @@ namespace FxWorth
                                 logger.Info($"Initializing trading parameters for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
                                 storage.SetHierarchyLevelTradingParameters(client);
                             }
-                              if (int.TryParse(client.GetAppId(), out int appId))
+                              
+                            if (int.TryParse(client.GetAppId(), out int appId))
                             {
                                 client.TradingParameters.Process(model.Profit, maxPayout, appId, model.Id, 0);
                             }
