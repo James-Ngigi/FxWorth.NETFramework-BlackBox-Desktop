@@ -44,27 +44,7 @@ namespace FxApi.Connection
         public List<decimal> RecoveryResults
         {
             get => recoveryResults;
-            set => recoveryResults = value;
-        }        /// <summary>
-        /// Resets the trading parameters state for a new hierarchy level
-        /// </summary>
-        public void ResetForHierarchyTransition()
-        {
-            // DON'T clear recovery results - they should be managed by the hierarchy level
-            // DON'T reset previous profit - it should persist for Martingale calculations
-            // DON'T reset recovery mode flags - they should be managed by hierarchy logic
-            
-            // When transitioning to a new level in hierarchy, store the current stake
-            // as the level's initial stake if not already set
-            if (LevelInitialStake == 0)
-            {
-                LevelInitialStake = Stake;
-            }
-
-            // Note: We no longer reset TempBarrier here as it should persist throughout the level
-
-            logger.Info($"Reset trading parameters for hierarchy transition. Base stake: {Stake}, Level initial stake: {LevelInitialStake}, MartingaleLevel: {MartingaleLevel}");
-        }
+            set => recoveryResults = value;        }
 
         /// <summary>
         /// Processes the outcome of a completed trade, adjusting the `DynamicStake`, entering or exiting recovery mode,
@@ -178,9 +158,7 @@ namespace FxApi.Connection
         {
             // Format the trading parameters as a string, including all relevant values.
             return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
-        }
-
-        /// <summary>
+        }        /// <summary>
         /// Updates the TotalProfit without triggering the full Process logic.
         /// This is used in hierarchy mode to track profit without interference.
         /// </summary>
@@ -194,6 +172,16 @@ namespace FxApi.Connection
             {
                 TakeProfitReached?.Invoke(this, TotalProfit);
             }
+        }
+
+        /// <summary>
+        /// Resets the TotalProfit to zero for hierarchy level transitions.
+        /// This is used when starting a new hierarchy level with a clean profit state.
+        /// </summary>
+        public void ResetTotalProfit()
+        {
+            TotalProfit = 0;
+            logger.Info("Reset TotalProfit to 0 for hierarchy level transition");
         }
 
         /// <summary>

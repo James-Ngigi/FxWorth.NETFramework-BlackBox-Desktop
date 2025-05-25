@@ -247,11 +247,14 @@ namespace FxWorth
             string logFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Log files");
             string archiveFolderPath = Path.Combine(logFolderPath, "Archived files");
             apiCompliance = new ApiCompliance(logFolderPath, archiveFolderPath);
-            apiCompliance.Start();
-            storage = new TokenStorage("tokens.json");
+            apiCompliance.Start();            storage = new TokenStorage("tokens.json");
             storage.ClientsStateChanged += ClientsStateChanged;
             storage.InternetSpeedChanged += OnInternetSpeedChanged;
             storage.AuthFailed += OnAuthFailed;
+            
+            // Set up UI trading parameters delegate
+            storage.GetUITradingParameters = GetCurrentUITradingParameters;
+            
             phase1Parameters = new PhaseParameters();
             phase2Parameters = new PhaseParameters();
             storage.ClientsStateChanged += ClientsStateChanged;
@@ -345,11 +348,17 @@ namespace FxWorth
 
                     if (client != null)
                     {
-                        HierarchyLevel currentLevel = storage.hierarchyNavigator.GetCurrentLevel();
-
-                        if (currentLevel != null)
+                        HierarchyLevel currentLevel = storage.hierarchyNavigator.GetCurrentLevel();                        if (currentLevel != null)
                         {
-                            decimal maxPayout = model.Payouts.Any() ? model.Payouts.Max() : client.TradingParameters.Stake * 0.95m;
+                            decimal maxPayout = model.Payouts.Any() ? model.Payouts.Max() : client.TradingParameters?.Stake * 0.95m ?? 0;
+                            
+                            // Ensure client has properly initialized trading parameters for this hierarchy level
+                            if (client.TradingParameters == null)
+                            {
+                                logger.Info($"Initializing trading parameters for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
+                                storage.SetHierarchyLevelTradingParameters(client);
+                            }
+                            
                             if (int.TryParse(client.GetAppId(), out int appId))
                             {
                                 client.TradingParameters.Process(model.Profit, maxPayout, appId, model.Id, 0);
@@ -379,11 +388,9 @@ namespace FxWorth
                                         storage.SetHierarchyLevelTradingParameters(client);
                                         logger.Info($"Successfully moved to next level: {storage.hierarchyNavigator.currentLevelId}");
                                     }
-                                }
-                                else
+                                }                                else
                                 {
-                                    // If the level didn't change, ensure parameters are correctly loaded
-                                    //storage.hierarchyNavigator.LoadLevelTradingParameters(storage.hierarchyNavigator.currentLevelId, client, client.TradingParameters);
+                                    // If the level didn't change, continue trading in current level
                                     logger.Info($"Trading in level {storage.hierarchyNavigator.currentLevelId}");
                                 }
                             }
@@ -1413,6 +1420,34 @@ namespace FxWorth
                     dialog.ShowDialog(this);
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets current trading parameters from UI form controls
+        /// </summary>
+        /// <returns>TradingParameters object with current UI values</returns>
+        private TradingParameters GetCurrentUITradingParameters()
+        {
+            // Ensure we're on the UI thread
+            if (InvokeRequired)
+            {
+                return (TradingParameters)Invoke(new Func<TradingParameters>(GetCurrentUITradingParameters));
+            }
+
+            return new TradingParameters()
+            {
+                Barrier = Barrier_Offset_TXT.Value,
+                Symbol = storage.MarketDataClient.GetInstrument(Choose_Asset_CMBX.Text),
+                Duration = (int)Duration_TXT.Value,
+                DurationType = Duration0_CMBX.Text,
+                Stake = Stake_TXT.Value,
+                MaxDrawdown = Max_Drawdown_TXT1.Value,
+                MartingaleLevel = (int)Martingale_Level_TXT.Value,
+                DynamicStake = Stake_TXT.Value,
+                HierarchyLevels = (int)Hierarchy_Levels_TXT.Value,
+                MaxHierarchyDepth = (int)Max_Depth_TXT.Value,
+                InitialStake4Layer1 = Stake_TXT2.Value
+            };
         }
     }
 
