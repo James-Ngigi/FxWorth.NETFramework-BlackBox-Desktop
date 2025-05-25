@@ -185,6 +185,26 @@ namespace FxApi.Connection
         }
 
         /// <summary>
+        /// Recalculates the TotalProfit based on the positive entries in RecoveryResults.
+        /// This ensures that the TotalProfit accurately reflects the current state
+        /// of recovery results, which is crucial for hierarchy level transitions.
+        /// </summary>
+        public void RecalculateTotalProfit()
+        {
+            decimal positiveSum = recoveryResults.Where(r => r > 0).Sum();
+            TotalProfit = positiveSum;
+            
+            logger.Info($"Recalculated TotalProfit: {TotalProfit:F2} from {recoveryResults.Count} recovery results");
+            
+            // Check if take profit target is reached after recalculation
+            if (TotalProfit >= TakeProfit)
+            {
+                logger.Info($"Take profit target reached after recalculation: {TotalProfit:F2} >= {TakeProfit:F2}");
+                TakeProfitReached?.Invoke(this, TotalProfit);
+            }
+        }
+
+        /// <summary>
         /// Creates a deep copy of the `TradingParameters` object ensuring that each trading account has its own set of trading parameters that can be modified independently
         /// preventing unintended side effects.
         /// <returns>A deep copy of the `TradingParameters` object.</returns>
