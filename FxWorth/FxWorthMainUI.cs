@@ -361,24 +361,7 @@ namespace FxWorth
                                 storage.SetHierarchyLevelTradingParameters(client);
                             }
                               
-                            if (int.TryParse(client.GetAppId(), out int appId))
-                            {
-                                client.TradingParameters.Process(model.Profit, maxPayout, appId, model.Id, 0);
-                            }
-                            else
-                            {
-                                logger.Error($"Failed to parse AppId '{client.GetAppId()}' to integer for client token {client.GetToken()}");
-                                return;
-                            }                            // Re-check for null TradingParameters after Process() call
-                            if (client.TradingParameters == null)
-                            {
-                                logger.Info($"TradingParameters became null after Process() call - hierarchy completed and exited to root level");
-                                // When TradingParameters becomes null, it means hierarchy has been completed
-                                // and we've returned to root level - no further processing needed
-                                return;
-                            }
-
-                            if (!client.TradingParameters.IsRecoveryMode)
+                            if (client.TradingParameters != null && !client.TradingParameters.IsRecoveryMode)
                             {
                                 // Store the current level ID before attempting to move
                                 string previousLevelId = storage.hierarchyNavigator.currentLevelId;

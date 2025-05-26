@@ -921,15 +921,14 @@ namespace FxWorth
             hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
             logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
         }        
-        
-        // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
+          // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
             // Avoid processing the same trade multiple times
             if (model.IsClosed)
             {
                 decimal maxPayout = model.Payouts.Max();
-                client.TradingParameters.Process(model.Profit, maxPayout, int.Parse(client.GetToken()), model.Id, 0);                // In hierarchy mode, update the current hierarchy level with the trade results
+                
                 if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
                 {
                     var currentLevel = hierarchyNavigator.GetCurrentLevel();
@@ -938,9 +937,7 @@ namespace FxWorth
                         // Sync hierarchy level state with trading parameters
                         currentLevel.UpdateFromTradingParameters(client.TradingParameters);
                         
-                        // CRITICAL FIX: Only process real trades with valid timestamps and IDs
-                        // Real trades have high IDs in production (>1000), test trades have IDs like 1,2,3,4
-                        if (model.Profit != 0 && model.Id > 4) 
+                        if (model.Profit != 0) 
                         {
                             // Make sure we're not duplicating the result
                             if (!currentLevel.RecoveryResults.Contains(model.Profit))
@@ -953,10 +950,8 @@ namespace FxWorth
                                 {
                                     client.TradingParameters.RecoveryResults.Add(model.Profit);
                                 }
-                                
+
                                 logger.Info($"Added profit {model.Profit:F2} to level {currentLevel.LevelId} recovery results");
-                                  // Recalculate total profit from all recovery results
-                                // This is more reliable than just adding the profit
                                 client.TradingParameters.RecalculateTotalProfit();
                             }
                             
@@ -984,8 +979,7 @@ namespace FxWorth
                     }
                 }
 
-                // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown (original design)
-                // This checks the recovery amount benchmark rather than total profit
+                // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown
                 if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
                 {
                     EnterHierarchyMode(client);
