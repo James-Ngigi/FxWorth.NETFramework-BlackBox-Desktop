@@ -90,7 +90,7 @@ namespace FxApi.Connection
                 {
                     IsRecoveryMode = true;
                     AmountToBeRecoverd = 2 * Stake;
-                    logger.Debug($"Entering recovery mode. Initial amount to recover: {AmountToBeRecoverd}");
+                    logger.Debug($"In recovery mode. Amount to recover: {AmountToBeRecoverd}");
                 }
                 else
                 {
@@ -102,11 +102,12 @@ namespace FxApi.Connection
                 // Calculate recovery stake using Martingale strategy
                 var stakeToBeUsed = AmountToBeRecoverd * Stake / PreviousProfit;
                 var martingaleValue = stakeToBeUsed / Stake;
+                var roundedMartingaleValue = Math.Round(martingaleValue, 3);
 
                 // Apply Martingale level to control progression
                 DynamicStake = Math.Round(Stake * martingaleValue / MartingaleLevel, 2);
 
-                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {martingaleValue}, Level: {MartingaleLevel})");
+                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {roundedMartingaleValue}, Level: {MartingaleLevel})");
 
                 // Apply lower limit to the DynamicStake
                 if (IsRecoveryMode)
@@ -126,22 +127,10 @@ namespace FxApi.Connection
                 // Check if recovery is complete
                 if (recoveryProfit >= AmountToBeRecoverd || RecoveryAttemptsLeft == 0)
                 {
-                    // Only exit recovery mode if we're not in a hierarchy level
-                    if (TempBarrier == 0)
-                    {
-                        DynamicStake = Stake;
-                        IsRecoveryMode = false;
-                        recoveryResults.Clear();
-                        logger.Info("Exiting recovery mode - recovery complete");
-                    }
-                    else
-                    {
-                        // In hierarchy mode, keep recovery mode active but reset stake to the level's initial stake
-                        // Use LevelInitialStake if it's set, otherwise fall back to Stake
-                        decimal resetStake = LevelInitialStake > 0 ? LevelInitialStake : Stake;
-                        DynamicStake = resetStake;
-                        logger.Info($"Recovery target met in hierarchy mode. Reset dynamic stake to level's initial stake: {resetStake}");
-                    }
+                    DynamicStake = Stake;
+                    IsRecoveryMode = false;
+                    recoveryResults.Clear();
+                    logger.Info("Exiting recovery mode - recovery complete");
                 }
             }
             else if (!IsRecoveryMode)
@@ -159,7 +148,9 @@ namespace FxApi.Connection
         {
             // Format the trading parameters as a string, including all relevant values.
             return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
-        }        /// <summary>
+        }        
+        
+        /// <summary>
         /// Updates the TotalProfit without triggering the full Process logic.
         /// This is used in hierarchy mode to track profit without interference.
         /// </summary>
