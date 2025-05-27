@@ -352,7 +352,7 @@ namespace FxWorth
                         
                         if (currentLevel != null)
                         {
-                            decimal maxPayout = model.Payouts.Any() ? model.Payouts.Max() : client.TradingParameters?.Stake * 0.95m ?? 0;
+                            decimal maxPayout = model.Payouts.Any() ? model.Payouts.Max() : 0;
                             
                             // Ensure client has properly initialized trading parameters for this hierarchy level
                             if (client.TradingParameters == null)
