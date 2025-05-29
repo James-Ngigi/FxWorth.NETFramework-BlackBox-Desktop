@@ -55,10 +55,13 @@ namespace FxWorth
         public AuthClient hierarchyClient;
         public PhaseParameters phase1Parameters;
         public PhaseParameters phase2Parameters;
+
         public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
+
         public decimal InitialStakeLayer1 { get; set; }
+
         public void SetHierarchyParameters(PhaseParameters phase1, PhaseParameters phase2, Dictionary<int, CustomLayerConfig> configs)
         {
             phase1Parameters = phase1;
@@ -437,8 +440,7 @@ namespace FxWorth
                         });
                     }
                 }
-
-                 UpdateGlobalTradingStatus(); 
+                UpdateGlobalTradingStatus(); 
             }
             finally
             {
@@ -513,7 +515,6 @@ namespace FxWorth
             hierarchyClient = null;
             currentLevelId = null;
             hierarchyLevels.Clear();
-
             isTradingGloballyAllowed = true;
             logger.Info("<=> Global trading flag has been reset and hierarchy state cleared!");
         }
@@ -597,7 +598,7 @@ namespace FxWorth
                 }
                 else
                 {
-                    // Normal mode - use credentials profit target
+                    // Normal mode (root level) - use credentials profit target
                     clientParameters.TakeProfit = credentials.ProfitTarget;
                 }
                 
@@ -706,8 +707,8 @@ namespace FxWorth
                               client.TradingParameters.TakeProfit != currentLevel.AmountToRecover;
             
             bool isActiveRecovery = client.TradingParameters != null && 
-                                   client.TradingParameters.IsRecoveryMode && 
-                                   client.TradingParameters.RecoveryResults.Any();
+                                    client.TradingParameters.IsRecoveryMode && 
+                                    client.TradingParameters.RecoveryResults.Any();
 
             if (!isNewLevel && isActiveRecovery)
             {
@@ -810,7 +811,9 @@ namespace FxWorth
             {
                 return;
             }            
-            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");            // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
+            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");
+            
+            // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
             if (IsHierarchyMode && client == hierarchyClient)
             {
                 logger.Info("Take profit reached in hierarchy mode - attempting level transition");
@@ -884,10 +887,9 @@ namespace FxWorth
                     {
                         logger.Warn("Trade update received with null client");
                         return;
-                    }                    TradeUpdated?.Invoke(this, e);
-
-                    // Unified trade processing - hierarchy mode just has different parameter configurations
-                    // but uses the same trade processing logic as normal mode
+                    }                    
+               
+                    TradeUpdated?.Invoke(this, e);
                     HandleNormalTradeUpdate(model, client);
                 }
                 catch (Exception ex)

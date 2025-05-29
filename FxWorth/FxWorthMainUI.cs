@@ -1294,7 +1294,7 @@ namespace FxWorth
             layerConfigForm.MartingaleLevel = (int)Martingale_Level_TXT2.Value;
             layerConfigForm.HierarchyLevels = (int)Hierarchy_Levels_TXT.Value;
             layerConfigForm.MaxDrawdown = Max_Drawdown_TXT2.Value;
-            layerConfigForm.InitialStake = (int)Stake_TXT2.Value;
+            layerConfigForm.InitialStake = Stake_TXT2.Value;
 
             List<int> layerOptions = new List<int>();
             for (int i = 2; i <= Max_Depth_TXT.Value; i++)

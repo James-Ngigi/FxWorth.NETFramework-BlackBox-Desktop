@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("FxWorth Higher/Lower")]
 [assembly: AssemblyDescription("FxWorth is a software application that provides automated high-frequency trading (HFT) capabilities for binary options on the Deriv platform. It enables users to manage multiple accounts, execute trades with minimal latency, and incorporates a comprehensive risk mitigation system to handle market fluctuations.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("FXWorth")]
+[assembly: AssemblyCompany("FxWorth")]
 [assembly: AssemblyProduct("FinTech")]
 [assembly: AssemblyCopyright("Copyright ©  2020-2025")]
 [assembly: AssemblyTrademark("FXWorth™")]
@@ -31,6 +31,6 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("5.0.4.4")]
+[assembly: AssemblyVersion("5.0.5.0")]
 [assembly: AssemblyFileVersion("0.0.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("FxUnitTests")]

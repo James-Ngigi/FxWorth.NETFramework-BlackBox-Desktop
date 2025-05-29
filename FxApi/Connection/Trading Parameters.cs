@@ -146,7 +146,6 @@ namespace FxApi.Connection
         /// Returns a string representation of the trading parameters, including all relevant values.
         public override string ToString()
         {
-            // Format the trading parameters as a string, including all relevant values.
             return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
         }        
         
@@ -174,24 +173,18 @@ namespace FxApi.Connection
         {
             TotalProfit = 0;
             logger.Info("Reset TotalProfit to 0 for hierarchy level transition");
-        }
-
+        }        
+        
         /// <summary>
-        /// Completely resets the trading parameters when transitioning between hierarchy levels.
-        /// This ensures a clean state for the new level without any residual data from the previous level.
+        /// Reseting the recovery results and the levels profit for hierarchy transitions.
+        /// This method follows the principle of not interfering with trading object's logical calculations.
+        /// It only clears recovery-related data that should be reset between levels.
         /// </summary>
         public void ResetForHierarchyTransition()
         {
+            RecoveryResults.Clear();
             ResetTotalProfit();
-            IsRecoveryMode = false;
-            AmountToBeRecoverd = 0;
-            PreviousProfit = 0;
-            RecoveryAttemptsLeft = 0;
-            
-            // Don't clear recovery results here - that should be done explicitly when needed
-            // to avoid losing important trade history
-            
-            logger.Info("Reset trading parameters for hierarchy level transition");
+            logger.Info("Reset recovery results for hierarchy level transition");
         }
 
         /// <summary>
