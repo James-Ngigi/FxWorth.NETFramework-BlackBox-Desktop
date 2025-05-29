@@ -1222,7 +1222,7 @@
             // 
             this.Results_Panel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.Results_Panel.Controls.Add(this.dataGridView2);
-            this.Results_Panel.Font = new System.Drawing.Font("Lucida Sans Unicode", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Results_Panel.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Results_Panel.Location = new System.Drawing.Point(9, 40);
             this.Results_Panel.Margin = new System.Windows.Forms.Padding(4);
             this.Results_Panel.Name = "Results_Panel";

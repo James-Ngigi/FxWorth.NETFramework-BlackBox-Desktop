@@ -44,15 +44,23 @@ namespace FxWorth.Hierarchy
             {
                 CreateHierarchy(amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
             }
-        }
-
-        // This method is used to assign a client to a specific level in the hierarchy.
+        }        // This method is used to assign a client to a specific level in the hierarchy.
         public void AssignClientToLevel(string levelId, AuthClient client)
         {
             if (hierarchyLevels.ContainsKey(levelId))
             {
                 levelClients[levelId] = client;
-                LoadLevelTradingParameters(levelId, client, client.TradingParameters);
+                
+                // Create fresh trading parameters for this level following the same pattern as root level
+                // Get the base parameters from the current client's configuration
+                if (client.TradingParameters != null)
+                {
+                    LoadLevelTradingParameters(levelId, client, client.TradingParameters);
+                }
+                else
+                {
+                    logger.Error($"Cannot assign client to level {levelId} - client has null trading parameters");
+                }
             }
         }
 
@@ -164,12 +172,7 @@ namespace FxWorth.Hierarchy
             public int? MartingaleLevel { get; set; }            
             public decimal? MaxDrawdown { get; set; }
             public decimal? BarrierOffset { get; set; }
-            private List<decimal> recoveryResults = new List<decimal>();
-            public List<decimal> RecoveryResults 
-            {
-                get => recoveryResults;
-                set => recoveryResults = value;
-            }
+            public List<decimal> RecoveryResults { get; set; } = new List<decimal>();
             public bool IsCompleted { get; set; }
             public bool HasExceededMaxDrawdown => GetTotalLoss() > (MaxDrawdown ?? decimal.MaxValue);
             public decimal CurrentRecoveryAmount => GetTotalLoss();
@@ -311,11 +314,11 @@ namespace FxWorth.Hierarchy
             return nextLevelId;
         }
 
-        // This method moves through the hierarchy levels based on the current level ID.
+        // This method moves through the hierarchy levels based on the current level ID.        
         public bool MoveToNextLevel(AuthClient client)
         {
             if (string.IsNullOrEmpty(currentLevelId) || currentLevelId == "0")
-        {
+            {
                 logger.Error("Cannot move to next level: Invalid current level ID");
                 return false;
             }
@@ -327,26 +330,38 @@ namespace FxWorth.Hierarchy
                 return false;
             }
             
-            // Calculate if the level should be considered completed based on recovery results
-            if (currentLevel.RecoveryResults.Any())
-            {
-                decimal profitAmount = currentLevel.GetTotalProfit();
-                decimal lossAmount = currentLevel.GetTotalLoss();
-                
-                logger.Info($"Level {currentLevelId} movement check: Profit=${profitAmount:F2}, Loss=${lossAmount:F2}, Target=${currentLevel.AmountToRecover:F2}");
-                
-                if (profitAmount >= currentLevel.AmountToRecover)
-                {
-                    logger.Info($"Level {currentLevelId} has recovered ${profitAmount:F2} which exceeds needed amount ${currentLevel.AmountToRecover:F2}");
-                    currentLevel.IsCompleted = true;
-                }
-            }
+            // Log detailed level state for debugging
+            logger.Info($"MoveToNextLevel check for level {currentLevelId}: " +
+                      $"IsCompleted={currentLevel.IsCompleted}, " +
+                      $"RecoveryResults.Count={currentLevel.RecoveryResults.Count}, " +
+                      $"TotalProfit=${currentLevel.GetTotalProfit():F2}, " +
+                      $"AmountToRecover=${currentLevel.AmountToRecover:F2}");
             
-            // Don't move if level hasn't processed any trades or isn't completed
-            if (!currentLevel.RecoveryResults.Any() || !currentLevel.IsCompleted)
+            // If the level is already marked as completed (e.g., in OnTakeProfitReached),
+            // then we don't need additional checks - proceed with the transition
+            if (!currentLevel.IsCompleted)
             {
-                logger.Info($"Cannot move from level {currentLevelId}: Level has not processed trades or is not completed");
-                return false;
+                // Only recalculate completion status if not already completed
+                if (currentLevel.RecoveryResults.Any())
+                {
+                    decimal profitAmount = currentLevel.GetTotalProfit();
+                    decimal lossAmount = currentLevel.GetTotalLoss();
+                    
+                    logger.Info($"Level {currentLevelId} movement check: Profit=${profitAmount:F2}, Loss=${lossAmount:F2}, Target=${currentLevel.AmountToRecover:F2}");
+                    
+                    if (profitAmount >= currentLevel.AmountToRecover)
+                    {
+                        logger.Info($"Level {currentLevelId} has recovered ${profitAmount:F2} which exceeds needed amount ${currentLevel.AmountToRecover:F2}");
+                        currentLevel.IsCompleted = true;
+                    }
+                }
+                
+                // Don't move if level hasn't processed any trades or isn't completed
+                if (!currentLevel.IsCompleted)
+                {
+                    logger.Info($"Cannot move from level {currentLevelId}: Level has not been marked as completed");
+                    return false;
+                }
             }
 
             // Log exit from current level
@@ -373,18 +388,13 @@ namespace FxWorth.Hierarchy
                     layer1CompletedLevels++;
                     logger.Info($"Completed level {currentLevelId} - that's {layer1CompletedLevels} of {hierarchyLevelsCount} levels in Layer 1");
                     
-                    if (layer1CompletedLevels >= hierarchyLevelsCount)
+                    if (layer1CompletedLevels >= hierarchyLevelsCount)                    
                     {
                         // All Layer 1 levels completed - exit hierarchy mode
                         IsInHierarchyMode = false;
                         newLevelId = "0";
                         layer1CompletedLevels = 0;
-                        
-                        // Reset trading parameters to root level
-                        client.TradingParameters.ResetForHierarchyTransition();
-                        client.TradingParameters.IsRecoveryMode = false;
-                        client.TradingParameters.DynamicStake = client.TradingParameters.Stake;
-                        client.TradingParameters.TempBarrier = 0;
+                        client.TradingParameters = null;
                         
                         logger.Info("Layer 1 fully recovered. Returning to root level trading.");
                     }
@@ -392,13 +402,9 @@ namespace FxWorth.Hierarchy
                     {
                         // Create and move to next level in Layer 1
                         newLevelId = CreateNextLevelInLayer(currentLevelId);
-                        if (newLevelId != null)
+                        if (newLevelId != null)                        
                         {
                             logger.Info($"Moving to next Level 1 position. Entering Level: {newLevelId}");
-                            
-                            // Reset trading parameters for new level
-                            client.TradingParameters.ResetForHierarchyTransition();
-                            client.TradingParameters.RecoveryResults.Clear();
                         }
                         else
                         {
@@ -437,10 +443,11 @@ namespace FxWorth.Hierarchy
             // If we get here, we're staying in the current level
             logger.Info($"No movement: Staying in current level {currentLevelId}");
             return false;
-        }
-
-        /// This method is responsible for loading the necessary trading parameters to be used inside the hierarchy.
-        public void LoadLevelTradingParameters(string levelId, AuthClient client, TradingParameters tradingParameters)
+        }        
+        
+        /// This method creates fresh trading parameters for the hierarchy level following the same pattern as root level initialization.
+        /// It creates a new TradingParameters object instead of modifying existing ones, ensuring clean parameter initialization.
+        public void LoadLevelTradingParameters(string levelId, AuthClient client, TradingParameters baseTradingParameters)
         {
             if (!hierarchyLevels.TryGetValue(levelId, out HierarchyLevel level))
             {
@@ -448,66 +455,66 @@ namespace FxWorth.Hierarchy
                 return;
             }
 
-            // Store original values that shouldn't be modified
-            decimal originalStake = tradingParameters.Stake;
-            var originalSymbol = tradingParameters.Symbol;
-            int originalDuration = tradingParameters.Duration;
-            string originalDurationType = tradingParameters.DurationType;
-            
-            // Only reset if this is the first entry into the level (no recovery results yet)
-            bool isFirstEntry = tradingParameters.RecoveryResults == null || !tradingParameters.RecoveryResults.Any();
+            logger.Info($"Creating fresh trading parameters for hierarchy level {levelId} following root level pattern");
 
-            if (isFirstEntry)
+            // Create fresh TradingParameters object using the same pattern as root level initialization
+            // This ensures clean parameter state without interference from previous trading calculations
+            var freshParameters = new TradingParameters()
             {
-                tradingParameters.ResetForHierarchyTransition();
-                tradingParameters.RecoveryResults.Clear();
-                tradingParameters.IsRecoveryMode = true;
-                tradingParameters.AmountToBeRecoverd = level.AmountToRecover;
-                tradingParameters.DynamicStake = level.InitialStake;
-                logger.Info($"Initializing level {levelId} in recovery mode with amount: {level.AmountToRecover:F2} and initial stake: {level.InitialStake:F2}");
-            }
-            else
-            {
-                // Preserve current recovery state (do not reset stake or results)
-                logger.Info($"Preserving recovery state for level {levelId}. Amount: {tradingParameters.AmountToBeRecoverd}, Stake: {tradingParameters.DynamicStake}");
-            }
+                // Copy base trading configuration from existing parameters
+                Barrier = baseTradingParameters.Barrier,
+                Symbol = baseTradingParameters.Symbol,
+                Duration = baseTradingParameters.Duration,
+                DurationType = baseTradingParameters.DurationType,
+                Stake = baseTradingParameters.Stake,
+                HierarchyLevels = baseTradingParameters.HierarchyLevels,
+                MaxHierarchyDepth = baseTradingParameters.MaxHierarchyDepth,
+                
+                // Set level-specific recovery configuration
+                TakeProfit = level.AmountToRecover,
+                AmountToBeRecoverd = level.AmountToRecover,
+                IsRecoveryMode = level.RecoveryResults.Any(),
+                DynamicStake = level.InitialStake,
+                LevelInitialStake = level.InitialStake,
+                
+                RecoveryResults = new List<decimal>(level.RecoveryResults)
+            };
 
-            logger.Info($"Reset trading parameters for level transition. Base stake: {originalStake}, Initial recovery stake: {level.InitialStake}, MartingaleLevel: {tradingParameters.MartingaleLevel}");
-
+            // Apply hierarchy level parameters with proper precedence
             int layerNumber = int.Parse(levelId.Split('.')[0]);
             CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, storage.customLayerConfigs);
 
-            // Apply hierarchy level parameters with proper precedence:
-            // 1. Custom layer config (if exists and layer > 1)
-            // 2. Level-specific parameters
-            // 3. Phase parameters based on layer number
-
             if (layerNumber > 1 && customConfig != null)
             {
-                tradingParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
-                tradingParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
-                tradingParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
+                // Layer 2+ with custom configuration
+                freshParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
+                freshParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
+                freshParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
             }
-            else // Layer 1 or no custom config
+            else if (layerNumber == 1)
             {
-                tradingParameters.MartingaleLevel = level.MartingaleLevel ?? (layerNumber == 1 ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
-                tradingParameters.MaxDrawdown = level.MaxDrawdown ?? (layerNumber == 1 ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
-                tradingParameters.TempBarrier = level.BarrierOffset ?? (layerNumber == 1 ? phase2Params.Barrier : phase1Params.Barrier);
+                // Layer 1 - use phase 2 parameters
+                freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase2Params.MartingaleLevel;
+                freshParameters.MaxDrawdown = level.MaxDrawdown ?? phase2Params.MaxDrawdown;
+                freshParameters.TempBarrier = level.BarrierOffset ?? phase2Params.Barrier;
+            }
+            else
+            {
+                // Layer 2+ without custom configuration - use phase 1 parameters
+                freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase1Params.MartingaleLevel;
+                freshParameters.MaxDrawdown = level.MaxDrawdown ?? phase1Params.MaxDrawdown;
+                freshParameters.TempBarrier = level.BarrierOffset ?? phase1Params.Barrier;
             }
 
-            // Always restore original values that shouldn't be modified
-            tradingParameters.Stake = originalStake;
-            tradingParameters.Symbol = originalSymbol;
-            tradingParameters.Duration = originalDuration;
-            tradingParameters.DurationType = originalDurationType;
+            // Use TokenStorage.SetTradingParameters to apply the fresh parameters following the established pattern
+            // This creates proper parameter clones and sets up event handlers
+            var tempParameters = freshParameters;
+            storage.SetTradingParameters(tempParameters);
 
-            // Update the level with the current trading parameters state
-            level.UpdateFromTradingParameters(tradingParameters);
-
-            logger.Info($"Loaded parameters for level {levelId}: MartingaleLevel={tradingParameters.MartingaleLevel}, " +
-                        $"MaxDrawdown={tradingParameters.MaxDrawdown}, BarrierOffset={tradingParameters.TempBarrier}, " +
-                        $"AmountToBeRecovered={tradingParameters.AmountToBeRecoverd}, DynamicStake={tradingParameters.DynamicStake}, " +
-                        $"IsRecoveryMode={tradingParameters.IsRecoveryMode}");
+            logger.Info($"Created fresh trading parameters for level {levelId}: TakeProfit=${freshParameters.TakeProfit:F2}, " +
+                        $"Stake=${freshParameters.Stake:F2}, DynamicStake=${freshParameters.DynamicStake:F2}, " +
+                        $"MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, " +
+                        $"RecoveryResults.Count={freshParameters.RecoveryResults.Count}");
         }
 
         public HierarchyLevel GetCurrentLevel()
