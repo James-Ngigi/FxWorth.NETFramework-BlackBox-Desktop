@@ -20,7 +20,8 @@ namespace FxWorth
     /// </summary>
 
     public class TokenStorage
-    {        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+    {        
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private bool isTradingGloballyAllowed = true;
         public static int MaxTokensCount = 150;
         private static int slowInternetConst = 6650;
@@ -33,8 +34,8 @@ namespace FxWorth
         private static TimeSpan tradesTimeoutThreshold = TimeSpan.FromSeconds(0.001);
         private static TimeSpan anyTradeTimeoutThreshold = TimeSpan.FromSeconds(0.001);
         private readonly string path;
-        private Dictionary<Credentials, AuthClient> clients = new Dictionary<Credentials, AuthClient>();
 
+        private Dictionary<Credentials, AuthClient> clients = new Dictionary<Credentials, AuthClient>();
         private PingClient pinger = new PingClient(new Credentials() { AppId = "70216" });
         private MarketDataClient marketDataClient = new MarketDataClient(new Credentials() { AppId = "70216" });
         public EventHandler<EventArgs> ClientsStateChanged;
@@ -71,6 +72,7 @@ namespace FxWorth
             if (configs != null)
             {
                 customLayerConfigs.Clear();
+
                 foreach (var kvp in configs)
                 {
                     if (kvp.Key > 1) // Only process configs for layers beyond Layer 1
@@ -115,13 +117,16 @@ namespace FxWorth
             pinger.Start();
             marketDataClient.Start();
             pinger.PingChanged += PingChanged;
+
             this.path = path;
             clientStateCheckTimer = new Timer(12000);
             clientStateCheckTimer.Elapsed += ClientStateCheckTimer_Elapsed;
             clientStateCheckTimer.Start();
+
             if (File.Exists(path))
             {
                 var json = File.ReadAllText(path);
+
                 if (!string.IsNullOrWhiteSpace(json))
                 {
                     var creds = JsonConvert.DeserializeObject<List<Credentials>>(json);
@@ -354,7 +359,7 @@ namespace FxWorth
 
                         hierarchyNavigator.AssignClientToLevel(currentLevelId, value);
 
-                        // Use SetTradingParameters approach for initial hierarchy entry
+                        // Use SetTradingParameters method approach for initial hierarchy entry and level assignment
                         SetHierarchyLevelTradingParameters(value);
                         clientParams.DynamicStake = hierarchyNavigator.GetCurrentLevel()?.InitialStake ?? clientParams.Stake;
                     } 
@@ -427,7 +432,10 @@ namespace FxWorth
                             {
                                 value.Buy(clientParams.Symbol.symbol, clientParams.Duration, clientParams.DurationType, clientParams.DynamicStake);
                             }
-                            else { logger.Error($"Symbol is null for client {credentials.AppId} in normal mode."); }
+                            else 
+                            { 
+                                logger.Error($"Symbol is null for client {credentials.AppId} in normal mode."); 
+                            }
                         });
 
                         Task.Factory.StartNew(() =>
@@ -436,7 +444,10 @@ namespace FxWorth
                             {
                                 value.Sell(clientParams.Symbol.symbol, clientParams.Duration, clientParams.DurationType, clientParams.DynamicStake);
                             }
-                            else { logger.Error($"Symbol is null for client {credentials.AppId} in normal mode."); }
+                            else 
+                            { 
+                                logger.Error($"Symbol is null for client {credentials.AppId} in normal mode."); 
+                            }
                         });
                     }
                 }
@@ -606,7 +617,7 @@ namespace FxWorth
 
                 client.TradingParameters = clientParameters;
 
-                logger.Debug($"<=> Applied TakeProfit {clientParameters.TakeProfit} to client {credentials.AppId}");
+                logger.Debug($"<=> Applied TakeProfit {clientParameters.TakeProfit} to api token client {credentials.Token}");
             }
         }        
         
@@ -651,37 +662,6 @@ namespace FxWorth
 
             // Set temp barrier for the level (used by Process method to know we're in hierarchy)
             clientParameters.TempBarrier = clientParameters.Barrier;
-
-            // Sync recovery data for fresh levels or when explicitly needed
-            // During active recovery, preserve existing recovery state to prevent corruption
-            bool shouldSyncRecoveryData = !clientParameters.IsRecoveryMode || 
-                                         clientParameters.RecoveryResults.Count != currentLevel.RecoveryResults.Count ||
-                                         currentLevel.RecoveryResults.Count == 0;
-                                         
-            if (shouldSyncRecoveryData)
-            {
-                // Sync recovery results to keep them consistent
-                clientParameters.RecoveryResults.Clear();
-                clientParameters.RecoveryResults.AddRange(currentLevel.RecoveryResults);
-                clientParameters.RecalculateTotalProfit(); // Ensure TotalProfit reflects the recovery results
-                
-                // Set recovery mode based on level state
-                clientParameters.IsRecoveryMode = currentLevel.RecoveryResults.Any();
-                clientParameters.AmountToBeRecoverd = currentLevel.AmountToRecover;
-                
-                logger.Info($"Synchronized {currentLevel.RecoveryResults.Count} recovery results from level to trading parameters");
-            }
-            else 
-            {
-                logger.Debug($"Preserving existing recovery state for level {currentLevel.LevelId} during active recovery");
-            }
-            
-            // Only reset PreviousProfit for fresh levels
-            if (currentLevel.RecoveryResults.Count == 0)
-            {
-                clientParameters.PreviousProfit = 0; // Reset so Process() will use estimate on first trade
-                clientParameters.ResetTotalProfit(); // Reset total profit for fresh level
-            }
             
             logger.Info($"Configured hierarchy level {currentLevel.LevelId} - TakeProfit: ${clientParameters.TakeProfit:F2}, " +
                        $"Stake: ${clientParameters.Stake:F2}, Barrier: {clientParameters.Barrier}, " +
@@ -695,30 +675,10 @@ namespace FxWorth
                 return;
 
             var currentLevel = hierarchyNavigator.GetCurrentLevel();
+
             if (currentLevel == null)
             {
                 logger.Error("Cannot set hierarchy level parameters - current level is null");
-                return;
-            }
-
-            // Reset parameters if they're null or we're switching levels
-            // During active recovery, preserve the existing recovery state to prevent corruption
-            bool isNewLevel = client.TradingParameters == null || 
-                              client.TradingParameters.TakeProfit != currentLevel.AmountToRecover;
-            
-            bool isActiveRecovery = client.TradingParameters != null && 
-                                    client.TradingParameters.IsRecoveryMode && 
-                                    client.TradingParameters.RecoveryResults.Any();
-
-            if (!isNewLevel && isActiveRecovery)
-            {
-                logger.Debug($"Preserving active recovery state for level {hierarchyNavigator.currentLevelId} - no parameter reset needed");
-                return;
-            }
-
-            if (!isNewLevel)
-            {
-                logger.Debug($"Trading parameters already configured for level {hierarchyNavigator.currentLevelId}");
                 return;
             }
 
@@ -726,12 +686,8 @@ namespace FxWorth
             if (client.TradingParameters == null)
             {
                 logger.Info($"Initializing trading parameters for new hierarchy level {hierarchyNavigator.currentLevelId}");
-                
-                // Get base parameters from UI configuration for the hierarchy level
-                TradingParameters baseParameters = GetBaseTradingParametersFromUI();
-                
-                // Use the main SetTradingParameters method for initial setup only
-                SetTradingParameters(baseParameters);
+               
+                new TradingParameters();
             }
             else
             {
@@ -747,53 +703,6 @@ namespace FxWorth
                 logger.Info($"Updated TakeProfit to {currentLevel.AmountToRecover:F2} for level {hierarchyNavigator.currentLevelId}");
             }
         }
-        
-        /// Gets base trading parameters from UI configuration for fresh initialization
-        private TradingParameters GetBaseTradingParametersFromUI()
-        {
-            // First, try to get parameters from UI delegate if available
-            if (GetUITradingParameters != null)
-            {
-                try
-                {
-                    var uiParameters = GetUITradingParameters();
-                    if (uiParameters != null)
-                    {
-                        // Reset hierarchy-specific values for fresh start
-                        uiParameters.ResetTotalProfit();
-                        uiParameters.IsRecoveryMode = false;
-                        uiParameters.AmountToBeRecoverd = 0;
-                        uiParameters.RecoveryResults.Clear();
-                        logger.Info("Successfully created trading parameters from UI configuration");
-                        return uiParameters;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.Error($"Failed to get parameters from UI: {ex.Message}");
-                }
-            }
-            
-            // Fallback: get parameters from the first available client or create defaults
-            foreach (var clientPair in clients)
-            {
-                if (clientPair.Value.TradingParameters != null && clientPair.Value != hierarchyClient)
-                {
-                    var parameters = (TradingParameters)clientPair.Value.TradingParameters.Clone();
-                    // Reset hierarchy-specific values
-                    parameters.ResetTotalProfit();
-                    parameters.IsRecoveryMode = false;
-                    parameters.AmountToBeRecoverd = 0;
-                    parameters.RecoveryResults.Clear();
-                    logger.Info("Created trading parameters from existing client as fallback");
-                    return parameters;
-                }
-            }
-            
-            // Last resort: create minimal defaults
-            logger.Warn("Creating minimal default trading parameters for hierarchy - UI integration needed");
-            return new TradingParameters();
-        }        
         
         /// Event handler triggered when the take profit target is reached for a managed `AuthClient` instance.
         private void OnTakeProfitReached(object sender, decimal totalProfit)
@@ -820,6 +729,7 @@ namespace FxWorth
                 
                 // First, get the current level and log its state
                 var currentLevel = hierarchyNavigator?.GetCurrentLevel();
+
                 if (currentLevel != null)
                 {
                     // Log comprehensive level state for debugging
@@ -851,17 +761,12 @@ namespace FxWorth
                     else
                     {
                         logger.Info("Successfully transitioned to next hierarchy level");
-                        // Reset for the new level - parameters will be set by MoveToNextLevel -> AssignClientToLevel
-                        client.TradingParameters.ResetTotalProfit();
-                        // Ensure trading parameters are updated for the new level
                         SetHierarchyLevelTradingParameters(client);
                     }
                 }
                 else
                 {
                     logger.Info("Could not transition to next level - staying in current level");
-                    // Reset for the current level but keep trading parameters active
-                    client.TradingParameters.ResetTotalProfit();
                 }
             }
             else
@@ -925,7 +830,8 @@ namespace FxWorth
             hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
             logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
         }        
-          // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
+        
+        // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
             // Avoid processing the same trade multiple times

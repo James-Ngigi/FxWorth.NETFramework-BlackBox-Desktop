@@ -15,7 +15,6 @@ public class LoginResponseDto
     public string Token { get; set; }
 }
 
-
 public class TradingQueueItemDto
 {
     public Guid Id { get; set; }

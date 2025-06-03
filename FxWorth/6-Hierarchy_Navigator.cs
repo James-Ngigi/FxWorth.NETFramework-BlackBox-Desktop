@@ -44,7 +44,9 @@ namespace FxWorth.Hierarchy
             {
                 CreateHierarchy(amountToBeRecovered, tradingParameters, customLayerConfigs, initialStakeLayer1);
             }
-        }        // This method is used to assign a client to a specific level in the hierarchy.
+        }        
+        
+        // This method is used to assign a client to a specific level in the hierarchy.
         public void AssignClientToLevel(string levelId, AuthClient client)
         {
             if (hierarchyLevels.ContainsKey(levelId))

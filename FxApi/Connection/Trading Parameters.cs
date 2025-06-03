@@ -147,33 +147,7 @@ namespace FxApi.Connection
         public override string ToString()
         {
             return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
-        }        
-        
-        /// <summary>
-        /// Updates the TotalProfit without triggering the full Process logic.
-        /// This is used in hierarchy mode to track profit without interference.
-        /// </summary>
-        /// <param name="profitAmount">The profit amount to add to total profit</param>
-        public void UpdateTotalProfit(decimal profitAmount)
-        {
-            TotalProfit += profitAmount;
-
-            // Check if take profit target is reached
-            if (TotalProfit >= TakeProfit)
-            {
-                TakeProfitReached?.Invoke(this, TotalProfit);
-            }
-        }
-
-        /// <summary>
-        /// Resets the TotalProfit to zero for hierarchy level transitions.
-        /// This is used when starting a new hierarchy level with a clean profit state.
-        /// </summary>
-        public void ResetTotalProfit()
-        {
-            TotalProfit = 0;
-            logger.Info("Reset TotalProfit to 0 for hierarchy level transition");
-        }        
+        }     
         
         /// <summary>
         /// Reseting the recovery results and the levels profit for hierarchy transitions.
@@ -183,7 +157,6 @@ namespace FxApi.Connection
         public void ResetForHierarchyTransition()
         {
             RecoveryResults.Clear();
-            ResetTotalProfit();
             logger.Info("Reset recovery results for hierarchy level transition");
         }
 

@@ -467,6 +467,7 @@
           <xs:element name="maxQueueSize" type="xs:integer" minOccurs="0" maxOccurs="1" default="10000" />
           <xs:element name="compress" type="NLog.Targets.NetworkTargetCompressionType" minOccurs="0" maxOccurs="1" default="None" />
           <xs:element name="compressMinBytes" type="xs:integer" minOccurs="0" maxOccurs="1" default="0" />
+          <xs:element name="noDelay" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="maxMessageSize" type="xs:integer" minOccurs="0" maxOccurs="1" default="65000" />
           <xs:element name="encoding" type="xs:string" minOccurs="0" maxOccurs="1" default="utf-8" />
           <xs:element name="lineEnding" type="LineEndingMode" minOccurs="0" maxOccurs="1" />
@@ -600,6 +601,11 @@
         <xs:attribute name="compressMinBytes" type="xs:integer">
           <xs:annotation>
             <xs:documentation>Skip compression when protocol payload is below limit to reduce overhead in cpu-usage and additional headers</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="noDelay" type="xs:boolean">
+          <xs:annotation>
+            <xs:documentation>Whether to disable the delayed ACK timer, and avoid delay of 200 ms. Default = false.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
         <xs:attribute name="maxMessageSize" type="xs:integer">
@@ -2013,6 +2019,7 @@
           <xs:element name="maxConnections" type="xs:integer" minOccurs="0" maxOccurs="1" default="100" />
           <xs:element name="compress" type="NLog.Targets.NetworkTargetCompressionType" minOccurs="0" maxOccurs="1" default="None" />
           <xs:element name="compressMinBytes" type="xs:integer" minOccurs="0" maxOccurs="1" default="0" />
+          <xs:element name="noDelay" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="maxMessageSize" type="xs:integer" minOccurs="0" maxOccurs="1" default="65000" />
           <xs:element name="encoding" type="xs:string" minOccurs="0" maxOccurs="1" default="utf-8" />
           <xs:element name="lineEnding" type="LineEndingMode" minOccurs="0" maxOccurs="1" />
@@ -2093,6 +2100,11 @@
             <xs:documentation>Skip compression when protocol payload is below limit to reduce overhead in cpu-usage and additional headers</xs:documentation>
           </xs:annotation>
         </xs:attribute>
+        <xs:attribute name="noDelay" type="xs:boolean">
+          <xs:annotation>
+            <xs:documentation>Whether to disable the delayed ACK timer, and avoid delay of 200 ms. Default = false.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
         <xs:attribute name="maxMessageSize" type="xs:integer">
           <xs:annotation>
             <xs:documentation>Maximum message size in bytes. On limit breach then P:NLog.Targets.NetworkTarget.OnOverflow action is activated.</xs:documentation>
@@ -2147,6 +2159,7 @@
           <xs:element name="maxQueueSize" type="xs:integer" minOccurs="0" maxOccurs="1" default="10000" />
           <xs:element name="compress" type="NLog.Targets.NetworkTargetCompressionType" minOccurs="0" maxOccurs="1" default="None" />
           <xs:element name="compressMinBytes" type="xs:integer" minOccurs="0" maxOccurs="1" default="0" />
+          <xs:element name="noDelay" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="maxMessageSize" type="xs:integer" minOccurs="0" maxOccurs="1" default="65000" />
           <xs:element name="encoding" type="xs:string" minOccurs="0" maxOccurs="1" default="utf-8" />
           <xs:element name="lineEnding" type="LineEndingMode" minOccurs="0" maxOccurs="1" />
@@ -2280,6 +2293,11 @@
         <xs:attribute name="compressMinBytes" type="xs:integer">
           <xs:annotation>
             <xs:documentation>Skip compression when protocol payload is below limit to reduce overhead in cpu-usage and additional headers</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="noDelay" type="xs:boolean">
+          <xs:annotation>
+            <xs:documentation>Whether to disable the delayed ACK timer, and avoid delay of 200 ms. Default = false.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
         <xs:attribute name="maxMessageSize" type="xs:integer">
@@ -2756,7 +2774,6 @@
           <xs:element name="includeEventProperties" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="includeGdc" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="includeScopeProperties" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
-          <xs:element name="escapeForwardSlash" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="excludeEmptyProperties" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
           <xs:element name="excludeProperties" type="xs:string" minOccurs="0" maxOccurs="1" />
           <xs:element name="indentJson" type="xs:boolean" minOccurs="0" maxOccurs="1" default="false" />
@@ -2777,11 +2794,6 @@
         <xs:attribute name="includeScopeProperties" type="xs:boolean">
           <xs:annotation>
             <xs:documentation>Whether to include the contents of the T:NLog.ScopeContext dictionary.</xs:documentation>
-          </xs:annotation>
-        </xs:attribute>
-        <xs:attribute name="escapeForwardSlash" type="xs:boolean">
-          <xs:annotation>
-            <xs:documentation>Should forward slashes be escaped? If true, / will be converted to \/</xs:documentation>
           </xs:annotation>
         </xs:attribute>
         <xs:attribute name="excludeEmptyProperties" type="xs:boolean">
