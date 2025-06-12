@@ -391,13 +391,14 @@ namespace FxWorth
                                 {
                                     logger.Info($"TradingParameters became null in recovery mode - hierarchy completed and exited to root level");
                                     // When TradingParameters becomes null, hierarchy has been completed
-                                    return;
-                                }
+                                    return;                                }
 
-                                currentLevel.AmountToRecover = client.TradingParameters.AmountToBeRecoverd;
+                                // Use the trading parameters' dynamic amount for layer creation logic
+                                // but do NOT modify the level's fixed AmountToRecover target
+                                decimal currentAmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
 
                                 decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
-                                if (currentLevel.AmountToRecover > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
+                                if (currentAmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
                                     decimal initialStakeForNextLayer;
