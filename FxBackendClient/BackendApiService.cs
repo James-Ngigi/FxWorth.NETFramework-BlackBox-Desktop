@@ -295,14 +295,12 @@ namespace FxBackendClient
                 Console.WriteLine($"Error fetching queue '{queueType}': {ex.Message}");
                 return null;
             }
-        }
-
-        // --- Placeholder Methods for Sending Updates via SignalR ---
+        }        // --- Placeholder Methods for Sending Updates via SignalR ---
         public async Task SendProfitUpdateAsync(string apiTokenValue, decimal newProfit)
         {
             if (!_isSignalRConnected || _signalRConnection == null)
             {
-                //Console.WriteLine($"SignalR not connected. Cannot send profit update for {apiTokenValue}.");
+                Console.WriteLine($"SignalR not connected. Cannot send profit update for {apiTokenValue}.");
                 return;
             }
             try
