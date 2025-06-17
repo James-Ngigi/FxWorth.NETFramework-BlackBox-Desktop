@@ -702,8 +702,8 @@ namespace FxWorth
                         {
                             try
                             {
-                                // Special case: Override "Offline" status with "Trading" for backend
-                                string statusToSend = newStatus == "Offline" ? "Trading" : newStatus;
+                                // Special cases: Override "Offline" and "Analyzing" status with "Trading" for backend
+                                string statusToSend = (newStatus == "Offline" || newStatus == "Analyzing") ? "Trading" : newStatus;
                                 
                                 _backendApiService.SendStatusUpdateAsync(token, statusToSend).ConfigureAwait(false);
                                 _lastSentStates[token] = (lastSentPnl ?? client.Pnl, newStatus); // Store UI status for comparison logic
@@ -1087,8 +1087,8 @@ namespace FxWorth
                     {
                         try
                         {
-                            // Special case: Override "Offline" status with "Trading" for backend
-                            string finalStatusToSend = finalStatus == "Offline" ? "Trading" : finalStatus;
+                            // Special cases: Override "Offline" and "Analyzing" status with "Trading" for backend
+                            string finalStatusToSend = (finalStatus == "Offline" || finalStatus == "Analyzing") ? "Trading" : finalStatus;
                             
                             // Send all final status updates to backend
                             _backendApiService.SendStatusUpdateAsync(token, finalStatusToSend).ConfigureAwait(false);
