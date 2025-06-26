@@ -64,6 +64,9 @@ namespace FxWorth
         // Root level profit tracking system for hierarchy mode recovery
         private Dictionary<AuthClient, RootLevelProfitState> rootLevelProfitStates = new Dictionary<AuthClient, RootLevelProfitState>();
 
+        // NEW: Comprehensive hierarchy profit tracking
+        private Dictionary<AuthClient, HierarchyProfitTracker> hierarchyProfitTrackers = new Dictionary<AuthClient, HierarchyProfitTracker>();
+
         public void SetHierarchyParameters(PhaseParameters phase1, PhaseParameters phase2, Dictionary<int, CustomLayerConfig> configs)
         {
             phase1Parameters = phase1;
@@ -869,6 +872,16 @@ namespace FxWorth
                                     client.TradingParameters.RecoveryResults.Add(model.Profit);
                                 }
 
+                                // NEW: Add to comprehensive hierarchy profit tracker
+                                if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
+                                {
+                                    tracker.AddTradeResult(currentLevel.LevelId, model.Profit);
+                                    logger.Info($"Added profit {model.Profit:F2} to hierarchy tracker. " +
+                                               $"Total hierarchy profit: ${tracker.TotalHierarchyProfit:F2}, " +
+                                               $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}, " +
+                                               $"Net result: ${tracker.NetHierarchyResult:F2}");
+                                }
+
                                 logger.Info($"Added profit {model.Profit:F2} to level {currentLevel.LevelId} recovery results");
                                 client.TradingParameters.RecalculateTotalProfit();
                             }
@@ -932,6 +945,9 @@ namespace FxWorth
             );
 
             rootLevelProfitStates[client] = rootState;
+
+            // Initialize hierarchy profit tracker
+            hierarchyProfitTrackers[client] = new HierarchyProfitTracker();
             
             logger.Info($"Captured root level profit state: OriginalTarget=${rootState.OriginalTakeProfit:F2}, " +
                        $"CurrentProfit=${rootState.ProfitAtEntry:F2}, " +
@@ -965,20 +981,37 @@ namespace FxWorth
                 return;
             }
 
+            // Get comprehensive hierarchy profit data
+            decimal totalHierarchyProfit = 0;
+            if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
+            {
+                totalHierarchyProfit = tracker.NetHierarchyResult;
+                logger.Info($"Hierarchy session completed: Total hierarchy profit=${tracker.TotalHierarchyProfit:F2}, " +
+                           $"Total hierarchy loss=${tracker.TotalHierarchyLoss:F2}, " +
+                           $"Net hierarchy result=${tracker.NetHierarchyResult:F2}");
+            }
+
+            // Calculate current effective profit (entry profit + hierarchy net result)
+            decimal currentEffectiveProfit = rootState.ProfitAtEntry + totalHierarchyProfit;
+            decimal remainingProfitNeeded = rootState.OriginalTakeProfit - currentEffectiveProfit;
+            
+            logger.Info($"Profit calculation for root level restoration: " +
+                       $"Entry profit=${rootState.ProfitAtEntry:F2}, " +
+                       $"Hierarchy net=${totalHierarchyProfit:F2}, " +
+                       $"Current effective profit=${currentEffectiveProfit:F2}, " +
+                       $"Original target=${rootState.OriginalTakeProfit:F2}, " +
+                       $"Remaining needed=${remainingProfitNeeded:F2}");
+
             // Clone the original trading parameters
             var restoredParams = (TradingParameters)rootState.OriginalTradingParameters.Clone();
-            
-            // Calculate the remaining profit needed based on current client profit
-            decimal currentProfit = client.Pnl;
-            decimal remainingProfitNeeded = rootState.OriginalTakeProfit - currentProfit;
             
             // Ensure we don't set a negative take profit target
             if (remainingProfitNeeded <= 0)
             {
-                logger.Info($"Root level take profit already achieved: Current=${currentProfit:F2}, Original=${rootState.OriginalTakeProfit:F2}");
+                logger.Info($"Root level take profit already achieved through hierarchy recovery!");
                 // Set a small positive value to avoid issues, or keep current parameters null to stop trading
                 client.TradingParameters = null;
-                rootLevelProfitStates.Remove(client);
+                CleanupHierarchyTracking(client);
                 return;
             }
             
@@ -996,10 +1029,26 @@ namespace FxWorth
             client.TradingParameters = restoredParams;
             
             logger.Info($"Restored root level trading parameters: TakeProfit=${restoredParams.TakeProfit:F2} " +
-                       $"(Original=${rootState.OriginalTakeProfit:F2}, Current=${currentProfit:F2}, Remaining=${remainingProfitNeeded:F2})");
+                       $"(Original=${rootState.OriginalTakeProfit:F2}, Effective Current=${currentEffectiveProfit:F2})");
             
-            // Clean up the stored state
+            // Clean up the stored states
+            CleanupHierarchyTracking(client);
+        }
+
+        /// <summary>
+        /// Cleans up hierarchy tracking data for a client
+        /// </summary>
+        private void CleanupHierarchyTracking(AuthClient client)
+        {
             rootLevelProfitStates.Remove(client);
+            if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
+            {
+                // Log final hierarchy statistics before cleanup
+                logger.Info($"Final hierarchy statistics - Levels traded: {tracker.ProfitsByLevel.Count}, " +
+                           $"Total hierarchy profit: ${tracker.TotalHierarchyProfit:F2}, " +
+                           $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}");
+            }
+            hierarchyProfitTrackers.Remove(client);
         }
 
         // Enters hierarchy mode for a specific client, initializing the hierarchy navigator and assigning the client to the first level.
@@ -1088,6 +1137,85 @@ namespace FxWorth
             ProfitAtEntry = currentProfit;
             OriginalTradingParameters = (TradingParameters)originalParameters.Clone();
             EntryTimestamp = DateTime.Now;
+        }
+    }
+
+    /// <summary>
+    /// Comprehensive profit tracking system for hierarchy mode
+    /// Maintains cumulative profits across all hierarchy levels and layers
+    /// </summary>
+    public class HierarchyProfitTracker
+    {
+        /// <summary>
+        /// Dictionary tracking profits by level ID (e.g., "1.1" -> list of profits)
+        /// </summary>
+        public Dictionary<string, List<decimal>> ProfitsByLevel { get; set; } = new Dictionary<string, List<decimal>>();
+
+        /// <summary>
+        /// Total cumulative profit across all hierarchy levels
+        /// </summary>
+        public decimal TotalHierarchyProfit { get; private set; }
+
+        /// <summary>
+        /// Total cumulative loss across all hierarchy levels
+        /// </summary>
+        public decimal TotalHierarchyLoss { get; private set; }
+
+        /// <summary>
+        /// Net profit/loss in hierarchy mode
+        /// </summary>
+        public decimal NetHierarchyResult => TotalHierarchyProfit - TotalHierarchyLoss;
+
+        /// <summary>
+        /// Adds a trade result to the specified level and updates totals
+        /// </summary>
+        public void AddTradeResult(string levelId, decimal profit)
+        {
+            if (!ProfitsByLevel.ContainsKey(levelId))
+            {
+                ProfitsByLevel[levelId] = new List<decimal>();
+            }
+
+            ProfitsByLevel[levelId].Add(profit);
+
+            if (profit > 0)
+            {
+                TotalHierarchyProfit += profit;
+            }
+            else
+            {
+                TotalHierarchyLoss += Math.Abs(profit);
+            }
+        }
+
+        /// <summary>
+        /// Gets the total profit for a specific level
+        /// </summary>
+        public decimal GetLevelProfit(string levelId)
+        {
+            return ProfitsByLevel.TryGetValue(levelId, out var profits) 
+                ? profits.Where(p => p > 0).Sum() 
+                : 0;
+        }
+
+        /// <summary>
+        /// Gets the total loss for a specific level
+        /// </summary>
+        public decimal GetLevelLoss(string levelId)
+        {
+            return ProfitsByLevel.TryGetValue(levelId, out var profits) 
+                ? profits.Where(p => p < 0).Sum(p => Math.Abs(p))
+                : 0;
+        }
+
+        /// <summary>
+        /// Resets all tracking data
+        /// </summary>
+        public void Reset()
+        {
+            ProfitsByLevel.Clear();
+            TotalHierarchyProfit = 0;
+            TotalHierarchyLoss = 0;
         }
     }
 }

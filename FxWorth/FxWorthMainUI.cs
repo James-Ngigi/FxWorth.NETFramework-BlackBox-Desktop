@@ -95,7 +95,7 @@ namespace FxWorth
         private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
         private Timer _tradingPingTimer;
-        private const int TRADING_PING_INTERVAL_MS = 30000;
+        private const int TRADING_PING_INTERVAL_MS = 10000;
         private const string TRADING_STATUS = "Trading";
 
         private void UpdateLatencyLabel(int latency)
