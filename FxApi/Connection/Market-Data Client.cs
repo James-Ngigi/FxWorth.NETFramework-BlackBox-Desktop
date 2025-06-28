@@ -290,10 +290,29 @@ namespace FxApi
         /// </summary>
         protected override void SockOnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            // Deserialize the received JSON message into a JObject.
-            var jMessage = JsonConvert.DeserializeObject<JObject>(e.Message);
-            // Declare a `SubscriptionDescription` variable to hold subscription information.
-            SubscriptionDescription sub;
+            try
+            {
+                // Log the received message for debugging (only the first 200 characters to avoid spam)
+                string messagePreview = e.Message?.Length > 200 ? e.Message.Substring(0, 200) + "..." : e.Message;
+                logger.Debug($"Received message: {messagePreview}");
+
+                // Deserialize the received JSON message into a JObject.
+                var jMessage = JsonConvert.DeserializeObject<JObject>(e.Message);
+                
+                if (jMessage == null)
+                {
+                    logger.Error("Failed to deserialize message - jMessage is null");
+                    return;
+                }
+
+                if (!jMessage.ContainsKey("msg_type"))
+                {
+                    logger.Error("Message does not contain msg_type field");
+                    return;
+                }
+
+                // Declare a `SubscriptionDescription` variable to hold subscription information.
+                SubscriptionDescription sub;
 
             // Process different message types based on the "msg_type" field.
             switch (jMessage["msg_type"].Value<string>())
@@ -301,12 +320,42 @@ namespace FxApi
                 case "active_symbols":
                     // This message type contains the list of active trading symbols available on the Deriv platform.
 
+                    // Check if the message contains an error
+                    if (jMessage.ContainsKey("error"))
+                    {
+                        logger.Error($"Error in active_symbols response: {jMessage["error"]}");
+                        break;
+                    }
+
                     // Deserialize the message into an `ActiveSymbolsResponse` object.
                     var symbols = jMessage.ToObject<ActiveSymbolsResponse>();
 
+                    // Check if symbols and active_symbols list are not null
+                    if (symbols == null || symbols.active_symbols == null)
+                    {
+                        logger.Error("Received null active_symbols data from API");
+                        break;
+                    }
+
                     // Update the symbolsDictionary and namesDictionary with the received symbol information.
-                    symbolsDictionary = symbols.active_symbols.ToDictionary(x => x.symbol);
-                    namesDictionary = symbols.active_symbols.ToDictionary(x => x.display_name);
+                    try
+                    {
+                        symbolsDictionary = symbols.active_symbols.ToDictionary(x => x.symbol);
+                        namesDictionary = symbols.active_symbols.ToDictionary(x => x.display_name);
+                        logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols");
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        logger.Error(ex, "Error creating dictionaries from active symbols - possible duplicate keys");
+                        // Create dictionaries using GroupBy to handle duplicates
+                        symbolsDictionary = symbols.active_symbols
+                            .GroupBy(x => x.symbol)
+                            .ToDictionary(g => g.Key, g => g.First());
+                        namesDictionary = symbols.active_symbols
+                            .GroupBy(x => x.display_name)
+                            .ToDictionary(g => g.Key, g => g.First());
+                        logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols with duplicate handling");
+                    }
 
                     // Handle re-subscriptions after receiving the active symbols list.
                     var tmp = localSubscriptions.ToList();
@@ -439,6 +488,15 @@ namespace FxApi
                 default:
                     // Ignore any other message types.
                     break;
+            }
+            }
+            catch (JsonException jsonEx)
+            {
+                logger.Error(jsonEx, $"JSON deserialization error in SockOnMessageReceived: {e.Message}");
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, $"Unexpected error in SockOnMessageReceived: {e.Message}");
             }
         }
     }
