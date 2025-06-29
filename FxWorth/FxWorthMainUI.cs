@@ -71,10 +71,6 @@ namespace FxWorth
 
             base.OnFormClosing(e);
         }
-
-        // WORKAROUND: "Offline" status gets stuck in UI grid even when connection is restored.
-        // Until a better definition is found, "Offline" status is overridden to "Trading" when sent to backend.
-        // This ensures backend receives "Trading" status during active trading, preventing stuck offline states.
         
         private bool tradingSessionCompleted = false;
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();

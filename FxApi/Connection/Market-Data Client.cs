@@ -294,7 +294,7 @@ namespace FxApi
             {
                 // Log the received message for debugging (only the first 200 characters to avoid spam)
                 string messagePreview = e.Message?.Length > 200 ? e.Message.Substring(0, 200) + "..." : e.Message;
-                logger.Debug($"Received message: {messagePreview}");
+                //logger.Debug($"Received message: {messagePreview}");
 
                 // Deserialize the received JSON message into a JObject.
                 var jMessage = JsonConvert.DeserializeObject<JObject>(e.Message);
@@ -342,7 +342,7 @@ namespace FxApi
                     {
                         symbolsDictionary = symbols.active_symbols.ToDictionary(x => x.symbol);
                         namesDictionary = symbols.active_symbols.ToDictionary(x => x.display_name);
-                        logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols");
+                        //logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols");
                     }
                     catch (ArgumentException ex)
                     {
@@ -354,7 +354,7 @@ namespace FxApi
                         namesDictionary = symbols.active_symbols
                             .GroupBy(x => x.display_name)
                             .ToDictionary(g => g.Key, g => g.First());
-                        logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols with duplicate handling");
+                        //logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols with duplicate handling");
                     }
 
                     // Handle re-subscriptions after receiving the active symbols list.
