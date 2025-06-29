@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("DEADBEAF-2025-C0DE-BADD-CAFE00000001")]
+[assembly: Guid("DEADBEAF-2025-C0DE-BADD-CAFE00000002")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -31,6 +31,6 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("5.1.0.2")]
+[assembly: AssemblyVersion("5.1.0.4")]
 [assembly: AssemblyFileVersion("0.0.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("FxUnitTests")]

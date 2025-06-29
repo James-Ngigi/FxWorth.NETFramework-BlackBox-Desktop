@@ -47,6 +47,12 @@ namespace FxWorth
         public Rsi rsi;
         private AuthClient eventingClinet;
 
+        // RSI monitoring and recovery fields
+        private DateTime lastRsiRecoveryAttempt = DateTime.MinValue;
+        private const int RSI_RECOVERY_INTERVAL_MS = 1000;
+        private int rsiNanCount = 0;
+        private const int MAX_RSI_NAN_COUNT = 10;
+
         public bool IsHierarchyMode => hierarchyNavigator != null && hierarchyNavigator.IsInHierarchyMode;
         private readonly object tradeUpdateLock = new object();
 
@@ -55,7 +61,8 @@ namespace FxWorth
         public string currentLevelId;
         public AuthClient hierarchyClient;
         public PhaseParameters phase1Parameters;
-        public PhaseParameters phase2Parameters;        public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
+        public PhaseParameters phase2Parameters;        
+        public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
 
@@ -282,10 +289,112 @@ namespace FxWorth
             rsi.Crossover += OnCrossover;
             MarketDataClient.Subscribe(symbol, rsiTimeframe, rsi);
 
+            // Reset RSI monitoring
+            lastRsiRecoveryAttempt = DateTime.MinValue;
+            rsiNanCount = 0;
             return new MarketDataParameters { Rsi = rsi, Symbol = symbol };
         }
 
+        /// <summary>
+        /// NEW: Attempts to recover RSI from persistent NaN state
+        /// </summary>
+        public void AttemptRsiRecovery()
+        {
+            try
+            {
+                if (rsi == null)
+                    return;
 
+                var now = DateTime.Now;
+                
+                // Check if RSI is NaN
+                if (double.IsNaN(rsi.Value))
+                {
+                    rsiNanCount++;
+                    
+                    // Only attempt recovery if enough time has passed
+                    if ((now - lastRsiRecoveryAttempt).TotalMilliseconds < RSI_RECOVERY_INTERVAL_MS)
+                        return;
+                    
+                    lastRsiRecoveryAttempt = now;
+
+                    // Progressive recovery steps
+                    if (rsiNanCount <= 3)
+                    {
+                        // Step 1-3: Try basic reset and recalculation
+                        rsi.Reset();
+                    }
+                    else if (rsiNanCount <= 5)
+                    {
+                        // Step 4-5: Reset and attempt to get fresh data
+                        rsi.Reset();
+                        
+                        // Request fresh market data
+                        Task.Delay(1000).ContinueWith(_ =>
+                        {
+                            try
+                            {
+                                MarketDataClient.UnsubscribeAll();
+                                Task.Delay(500).ContinueWith(__ =>
+                                {
+                                    MarketDataClient.Subscribe(
+                                        MarketDataClient.GetInstrument("1HZ100V")?.display_name ?? "1HZ100V", 
+                                        rsi.TimeFrame, 
+                                        rsi);
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, "Error during RSI recovery resubscription");
+                            }
+                        });
+                    }
+                    else if (rsiNanCount >= MAX_RSI_NAN_COUNT)
+                    {
+                        // Step 6+: Full restart of market data connection
+                        logger.Error("RSI Recovery: Maximum recovery attempts reached, restarting market data connection");
+                        
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                MarketDataClient.Stop();
+                                Task.Delay(2000).ContinueWith(_ =>
+                                {
+                                    MarketDataClient.Start();
+                                    Task.Delay(1000).ContinueWith(__ =>
+                                    {
+                                        // Re-subscribe with current parameters
+                                        var currentSymbol = MarketDataClient.GetInstrument("1HZ100V")?.display_name ?? "1HZ100V";
+                                        MarketDataClient.Subscribe(currentSymbol, rsi.TimeFrame, rsi);
+                                    });
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, "Error during RSI recovery connection restart");
+                            }
+                        });
+                        
+                        // Reset counter after drastic action
+                        rsiNanCount = 0;
+                    }
+                }
+                else
+                {
+                    // RSI is working, reset counter
+                    if (rsiNanCount > 0)
+                    {
+                        logger.Info($"RSI Recovery: RSI value restored to {rsi.Value:F2} after {rsiNanCount} recovery attempts");
+                        rsiNanCount = 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Error in AttemptRsiRecovery");
+            }
+        }
 
         /* -----------------------------------------SENSITIVE AREA----------------------------------------------------- */
 
