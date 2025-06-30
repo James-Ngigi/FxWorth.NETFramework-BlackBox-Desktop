@@ -513,8 +513,7 @@ namespace FxWorth.Hierarchy
 
             logger.Info($"Created fresh trading parameters for level {levelId}: TakeProfit=${freshParameters.TakeProfit:F2}, " +
                         $"Stake=${freshParameters.Stake:F2}, DynamicStake=${freshParameters.DynamicStake:F2}, " +
-                        $"MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, " +
-                        $"RecoveryResults.Count={freshParameters.RecoveryResults.Count}");
+                        $"MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}.");
         }
 
         public HierarchyLevel GetCurrentLevel()

@@ -26,12 +26,7 @@ namespace FxApi.Connection
         public int MartingaleLevel { get; set; }
         
         private int currentMartingaleLevel = 1;
-        public int CurrentMartingaleLevel 
-        { 
-            get => MartingaleLevel == 0 ? currentMartingaleLevel : MartingaleLevel;
-            private set => currentMartingaleLevel = value;
-        }
-        
+                
         public bool IsDynamicMartingaleMode => MartingaleLevel == 0;
         
         public int HierarchyLevels { get; set; }
@@ -47,6 +42,11 @@ namespace FxApi.Connection
         public decimal InitialStake4Layer1 { get; set; }
         public decimal TotalProfit { get; private set; }        
         public decimal LevelInitialStake { get; set; }
+        public int CurrentMartingaleLevel
+        {
+            get => MartingaleLevel == 0 ? currentMartingaleLevel : MartingaleLevel;
+            private set => currentMartingaleLevel = value;
+        }
 
         public event EventHandler<decimal> TakeProfitReached;
 
@@ -134,7 +134,7 @@ namespace FxApi.Connection
                 int effectiveMartingaleLevel = IsDynamicMartingaleMode ? CurrentMartingaleLevel : MartingaleLevel;
                 DynamicStake = Math.Round(Stake * martingaleValue / effectiveMartingaleLevel, 2);
 
-                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {roundedMartingaleValue}, Level: {MartingaleLevel})");
+                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {roundedMartingaleValue}, Level: {effectiveMartingaleLevel})");
 
                 // Apply lower limit to the DynamicStake
                 if (IsRecoveryMode)
@@ -223,7 +223,14 @@ namespace FxApi.Connection
         public object Clone()
         {
             var clone = (TradingParameters)MemberwiseClone();
+
             clone.recoveryResults = new List<decimal>(recoveryResults);
+
+            if (clone.IsDynamicMartingaleMode)
+            {
+                clone.currentMartingaleLevel = 1;
+            }
+            
             return clone;
         }
     }
