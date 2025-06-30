@@ -32,6 +32,8 @@
             this.FxWorth_Subscriber_Fetching_Service_Tab = new System.Windows.Forms.TabControl();
             this.Paid_Client_Tab = new System.Windows.Forms.TabPage();
             this.dataGridView_Paid = new System.Windows.Forms.DataGridView();
+            this.Api_Tokens_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Profit_Targets_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.panel1 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_Paid_BTN = new System.Windows.Forms.Button();
             this.Extract_Paid_BTN = new System.Windows.Forms.Button();
@@ -56,8 +58,6 @@
             this.panel4 = new System.Windows.Forms.Panel();
             this.Clear_n_Fetch_OTH_Virtual_BTN = new System.Windows.Forms.Button();
             this.Extract_OTH_Virtual_BTN = new System.Windows.Forms.Button();
-            this.Api_Tokens_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.Profit_Targets_Paid = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.FxWorth_Subscriber_Fetching_Service_Tab.SuspendLayout();
             this.Paid_Client_Tab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView_Paid)).BeginInit();
@@ -115,6 +115,22 @@
             this.dataGridView_Paid.Size = new System.Drawing.Size(791, 377);
             this.dataGridView_Paid.TabIndex = 1;
             // 
+            // Api_Tokens_Paid
+            // 
+            this.Api_Tokens_Paid.HeaderText = "Paid Subscriber Api Tokens";
+            this.Api_Tokens_Paid.MinimumWidth = 8;
+            this.Api_Tokens_Paid.Name = "Api_Tokens_Paid";
+            this.Api_Tokens_Paid.ReadOnly = true;
+            this.Api_Tokens_Paid.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.Api_Tokens_Paid.Width = 365;
+            // 
+            // Profit_Targets_Paid
+            // 
+            this.Profit_Targets_Paid.HeaderText = "Profit Targets Assigned";
+            this.Profit_Targets_Paid.MinimumWidth = 8;
+            this.Profit_Targets_Paid.Name = "Profit_Targets_Paid";
+            this.Profit_Targets_Paid.Width = 362;
+            // 
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.GhostWhite;
@@ -139,7 +155,7 @@
             this.Clear_n_Fetch_Paid_BTN.Name = "Clear_n_Fetch_Paid_BTN";
             this.Clear_n_Fetch_Paid_BTN.Size = new System.Drawing.Size(185, 32);
             this.Clear_n_Fetch_Paid_BTN.TabIndex = 1;
-            this.Clear_n_Fetch_Paid_BTN.Text = "Clear n Fetch";
+            this.Clear_n_Fetch_Paid_BTN.Text = "Fetch Tokens";
             this.Clear_n_Fetch_Paid_BTN.UseVisualStyleBackColor = false;
             // 
             // Extract_Paid_BTN
@@ -421,22 +437,6 @@
             this.Extract_OTH_Virtual_BTN.TabIndex = 4;
             this.Extract_OTH_Virtual_BTN.Text = "Extract";
             this.Extract_OTH_Virtual_BTN.UseVisualStyleBackColor = false;
-            // 
-            // Api_Tokens_Paid
-            // 
-            this.Api_Tokens_Paid.HeaderText = "Paid Subscriber Api Tokens";
-            this.Api_Tokens_Paid.MinimumWidth = 8;
-            this.Api_Tokens_Paid.Name = "Api_Tokens_Paid";
-            this.Api_Tokens_Paid.ReadOnly = true;
-            this.Api_Tokens_Paid.Resizable = System.Windows.Forms.DataGridViewTriState.False;
-            this.Api_Tokens_Paid.Width = 365;
-            // 
-            // Profit_Targets_Paid
-            // 
-            this.Profit_Targets_Paid.HeaderText = "Profit Targets Assigned";
-            this.Profit_Targets_Paid.MinimumWidth = 8;
-            this.Profit_Targets_Paid.Name = "Profit_Targets_Paid";
-            this.Profit_Targets_Paid.Width = 362;
             // 
             // Subscriber_Fetch
             // 
