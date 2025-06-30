@@ -309,7 +309,7 @@
             this.Period0_TXT.TabIndex = 22;
             this.Period0_TXT.ThousandsSeparator = true;
             this.Period0_TXT.Value = new decimal(new int[] {
-            1,
+            2,
             0,
             0,
             0});
@@ -422,10 +422,10 @@
             this.Stake_TXT2.TabIndex = 28;
             this.Stake_TXT2.ThousandsSeparator = true;
             this.Stake_TXT2.Value = new decimal(new int[] {
-            5,
+            234,
             0,
             0,
-            0});
+            131072});
             // 
             // Stake_LBL2
             // 
@@ -479,10 +479,10 @@
             this.Barrier_Offset_TXT2.TabIndex = 27;
             this.Barrier_Offset_TXT2.ThousandsSeparator = true;
             this.Barrier_Offset_TXT2.Value = new decimal(new int[] {
-            3565,
+            30,
             0,
             0,
-            131072});
+            0});
             // 
             // Barrier_Offset_LBL2
             // 
@@ -533,7 +533,7 @@
             this.Max_Drawdown_TXT2.TabIndex = 26;
             this.Max_Drawdown_TXT2.ThousandsSeparator = true;
             this.Max_Drawdown_TXT2.Value = new decimal(new int[] {
-            200,
+            2000,
             0,
             0,
             0});
@@ -689,7 +689,7 @@
             this.Max_Drawdown_TXT1.TabIndex = 17;
             this.Max_Drawdown_TXT1.ThousandsSeparator = true;
             this.Max_Drawdown_TXT1.Value = new decimal(new int[] {
-            1500,
+            15000,
             0,
             0,
             0});
@@ -1078,7 +1078,7 @@
             this.Barrier_Offset_TXT.TabIndex = 14;
             this.Barrier_Offset_TXT.ThousandsSeparator = true;
             this.Barrier_Offset_TXT.Value = new decimal(new int[] {
-            35,
+            40,
             0,
             0,
             0});

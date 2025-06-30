@@ -22,7 +22,6 @@ namespace FxWorth
 {
     public partial class FxWorth : Form
     {
-        
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
@@ -66,12 +65,10 @@ namespace FxWorth
             {
                 PowerManager.AllowSleep();
             }
-
             _backendApiService?.Dispose();
-
             base.OnFormClosing(e);
         }
-
+        
         private bool tradingSessionCompleted = false;
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly Stopwatch sw = new Stopwatch();
@@ -87,11 +84,11 @@ namespace FxWorth
         private HierarchyNavigator hierarchyNavigator;
         private BackendApiService _backendApiService;
         private bool _isOperatorLoggedIn = false;
-        private string _backendApiUrl = "https://fxworth-api-backend.onrender.com"; // Later configured from App.config
+        private string _backendApiUrl = "http://localhost:8080"; // or "https://fxworth-api-backend.onrender.com";
         private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
         private Timer _tradingPingTimer;
-        private const int TRADING_PING_INTERVAL_MS = 30000;
+        private const int TRADING_PING_INTERVAL_MS = 10000;
         private const string TRADING_STATUS = "Trading";
 
         private void UpdateLatencyLabel(int latency)
@@ -391,13 +388,14 @@ namespace FxWorth
                                 {
                                     logger.Info($"TradingParameters became null in recovery mode - hierarchy completed and exited to root level");
                                     // When TradingParameters becomes null, hierarchy has been completed
-                                    return;
-                                }
+                                    return;                                }
 
-                                currentLevel.AmountToRecover = client.TradingParameters.AmountToBeRecoverd;
+                                // Use the trading parameters' dynamic amount for layer creation logic
+                                // but do NOT modify the level's fixed AmountToRecover target
+                                decimal currentAmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
 
                                 decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
-                                if (currentLevel.AmountToRecover > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
+                                if (currentAmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
                                     decimal initialStakeForNextLayer;
@@ -601,9 +599,7 @@ namespace FxWorth
                 {
                     return "Offline";
                 }
-            }
-
-            if (credentials.ProfitTarget > 0 && client.Pnl >= credentials.ProfitTarget)
+            }            if (credentials.ProfitTarget > 0 && client.Pnl >= credentials.ProfitTarget)
             {
                 return "TakeProfit";
             }
@@ -694,16 +690,17 @@ namespace FxWorth
                             {
                                 logger.Error(ex, $"Failed to initiate PnL update for token {token}");
                             }
-                        }
-
-                        // Only send status updates if the new status is not Completed or Incompleted
-                        if ((lastSentStatus == null || newStatus != lastSentStatus) && newStatus != "Completed" && newStatus != "Incompleted")
+                        }                        // Send all status updates to backend
+                        if (lastSentStatus == null || newStatus != lastSentStatus)
                         {
                             try
                             {
-                                _backendApiService.SendStatusUpdateAsync(token, newStatus).ConfigureAwait(false);
-                                _lastSentStates[token] = (lastSentPnl ?? client.Pnl, newStatus);
-                                logger.Debug($"Status update sent for token {token}: {newStatus}");
+                                // Special cases: Override "Offline" and "Analyzing" status with "Trading" for backend
+                                string statusToSend = (newStatus == "Offline" || newStatus == "Analyzing") ? "Trading" : newStatus;
+                                
+                                _backendApiService.SendStatusUpdateAsync(token, statusToSend).ConfigureAwait(false);
+                                _lastSentStates[token] = (lastSentPnl ?? client.Pnl, newStatus); // Store UI status for comparison logic
+                                logger.Debug($"Status update sent for token {token}: {statusToSend} (UI shows: {newStatus})");
                             }
                             catch (Exception ex)
                             {
@@ -1079,24 +1076,22 @@ namespace FxWorth
                 // Update the grid cell only if the final status is different
                 if (row.Cells[5].Value?.ToString() != finalStatus)
                 {
-                    row.Cells[5].Value = finalStatus;
-
-                    if (_backendApiService != null && _isOperatorLoggedIn && !string.IsNullOrEmpty(token))
+                    row.Cells[5].Value = finalStatus;                    if (_backendApiService != null && _isOperatorLoggedIn && !string.IsNullOrEmpty(token))
                     {
                         try
                         {
-                            // Only send status update if the final status is not Completed or Incompleted
-                            if (finalStatus != "Completed" && finalStatus != "Incompleted")
-                            {
-                                _backendApiService.SendStatusUpdateAsync(token, finalStatus).ConfigureAwait(false);
-                            }
+                            // Special cases: Override "Offline" and "Analyzing" status with "Trading" for backend
+                            string finalStatusToSend = (finalStatus == "Offline" || finalStatus == "Analyzing") ? "Trading" : finalStatus;
+                            
+                            // Send all final status updates to backend
+                            _backendApiService.SendStatusUpdateAsync(token, finalStatusToSend).ConfigureAwait(false);
 
                             if (_lastSentStates.ContainsKey(token))
                             {
                                 _lastSentStates.Remove(token);
                             }
 
-                            logger.Debug($"Final status update sent for token {token}: {finalStatus}");
+                            logger.Debug($"Final status update sent for token {token}: {finalStatusToSend} (UI shows: {finalStatus})");
                         }
                         catch (Exception ex)
                         {

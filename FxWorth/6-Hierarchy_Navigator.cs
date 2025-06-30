@@ -236,14 +236,12 @@ namespace FxWorth.Hierarchy
                     {
                         logger.Info($"Level {LevelId} recovery target met: ${profitAmount:F2} >= ${AmountToRecover:F2} (required amount)");
                         IsCompleted = true;
-                    }
-                }
+                    }                }
                 
-                // Update amount to be recovered
-                if (tradingParameters.IsRecoveryMode)
-                {
-                    AmountToRecover = tradingParameters.AmountToBeRecoverd;
-                }
+                // NOTE: Do NOT update AmountToRecover from trading parameters!
+                // Each hierarchy level should maintain its fixed target amount.
+                // The trading parameters' AmountToBeRecoverd is dynamic and changes during recovery,
+                // but the level's AmountToRecover should remain constant as the level's target.
                 
                 // Update dynamic stake - keep track of the current stake being used
                 if (tradingParameters.DynamicStake > 0)

@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
 using WebSocket4Net;
+using System.Threading.Tasks;
 
 namespace FxApi
 {
@@ -290,155 +291,175 @@ namespace FxApi
         /// </summary>
         protected override void SockOnMessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            // Deserialize the received JSON message into a JObject.
-            var jMessage = JsonConvert.DeserializeObject<JObject>(e.Message);
-            // Declare a `SubscriptionDescription` variable to hold subscription information.
-            SubscriptionDescription sub;
-
-            // Process different message types based on the "msg_type" field.
-            switch (jMessage["msg_type"].Value<string>())
+            try
             {
-                case "active_symbols":
-                    // This message type contains the list of active trading symbols available on the Deriv platform.
+                // Deserialize the received JSON message into a JObject.
+                var jMessage = JsonConvert.DeserializeObject<JObject>(e.Message);
+                
+                if (jMessage == null)
+                {
+                    logger.Error("Failed to deserialize message - jMessage is null");
+                    return;
+                }
 
-                    // Deserialize the message into an `ActiveSymbolsResponse` object.
-                    var symbols = jMessage.ToObject<ActiveSymbolsResponse>();
+                if (!jMessage.ContainsKey("msg_type"))
+                {
+                    logger.Error("Message does not contain msg_type field");
+                    return;
+                }
 
-                    // Update the symbolsDictionary and namesDictionary with the received symbol information.
-                    symbolsDictionary = symbols.active_symbols.ToDictionary(x => x.symbol);
-                    namesDictionary = symbols.active_symbols.ToDictionary(x => x.display_name);
+                // Declare a `SubscriptionDescription` variable to hold subscription information.
+                SubscriptionDescription sub;
 
-                    // Handle re-subscriptions after receiving the active symbols list.
-                    var tmp = localSubscriptions.ToList();
-                    localSubscriptions.Clear();
+                // Process different message types based on the "msg_type" field.
+                switch (jMessage["msg_type"].Value<string>())
+                {
+                    case "active_symbols":
+                        // This message type contains the list of active trading symbols available on the Deriv platform.
 
-                    // Re-subscribe to previously subscribed symbols.
-                    foreach (var pair in tmp)
-                    {
-                        logger.Info("resubscribe data {0} {1}", pair.Value.ActiveSymbol.display_name, pair.Value.Token.TimeFrame);
-                        pair.Value.Token.Reset();
-                        Subscribe(pair.Value.ActiveSymbol.display_name, pair.Value.Token.TimeFrame, pair.Value.Token);
-                    }
-
-                    break;
-
-                case "forget":
-                    // This message type is a confirmation that a forget request (unsubscribe) has been processed.
-                    // No specific action is required here.
-                    break;
-
-                case "candles":
-                    // This message type contains candlestick data for the subscribed symbol.
-
-                    // Deserialize the message into a `CandlesResponse` object.
-                    var candles = jMessage.ToObject<CandlesResponse>();
-                    // Generate a unique cache key for the candles data.
-                    string candlesCacheKey = GenerateCandlesCacheKey(candles);
-
-                    // Attempt to retrieve cached candles data using the generated key.
-                    var cachedCandles = GetCachedCandles(candlesCacheKey);
-
-                    if (cachedCandles != null)
-                    {
-                        // If cached candles are found, use them to update the indicator.
-                        sub = localSubscriptions[candles.req_id];
-                        sub.RemoteId = cachedCandles.subscription.id;
-                        sub.Token.HandleSnapshot(cachedCandles.candles);
-                    }
-                    else
-                    {
-                        // If cached candles are not found...
-                        if (localSubscriptions.TryGetValue(candles.req_id, out sub))
+                        // Check if the message contains an error
+                        if (jMessage.ContainsKey("error"))
                         {
-                            // Update the subscription description with the remote subscription ID.
-                            sub.RemoteId = candles.subscription.id;
-                            // Pass the received candles data to the indicator for processing.
-                            sub.Token.HandleSnapshot(candles.candles);
-
-                            // Cache the received candles data for future use.
-                            CacheCandles(candlesCacheKey, candles);
+                            logger.Error($"Error in active_symbols response: {jMessage["error"]}");
+                            break;
                         }
-                    }
 
-                    break;
+                        // Deserialize the message into an `ActiveSymbolsResponse` object.
+                        var symbols = jMessage.ToObject<ActiveSymbolsResponse>();
 
-                case "history":
-                    // This message type contains historical tick data for the subscribed symbol.
-
-                    // Deserialize the message into a `TicksResponse` object.
-                    var ticks = jMessage.ToObject<TicksResponse>();
-                    // Generate a unique cache key for the ticks data.
-                    string ticksCacheKey = GenerateTicksCacheKey(ticks);
-
-                    // Attempt to retrieve cached ticks data.
-                    var cachedTicks = GetCachedTicks(ticksCacheKey);
-
-                    if (cachedTicks != null)
-                    {
-                        // If cached ticks are found, use them to update the indicator.
-                        sub = localSubscriptions[ticks.req_id];
-                        sub.RemoteId = cachedTicks.subscription.id;
-                        var customCandles = sub.Cache.HandleSnapshot(cachedTicks.history);
-                        sub.Token.HandleSnapshot(customCandles);
-                    }
-                    else
-                    {
-                        // If cached ticks are not found...
-                        if (localSubscriptions.TryGetValue(ticks.req_id, out sub))
+                        // Check if symbols and active_symbols list are not null
+                        if (symbols == null || symbols.active_symbols == null)
                         {
-                            // Update the subscription description with the remote subscription ID.
-                            sub.RemoteId = ticks.subscription.id;
-                            // Process the ticks data and convert it into candles using the ChartsCache.
-                            var customCandles = sub.Cache.HandleSnapshot(ticks.history);
-                            // Pass the generated candles data to the indicator.
+                            logger.Error("Received null active_symbols data from API");
+                            break;
+                        }
+
+                        // Update the symbolsDictionary and namesDictionary with the received symbol information.
+                        try
+                        {
+                            symbolsDictionary = symbols.active_symbols.ToDictionary(x => x.symbol);
+                            namesDictionary = symbols.active_symbols.ToDictionary(x => x.display_name);
+                            //logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols");
+                        }
+                        catch (ArgumentException ex)
+                        {
+                            logger.Error(ex, "Error creating dictionaries from active symbols - possible duplicate keys");
+                            // Create dictionaries using GroupBy to handle duplicates
+                            symbolsDictionary = symbols.active_symbols
+                                .GroupBy(x => x.symbol)
+                                .ToDictionary(g => g.Key, g => g.First());
+                            namesDictionary = symbols.active_symbols
+                                .GroupBy(x => x.display_name)
+                                .ToDictionary(g => g.Key, g => g.First());
+                            //logger.Info($"Successfully loaded {symbols.active_symbols.Count} active symbols with duplicate handling");
+                        }
+
+                        // Handle re-subscriptions after receiving the active symbols list.
+                        var tmp = localSubscriptions.ToList();
+                        localSubscriptions.Clear();
+
+                        // Re-subscribe to previously subscribed symbols.
+                        foreach (var pair in tmp)
+                        {
+                            logger.Info("resubscribe data {0} {1}", pair.Value.ActiveSymbol.display_name, pair.Value.Token.TimeFrame);
+                            pair.Value.Token.Reset();
+                            Subscribe(pair.Value.ActiveSymbol.display_name, pair.Value.Token.TimeFrame, pair.Value.Token);
+                        }
+
+                        break;
+
+                    case "forget":
+                        // This message type is a confirmation that a forget request (unsubscribe) has been processed.
+                        // No specific action is required here.
+                        break;
+
+                    case "candles":
+                        // This message type contains candlestick data for the subscribed symbol.
+                        var candles = jMessage.ToObject<CandlesResponse>();
+                        string candlesCacheKey = GenerateCandlesCacheKey(candles);
+                        var cachedCandles = GetCachedCandles(candlesCacheKey);
+
+                        if (cachedCandles != null)
+                        {
+                            sub = localSubscriptions[candles.req_id];
+                            sub.RemoteId = cachedCandles.subscription.id;
+                            sub.Token.HandleSnapshot(cachedCandles.candles);
+                        }
+                        else
+                        {
+                            if (localSubscriptions.TryGetValue(candles.req_id, out sub))
+                            {
+                                sub.RemoteId = candles.subscription.id;
+                                sub.Token.HandleSnapshot(candles.candles);
+                                CacheCandles(candlesCacheKey, candles);
+                            }
+                        }
+                        break;
+
+                    case "history":
+                        // This message type contains historical tick data for the subscribed symbol.
+                        var ticks = jMessage.ToObject<TicksResponse>();
+                        string ticksCacheKey = GenerateTicksCacheKey(ticks);
+                        var cachedTicks = GetCachedTicks(ticksCacheKey);
+
+                        if (cachedTicks != null)
+                        {
+                            sub = localSubscriptions[ticks.req_id];
+                            sub.RemoteId = cachedTicks.subscription.id;
+                            var customCandles = sub.Cache.HandleSnapshot(cachedTicks.history);
                             sub.Token.HandleSnapshot(customCandles);
-
-                            // Cache the received ticks data.
-                            CacheTicks(ticksCacheKey, ticks);
                         }
-                    }
+                        else
+                        {
+                            if (localSubscriptions.TryGetValue(ticks.req_id, out sub))
+                            {
+                                sub.RemoteId = ticks.subscription.id;
+                                var customCandles = sub.Cache.HandleSnapshot(ticks.history);
+                                sub.Token.HandleSnapshot(customCandles);
+                                CacheTicks(ticksCacheKey, ticks);
+                            }
+                        }
+                        break;
 
-                    break;
+                    case "ohlc":
+                        // This message type contains the real-time OHLC (Open-High-Low-Close) data for the subscribed symbol.
+                        var ohlc = jMessage.ToObject<OhlcMessage>();
+                        var c = new Candle();
+                        c.close = ohlc.ohlc.close;
+                        c.open = ohlc.ohlc.open;
+                        c.high = ohlc.ohlc.high;
+                        c.low = ohlc.ohlc.low;
+                        c.epoch = ohlc.ohlc.open_time;
 
-                case "ohlc":
-                    // This message type contains the real-time OHLC (Open-High-Low-Close) data for the subscribed symbol.
+                        if (localSubscriptions.TryGetValue(ohlc.req_id, out sub))
+                        {
+                            sub.Token.HandleUpdate(c);
+                        }
+                        break;
 
-                    // Deserialize the message into an `OhlcMessage` object.
-                    var ohlc = jMessage.ToObject<OhlcMessage>();
+                    case "tick":
+                        // This message type contains real-time tick data for the subscribed symbol.
+                        var tick = jMessage.ToObject<TickMessage>();
 
-                    // Create a new `Candle` object and populate it with the received OHLC data.
-                    var c = new Candle();
-                    c.close = ohlc.ohlc.close;
-                    c.open = ohlc.ohlc.open;
-                    c.high = ohlc.ohlc.high;
-                    c.low = ohlc.ohlc.low;
-                    c.epoch = ohlc.ohlc.open_time;
+                        if (localSubscriptions.TryGetValue(tick.req_id, out sub))
+                        {
+                            var customCandle = sub.Cache.HandleUpdate(tick.tick);
+                            sub.Token.HandleUpdate(customCandle);
+                        }
+                        break;
 
-                    // If a subscription exists for the request ID, pass the candle data to the indicator's `HandleUpdate` method.
-                    if (localSubscriptions.TryGetValue(ohlc.req_id, out sub))
-                    {
-                        sub.Token.HandleUpdate(c);
-                    }
-
-                    break;
-
-                case "tick":
-                    // This message type contains real-time tick data for the subscribed symbol.
-
-                    // Deserialize the message into a `TickMessage` object.
-                    var tick = jMessage.ToObject<TickMessage>();
-
-                    // If a subscription exists for the request ID, process the tick data and update the indicator.
-                    if (localSubscriptions.TryGetValue(tick.req_id, out sub))
-                    {
-                        var customCandle = sub.Cache.HandleUpdate(tick.tick);
-                        sub.Token.HandleUpdate(customCandle);
-                    }
-                    break;
-
-                default:
-                    // Ignore any other message types.
-                    break;
+                    default:
+                        // Ignore any other message types.
+                        break;
+                }
+            }
+            catch (JsonException jsonEx)
+            {
+                logger.Error(jsonEx, $"JSON deserialization error in SockOnMessageReceived: {e.Message}");
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, $"Unexpected error in SockOnMessageReceived: {e.Message}");
             }
         }
     }
@@ -451,7 +472,6 @@ namespace FxApi
     {
         /// A list of custom timeframes (in minutes) supported by the RSI indicator.
         private static List<int> customTimeFrames = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 18, 20, 22, 25, 27, 30, 35, 40, 45, 50, 55, 60, 65, 75, 80, 90, 96, 95, 100 };
-
 
         /// <summary>
         /// Checks if the given duration (in minutes) is a custom timeframe supported by the RSI indicator.

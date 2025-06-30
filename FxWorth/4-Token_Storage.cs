@@ -47,6 +47,12 @@ namespace FxWorth
         public Rsi rsi;
         private AuthClient eventingClinet;
 
+        // RSI monitoring and recovery fields
+        private DateTime lastRsiRecoveryAttempt = DateTime.MinValue;
+        private const int RSI_RECOVERY_INTERVAL_MS = 1000;
+        private int rsiNanCount = 0;
+        private const int MAX_RSI_NAN_COUNT = 10;
+
         public bool IsHierarchyMode => hierarchyNavigator != null && hierarchyNavigator.IsInHierarchyMode;
         private readonly object tradeUpdateLock = new object();
 
@@ -55,13 +61,18 @@ namespace FxWorth
         public string currentLevelId;
         public AuthClient hierarchyClient;
         public PhaseParameters phase1Parameters;
-        public PhaseParameters phase2Parameters;
-
+        public PhaseParameters phase2Parameters;        
         public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
 
         public decimal InitialStakeLayer1 { get; set; }
+
+        // Root level profit tracking system for hierarchy mode recovery
+        private Dictionary<AuthClient, RootLevelProfitState> rootLevelProfitStates = new Dictionary<AuthClient, RootLevelProfitState>();
+
+        // NEW: Comprehensive hierarchy profit tracking
+        private Dictionary<AuthClient, HierarchyProfitTracker> hierarchyProfitTrackers = new Dictionary<AuthClient, HierarchyProfitTracker>();
 
         public void SetHierarchyParameters(PhaseParameters phase1, PhaseParameters phase2, Dictionary<int, CustomLayerConfig> configs)
         {
@@ -278,10 +289,112 @@ namespace FxWorth
             rsi.Crossover += OnCrossover;
             MarketDataClient.Subscribe(symbol, rsiTimeframe, rsi);
 
+            // Reset RSI monitoring
+            lastRsiRecoveryAttempt = DateTime.MinValue;
+            rsiNanCount = 0;
             return new MarketDataParameters { Rsi = rsi, Symbol = symbol };
         }
 
+        /// <summary>
+        /// NEW: Attempts to recover RSI from persistent NaN state
+        /// </summary>
+        public void AttemptRsiRecovery()
+        {
+            try
+            {
+                if (rsi == null)
+                    return;
 
+                var now = DateTime.Now;
+                
+                // Check if RSI is NaN
+                if (double.IsNaN(rsi.Value))
+                {
+                    rsiNanCount++;
+                    
+                    // Only attempt recovery if enough time has passed
+                    if ((now - lastRsiRecoveryAttempt).TotalMilliseconds < RSI_RECOVERY_INTERVAL_MS)
+                        return;
+                    
+                    lastRsiRecoveryAttempt = now;
+
+                    // Progressive recovery steps
+                    if (rsiNanCount <= 3)
+                    {
+                        // Step 1-3: Try basic reset and recalculation
+                        rsi.Reset();
+                    }
+                    else if (rsiNanCount <= 5)
+                    {
+                        // Step 4-5: Reset and attempt to get fresh data
+                        rsi.Reset();
+                        
+                        // Request fresh market data
+                        Task.Delay(1000).ContinueWith(_ =>
+                        {
+                            try
+                            {
+                                MarketDataClient.UnsubscribeAll();
+                                Task.Delay(500).ContinueWith(__ =>
+                                {
+                                    MarketDataClient.Subscribe(
+                                        MarketDataClient.GetInstrument("1HZ100V")?.display_name ?? "1HZ100V", 
+                                        rsi.TimeFrame, 
+                                        rsi);
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, "Error during RSI recovery resubscription");
+                            }
+                        });
+                    }
+                    else if (rsiNanCount >= MAX_RSI_NAN_COUNT)
+                    {
+                        // Step 6+: Full restart of market data connection
+                        logger.Error("RSI Recovery: Maximum recovery attempts reached, restarting market data connection");
+                        
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                MarketDataClient.Stop();
+                                Task.Delay(2000).ContinueWith(_ =>
+                                {
+                                    MarketDataClient.Start();
+                                    Task.Delay(1000).ContinueWith(__ =>
+                                    {
+                                        // Re-subscribe with current parameters
+                                        var currentSymbol = MarketDataClient.GetInstrument("1HZ100V")?.display_name ?? "1HZ100V";
+                                        MarketDataClient.Subscribe(currentSymbol, rsi.TimeFrame, rsi);
+                                    });
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Error(ex, "Error during RSI recovery connection restart");
+                            }
+                        });
+                        
+                        // Reset counter after drastic action
+                        rsiNanCount = 0;
+                    }
+                }
+                else
+                {
+                    // RSI is working, reset counter
+                    if (rsiNanCount > 0)
+                    {
+                        logger.Info($"RSI Recovery: RSI value restored to {rsi.Value:F2} after {rsiNanCount} recovery attempts");
+                        rsiNanCount = 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Error in AttemptRsiRecovery");
+            }
+        }
 
         /* -----------------------------------------SENSITIVE AREA----------------------------------------------------- */
 
@@ -519,13 +632,17 @@ namespace FxWorth
                 }
                 
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
-            }
-
+            }            
+            
             // Reset hierarchy state
             hierarchyNavigator = null;
             hierarchyClient = null;
             currentLevelId = null;
             hierarchyLevels.Clear();
+            
+            // Clear root level profit states
+            rootLevelProfitStates.Clear();
+            
             isTradingGloballyAllowed = true;
             logger.Info("<=> Global trading flag has been reset and hierarchy state cleared!");
         }
@@ -546,8 +663,8 @@ namespace FxWorth
                 return;
             }
 
-            Credentials.Remove(found);
-
+            Credentials.Remove(found);            
+            
             if (clients.TryGetValue(found, out var client))
             {
                 client.Stop();
@@ -556,6 +673,9 @@ namespace FxWorth
                 client.BalanceChanged -= OnBalanceChanged;
                 client.TradeChanged -= OnTradeChanged;
                 client.AuthFailed -= OnAuthFailed;
+                
+                // Clean up root level profit state if exists
+                rootLevelProfitStates.Remove(client);
             }
 
             logger.Info("<=> Removing client credentials. Client ID - {0}, Key - {1}.", found.AppId, found.Token);
@@ -746,7 +866,7 @@ namespace FxWorth
                 
                 // Try to move to the next level in the hierarchy
                 if (hierarchyNavigator != null && hierarchyNavigator.MoveToNextLevel(client))
-                {
+                {                    
                     // Check if we've exited hierarchy mode (returned to root level)
                     if (hierarchyNavigator.currentLevelId == "0" || !hierarchyNavigator.IsInHierarchyMode)
                     {
@@ -755,8 +875,8 @@ namespace FxWorth
                         hierarchyNavigator = null;
                         hierarchyClient = null;
                         currentLevelId = null;
-                        // Clear trading parameters to stop trading (root level behavior)
-                        client.TradingParameters = null;
+                        // Restore root level trading parameters instead of stopping trading
+                        RestoreRootLevelTradingParameters(client);
                     }
                     else
                     {
@@ -861,6 +981,16 @@ namespace FxWorth
                                     client.TradingParameters.RecoveryResults.Add(model.Profit);
                                 }
 
+                                // NEW: Add to comprehensive hierarchy profit tracker
+                                if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
+                                {
+                                    tracker.AddTradeResult(currentLevel.LevelId, model.Profit);
+                                    logger.Info($"Added profit {model.Profit:F2} to hierarchy tracker. " +
+                                               $"Total hierarchy profit: ${tracker.TotalHierarchyProfit:F2}, " +
+                                               $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}, " +
+                                               $"Net result: ${tracker.NetHierarchyResult:F2}");
+                                }
+
                                 logger.Info($"Added profit {model.Profit:F2} to level {currentLevel.LevelId} recovery results");
                                 client.TradingParameters.RecalculateTotalProfit();
                             }
@@ -887,8 +1017,8 @@ namespace FxWorth
                             logger.Debug($"Ignoring invalid trade with ID {model.Id} - possible test or placeholder trade");
                         }
                     }
-                }
-
+                }                
+                
                 // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown
                 if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
                 {
@@ -896,10 +1026,146 @@ namespace FxWorth
                 }
             }
         }
+        
+        /// <summary>
+        /// Captures the root level profit state before entering hierarchy mode
+        /// This stores the original trading parameters and current profit so they can be restored later
+        /// </summary>
+        private void CaptureRootLevelProfitState(AuthClient client)
+        {
+            if (client.TradingParameters == null)
+            {
+                logger.Warn("Cannot capture root level profit state - client has null trading parameters");
+                return;
+            }
+
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials == null)
+            {
+                logger.Warn("Cannot capture root level profit state - credentials not found for client");
+                return;
+            }
+
+            // Create root level profit state snapshot
+            var rootState = new RootLevelProfitState(
+                credentials.ProfitTarget, // Original take profit from credentials
+                client.Pnl,              // Current profit at time of entry
+                client.TradingParameters // Clone of current trading parameters
+            );
+
+            rootLevelProfitStates[client] = rootState;
+
+            // Initialize hierarchy profit tracker
+            hierarchyProfitTrackers[client] = new HierarchyProfitTracker();
+            
+            logger.Info($"Captured root level profit state: OriginalTarget=${rootState.OriginalTakeProfit:F2}, " +
+                       $"CurrentProfit=${rootState.ProfitAtEntry:F2}, " +
+                       $"RemainingNeeded=${rootState.RemainingProfitNeeded:F2}");
+        }
+
+        /// <summary>
+        /// Restores the root level trading parameters when exiting hierarchy mode
+        /// Updates the take profit to reflect the remaining amount needed to reach the original target
+        /// </summary>
+        private void RestoreRootLevelTradingParameters(AuthClient client)
+        {
+            if (!rootLevelProfitStates.TryGetValue(client, out RootLevelProfitState rootState))
+            {
+                logger.Warn("Cannot restore root level trading parameters - no saved state found");
+                // Fallback: use current UI parameters if available
+                if (GetUITradingParameters != null)
+                {
+                    var uiParams = GetUITradingParameters();
+                    if (uiParams != null)
+                    {
+                        var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+                        if (credentials != null)
+                        {
+                            uiParams.TakeProfit = credentials.ProfitTarget;
+                            client.TradingParameters = uiParams;
+                            logger.Info($"Restored trading parameters using UI fallback with TakeProfit=${uiParams.TakeProfit:F2}");
+                        }
+                    }
+                }
+                return;
+            }
+
+            // Get comprehensive hierarchy profit data
+            decimal totalHierarchyProfit = 0;
+            if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
+            {
+                totalHierarchyProfit = tracker.NetHierarchyResult;
+                logger.Info($"Hierarchy session completed: Total hierarchy profit=${tracker.TotalHierarchyProfit:F2}, " +
+                           $"Total hierarchy loss=${tracker.TotalHierarchyLoss:F2}, " +
+                           $"Net hierarchy result=${tracker.NetHierarchyResult:F2}");
+            }
+
+            // Calculate current effective profit (entry profit + hierarchy net result)
+            decimal currentEffectiveProfit = rootState.ProfitAtEntry + totalHierarchyProfit;
+            decimal remainingProfitNeeded = rootState.OriginalTakeProfit - currentEffectiveProfit;
+            
+            logger.Info($"Profit calculation for root level restoration: " +
+                       $"Entry profit=${rootState.ProfitAtEntry:F2}, " +
+                       $"Hierarchy net=${totalHierarchyProfit:F2}, " +
+                       $"Current effective profit=${currentEffectiveProfit:F2}, " +
+                       $"Original target=${rootState.OriginalTakeProfit:F2}, " +
+                       $"Remaining needed=${remainingProfitNeeded:F2}");
+
+            // Clone the original trading parameters
+            var restoredParams = (TradingParameters)rootState.OriginalTradingParameters.Clone();
+            
+            // Ensure we don't set a negative take profit target
+            if (remainingProfitNeeded <= 0)
+            {
+                logger.Info($"Root level take profit already achieved through hierarchy recovery!");
+                // Set a small positive value to avoid issues, or keep current parameters null to stop trading
+                client.TradingParameters = null;
+                CleanupHierarchyTracking(client);
+                return;
+            }
+            
+            // Update the take profit to the remaining amount needed
+            restoredParams.TakeProfit = remainingProfitNeeded;
+            
+            // Reset recovery mode related properties for fresh root level trading
+            restoredParams.IsRecoveryMode = false;
+            restoredParams.RecoveryResults.Clear();
+            restoredParams.AmountToBeRecoverd = 0;
+            
+            // Subscribe to take profit events
+            restoredParams.TakeProfitReached += OnTakeProfitReached;
+            
+            client.TradingParameters = restoredParams;
+            
+            logger.Info($"Restored root level trading parameters: TakeProfit=${restoredParams.TakeProfit:F2} " +
+                       $"(Original=${rootState.OriginalTakeProfit:F2}, Effective Current=${currentEffectiveProfit:F2})");
+            
+            // Clean up the stored states
+            CleanupHierarchyTracking(client);
+        }
+
+        /// <summary>
+        /// Cleans up hierarchy tracking data for a client
+        /// </summary>
+        private void CleanupHierarchyTracking(AuthClient client)
+        {
+            rootLevelProfitStates.Remove(client);
+            if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
+            {
+                // Log final hierarchy statistics before cleanup
+                logger.Info($"Final hierarchy statistics - Levels traded: {tracker.ProfitsByLevel.Count}, " +
+                           $"Total hierarchy profit: ${tracker.TotalHierarchyProfit:F2}, " +
+                           $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}");
+            }
+            hierarchyProfitTrackers.Remove(client);
+        }
 
         // Enters hierarchy mode for a specific client, initializing the hierarchy navigator and assigning the client to the first level.
         private void EnterHierarchyMode(AuthClient client)
         {
+            // Capture root level profit state before entering hierarchy mode
+            CaptureRootLevelProfitState(client);
+            
             hierarchyClient = client;
             hierarchyNavigator = new HierarchyNavigator(
                 client.TradingParameters.AmountToBeRecoverd,
@@ -933,14 +1199,132 @@ namespace FxWorth
         public string Symbol { get; set; }
         public Rsi Rsi { get; set; }
 
-    }
-
-    /// Data structure to hold both market data parameters and trading parameters used to store and load application settings and configurations.
+    }    /// Data structure to hold both market data parameters and trading parameters used to store and load application settings and configurations.
     public class Layout
     {
         public MarketDataParameters MarketDataParameters { get; set; }
         public TradingParameters TradingParameters { get; set; }
         public PhaseParameters Phase2Parameters { get; set; }
         public Dictionary<int, CustomLayerConfig> CustomLayerConfigs { get; set; }
+    }
+
+    /// <summary>
+    /// Captures the root level profit state before entering hierarchy mode
+    /// This allows the system to restore the original trading parameters and profit target
+    /// when exiting hierarchy mode, enabling trading to continue at the root level
+    /// </summary>
+    public class RootLevelProfitState
+    {
+        /// <summary>
+        /// The original take profit target from the root level trading parameters
+        /// </summary>
+        public decimal OriginalTakeProfit { get; set; }
+
+        /// <summary>
+        /// The profit amount at the time of entering hierarchy mode
+        /// </summary>
+        public decimal ProfitAtEntry { get; set; }
+
+        /// <summary>
+        /// The remaining profit needed to reach the original take profit target
+        /// </summary>
+        public decimal RemainingProfitNeeded => OriginalTakeProfit - ProfitAtEntry;
+
+        /// <summary>
+        /// A clone of the original trading parameters before entering hierarchy mode
+        /// </summary>
+        public TradingParameters OriginalTradingParameters { get; set; }
+
+        /// <summary>
+        /// Timestamp when hierarchy mode was entered
+        /// </summary>
+        public DateTime EntryTimestamp { get; set; }
+
+        public RootLevelProfitState(decimal originalTakeProfit, decimal currentProfit, TradingParameters originalParameters)
+        {
+            OriginalTakeProfit = originalTakeProfit;
+            ProfitAtEntry = currentProfit;
+            OriginalTradingParameters = (TradingParameters)originalParameters.Clone();
+            EntryTimestamp = DateTime.Now;
+        }
+    }
+
+    /// <summary>
+    /// Comprehensive profit tracking system for hierarchy mode
+    /// Maintains cumulative profits across all hierarchy levels and layers
+    /// </summary>
+    public class HierarchyProfitTracker
+    {
+        /// <summary>
+        /// Dictionary tracking profits by level ID (e.g., "1.1" -> list of profits)
+        /// </summary>
+        public Dictionary<string, List<decimal>> ProfitsByLevel { get; set; } = new Dictionary<string, List<decimal>>();
+
+        /// <summary>
+        /// Total cumulative profit across all hierarchy levels
+        /// </summary>
+        public decimal TotalHierarchyProfit { get; private set; }
+
+        /// <summary>
+        /// Total cumulative loss across all hierarchy levels
+        /// </summary>
+        public decimal TotalHierarchyLoss { get; private set; }
+
+        /// <summary>
+        /// Net profit/loss in hierarchy mode
+        /// </summary>
+        public decimal NetHierarchyResult => TotalHierarchyProfit - TotalHierarchyLoss;
+
+        /// <summary>
+        /// Adds a trade result to the specified level and updates totals
+        /// </summary>
+        public void AddTradeResult(string levelId, decimal profit)
+        {
+            if (!ProfitsByLevel.ContainsKey(levelId))
+            {
+                ProfitsByLevel[levelId] = new List<decimal>();
+            }
+
+            ProfitsByLevel[levelId].Add(profit);
+
+            if (profit > 0)
+            {
+                TotalHierarchyProfit += profit;
+            }
+            else
+            {
+                TotalHierarchyLoss += Math.Abs(profit);
+            }
+        }
+
+        /// <summary>
+        /// Gets the total profit for a specific level
+        /// </summary>
+        public decimal GetLevelProfit(string levelId)
+        {
+            return ProfitsByLevel.TryGetValue(levelId, out var profits) 
+                ? profits.Where(p => p > 0).Sum() 
+                : 0;
+        }
+
+        /// <summary>
+        /// Gets the total loss for a specific level
+        /// </summary>
+        public decimal GetLevelLoss(string levelId)
+        {
+            return ProfitsByLevel.TryGetValue(levelId, out var profits) 
+                ? profits.Where(p => p < 0).Sum(p => Math.Abs(p))
+                : 0;
+        }
+
+        /// <summary>
+        /// Resets all tracking data
+        /// </summary>
+        public void Reset()
+        {
+            ProfitsByLevel.Clear();
+            TotalHierarchyProfit = 0;
+            TotalHierarchyLoss = 0;
+        }
     }
 }
