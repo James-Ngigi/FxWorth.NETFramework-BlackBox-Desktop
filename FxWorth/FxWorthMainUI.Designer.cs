@@ -479,7 +479,7 @@
             this.Barrier_Offset_TXT2.TabIndex = 27;
             this.Barrier_Offset_TXT2.ThousandsSeparator = true;
             this.Barrier_Offset_TXT2.Value = new decimal(new int[] {
-            30,
+            35,
             0,
             0,
             0});
@@ -559,20 +559,10 @@
             0,
             0,
             0});
-            this.Martingale_Level_TXT2.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
             this.Martingale_Level_TXT2.Name = "Martingale_Level_TXT2";
             this.Martingale_Level_TXT2.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT2.TabIndex = 25;
             this.Martingale_Level_TXT2.ThousandsSeparator = true;
-            this.Martingale_Level_TXT2.Value = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
             // 
             // Phase_1_GRBX
             // 
@@ -628,7 +618,7 @@
             this.Max_Depth_TXT.TabIndex = 19;
             this.Max_Depth_TXT.ThousandsSeparator = true;
             this.Max_Depth_TXT.Value = new decimal(new int[] {
-            3,
+            5,
             0,
             0,
             0});
@@ -689,7 +679,7 @@
             this.Max_Drawdown_TXT1.TabIndex = 17;
             this.Max_Drawdown_TXT1.ThousandsSeparator = true;
             this.Max_Drawdown_TXT1.Value = new decimal(new int[] {
-            15000,
+            100,
             0,
             0,
             0});
@@ -715,20 +705,10 @@
             0,
             0,
             0});
-            this.Martingale_Level_TXT.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
             this.Martingale_Level_TXT.Name = "Martingale_Level_TXT";
             this.Martingale_Level_TXT.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT.TabIndex = 16;
             this.Martingale_Level_TXT.ThousandsSeparator = true;
-            this.Martingale_Level_TXT.Value = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
             // 
             // API_Token_GRBX
             // 
@@ -997,16 +977,16 @@
             0,
             0});
             this.Stake_TXT.Minimum = new decimal(new int[] {
-            4,
+            35,
             0,
             0,
-            65536});
+            131072});
             this.Stake_TXT.Name = "Stake_TXT";
             this.Stake_TXT.Size = new System.Drawing.Size(112, 34);
             this.Stake_TXT.TabIndex = 15;
             this.Stake_TXT.ThousandsSeparator = true;
             this.Stake_TXT.Value = new decimal(new int[] {
-            123,
+            65,
             0,
             0,
             131072});
@@ -1078,7 +1058,7 @@
             this.Barrier_Offset_TXT.TabIndex = 14;
             this.Barrier_Offset_TXT.ThousandsSeparator = true;
             this.Barrier_Offset_TXT.Value = new decimal(new int[] {
-            40,
+            45,
             0,
             0,
             0});
