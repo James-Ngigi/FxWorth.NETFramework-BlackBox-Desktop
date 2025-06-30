@@ -84,7 +84,7 @@ namespace FxWorth
         private HierarchyNavigator hierarchyNavigator;
         private BackendApiService _backendApiService;
         private bool _isOperatorLoggedIn = false;
-        private string _backendApiUrl = "http://localhost:8080"; // or "https://fxworth-api-backend.onrender.com";
+        private string _backendApiUrl = "https://fxworth-api-backend.onrender.com"; // or "http://localhost:8080";
         private Dictionary<string, (decimal? lastSentPnl, string lastSentStatus)> _lastSentStates = new Dictionary<string, (decimal?, string)>();
         public Dictionary<int, CustomLayerConfig> customLayerConfigs = new Dictionary<int, CustomLayerConfig>();
         private Timer _tradingPingTimer;
