@@ -112,17 +112,28 @@ namespace FxApi.Connection
                 // Update dynamic Martingale level if in dynamic mode
                 if (IsDynamicMartingaleMode)
                 {
-                    // Check if halfway to max drawdown
-                    decimal halfwayToMaxDrawdown = MaxDrawdown / 2;
-                    if (AmountToBeRecoverd >= halfwayToMaxDrawdown)
+                    // Progressive dynamic Martingale based on fractions toward max drawdown
+                    // The maximum Martingale level determines how many progression steps we have
+                    const int maxDynamicMartingaleLevel = 6; // Maximum levels for dynamic progression
+                    
+                    // Calculate progressive thresholds: 1/6, 2/6, 3/6, 4/6, 5/6 of max drawdown
+                    CurrentMartingaleLevel = 1; // Start with level 1
+                    
+                    for (int level = 2; level <= maxDynamicMartingaleLevel; level++)
                     {
-                        CurrentMartingaleLevel = 2;
-                        logger.Debug($"Dynamic Martingale level increased to 2 (Amount to recover: {AmountToBeRecoverd} >= Half max drawdown: {halfwayToMaxDrawdown})");
+                        decimal threshold = MaxDrawdown * (level - 1) / maxDynamicMartingaleLevel;
+                        if (AmountToBeRecoverd >= threshold)
+                        {
+                            CurrentMartingaleLevel = level;
+                        }
+                        else
+                        {
+                            break; // Stop at first threshold not met
+                        }
                     }
-                    else
-                    {
-                        CurrentMartingaleLevel = 1;
-                    }
+                    
+                    logger.Debug($"Dynamic Martingale level set to {CurrentMartingaleLevel} " +
+                               $"(Amount to recover: {AmountToBeRecoverd} vs Max drawdown: {MaxDrawdown})");
                 }
 
                 // Calculate recovery stake using Martingale strategy
@@ -223,14 +234,7 @@ namespace FxApi.Connection
         public object Clone()
         {
             var clone = (TradingParameters)MemberwiseClone();
-
             clone.recoveryResults = new List<decimal>(recoveryResults);
-
-            if (clone.IsDynamicMartingaleMode)
-            {
-                clone.currentMartingaleLevel = 1;
-            }
-            
             return clone;
         }
     }

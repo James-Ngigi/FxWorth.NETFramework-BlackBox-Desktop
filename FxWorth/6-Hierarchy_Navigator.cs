@@ -472,12 +472,13 @@ namespace FxWorth.Hierarchy
                 
                 // Set level-specific recovery configuration
                 TakeProfit = level.AmountToRecover,
-                AmountToBeRecoverd = level.AmountToRecover,
-                IsRecoveryMode = level.RecoveryResults.Any(),
+                AmountToBeRecoverd = 0,  // Start fresh, no recovery needed initially
+                IsRecoveryMode = false,  // Always start fresh, never in recovery mode initially
                 DynamicStake = level.InitialStake,
                 LevelInitialStake = level.InitialStake,
                 
-                RecoveryResults = new List<decimal>(level.RecoveryResults)
+                // Start with empty recovery results - fresh trading object
+                RecoveryResults = new List<decimal>()
             };
 
             // Apply hierarchy level parameters with proper precedence
