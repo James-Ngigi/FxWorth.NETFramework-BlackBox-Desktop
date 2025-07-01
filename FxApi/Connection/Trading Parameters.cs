@@ -24,11 +24,8 @@ namespace FxApi.Connection
         public string DurationType { get; set; }
         public decimal MaxDrawdown { get; set; }
         public int MartingaleLevel { get; set; }
-        
-        private int currentMartingaleLevel = 1;
-                
-        public bool IsDynamicMartingaleMode => MartingaleLevel == 0;
-        
+
+        private int currentMartingaleLevel = 1;      
         public int HierarchyLevels { get; set; }
         public int MaxHierarchyDepth { get; set; }
         public decimal TakeProfit { get; set; }
@@ -40,11 +37,12 @@ namespace FxApi.Connection
         public int RecoveryAttemptsLeft { get; set; }
         public decimal TempBarrier { get; set; }
         public decimal InitialStake4Layer1 { get; set; }
-        public decimal TotalProfit { get; private set; }        
+        public decimal TotalProfit { get; private set; }
         public decimal LevelInitialStake { get; set; }
+
         public int CurrentMartingaleLevel
         {
-            get => MartingaleLevel == 0 ? currentMartingaleLevel : MartingaleLevel;
+            get => currentMartingaleLevel;
             private set => currentMartingaleLevel = value;
         }
 
@@ -108,44 +106,36 @@ namespace FxApi.Connection
                     AmountToBeRecoverd = -recoveryResults.Sum();
                     logger.Debug($"Updated amount to recover: {AmountToBeRecoverd}");
                 }
-
-                // Update dynamic Martingale level if in dynamic mode
-                if (IsDynamicMartingaleMode)
+                
+                // Progressive dynamic Martingale based on fractions ('(n)'over/max) toward max drawdown
+                int maxDynamicMartingaleLevel = Math.Max(1, MartingaleLevel);
+                CurrentMartingaleLevel = 1;
+                
+                for (int level = 2; level <= maxDynamicMartingaleLevel; level++)
                 {
-                    // Progressive dynamic Martingale based on fractions toward max drawdown
-                    // The maximum Martingale level determines how many progression steps we have
-                    const int maxDynamicMartingaleLevel = 6; // Maximum levels for dynamic progression
-                    
-                    // Calculate progressive thresholds: 1/6, 2/6, 3/6, 4/6, 5/6 of max drawdown
-                    CurrentMartingaleLevel = 1; // Start with level 1
-                    
-                    for (int level = 2; level <= maxDynamicMartingaleLevel; level++)
+                    decimal threshold = MaxDrawdown * (level - 1) / maxDynamicMartingaleLevel;
+                    if (AmountToBeRecoverd >= threshold)
                     {
-                        decimal threshold = MaxDrawdown * (level - 1) / maxDynamicMartingaleLevel;
-                        if (AmountToBeRecoverd >= threshold)
-                        {
-                            CurrentMartingaleLevel = level;
-                        }
-                        else
-                        {
-                            break; // Stop at first threshold not met
-                        }
+                        CurrentMartingaleLevel = level;
                     }
-                    
-                    logger.Debug($"Dynamic Martingale level set to {CurrentMartingaleLevel} " +
-                               $"(Amount to recover: {AmountToBeRecoverd} vs Max drawdown: {MaxDrawdown})");
+                    else
+                    {
+                        break; // Stop at first threshold not met
+                    }
                 }
+                
+                logger.Debug($"Dynamic Martingale level set to {CurrentMartingaleLevel} " +
+                           $"(Amount to recover: {AmountToBeRecoverd} vs Max drawdown: {MaxDrawdown}, Max levels: {maxDynamicMartingaleLevel})");
 
                 // Calculate recovery stake using Martingale strategy
                 var stakeToBeUsed = AmountToBeRecoverd * Stake / PreviousProfit;
                 var martingaleValue = stakeToBeUsed / Stake;
                 var roundedMartingaleValue = Math.Round(martingaleValue, 3);
 
-                // Apply Martingale level to control progression
-                int effectiveMartingaleLevel = IsDynamicMartingaleMode ? CurrentMartingaleLevel : MartingaleLevel;
-                DynamicStake = Math.Round(Stake * martingaleValue / effectiveMartingaleLevel, 2);
+                // Apply Martingale level to control progression (always use current dynamic level)
+                DynamicStake = Math.Round(Stake * martingaleValue / CurrentMartingaleLevel, 2);
 
-                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {roundedMartingaleValue}, Level: {effectiveMartingaleLevel})");
+                logger.Debug($"Calculated new dynamic stake: {DynamicStake} (Martingale value: {roundedMartingaleValue}, Level: {CurrentMartingaleLevel})");
 
                 // Apply lower limit to the DynamicStake
                 if (IsRecoveryMode)
@@ -168,14 +158,7 @@ namespace FxApi.Connection
                     DynamicStake = Stake;
                     IsRecoveryMode = false;
                     recoveryResults.Clear();
-                    
-                    // Reset dynamic Martingale level to default when exiting recovery
-                    if (IsDynamicMartingaleMode)
-                    {
-                        CurrentMartingaleLevel = 1;
-                        logger.Debug("Dynamic Martingale level reset to 1 after exiting recovery mode");
-                    }
-                    
+                    CurrentMartingaleLevel = 1;
                     logger.Info("Exiting recovery mode - recovery complete");
                 }
             }

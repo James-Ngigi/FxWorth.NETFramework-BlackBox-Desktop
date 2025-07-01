@@ -100,7 +100,7 @@
             // Barrier_Offset_LBL3
             // 
             this.Barrier_Offset_LBL3.AutoSize = true;
-            this.Barrier_Offset_LBL3.Location = new System.Drawing.Point(133, 290);
+            this.Barrier_Offset_LBL3.Location = new System.Drawing.Point(141, 287);
             this.Barrier_Offset_LBL3.Name = "Barrier_Offset_LBL3";
             this.Barrier_Offset_LBL3.Size = new System.Drawing.Size(116, 25);
             this.Barrier_Offset_LBL3.TabIndex = 4;
@@ -109,16 +109,16 @@
             // Martingale_Level_LBL3
             // 
             this.Martingale_Level_LBL3.AutoSize = true;
-            this.Martingale_Level_LBL3.Location = new System.Drawing.Point(102, 410);
+            this.Martingale_Level_LBL3.Location = new System.Drawing.Point(109, 406);
             this.Martingale_Level_LBL3.Name = "Martingale_Level_LBL3";
-            this.Martingale_Level_LBL3.Size = new System.Drawing.Size(140, 25);
+            this.Martingale_Level_LBL3.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL3.TabIndex = 6;
-            this.Martingale_Level_LBL3.Text = "Martingale Level";
+            this.Martingale_Level_LBL3.Text = "Martingale Levels";
             // 
             // Hierarchy_Levels_LBL2
             // 
             this.Hierarchy_Levels_LBL2.AutoSize = true;
-            this.Hierarchy_Levels_LBL2.Location = new System.Drawing.Point(105, 350);
+            this.Hierarchy_Levels_LBL2.Location = new System.Drawing.Point(119, 346);
             this.Hierarchy_Levels_LBL2.Name = "Hierarchy_Levels_LBL2";
             this.Hierarchy_Levels_LBL2.Size = new System.Drawing.Size(138, 25);
             this.Hierarchy_Levels_LBL2.TabIndex = 7;
@@ -127,7 +127,7 @@
             // Max_Drawdown_LBL3
             // 
             this.Max_Drawdown_LBL3.AutoSize = true;
-            this.Max_Drawdown_LBL3.Location = new System.Drawing.Point(57, 470);
+            this.Max_Drawdown_LBL3.Location = new System.Drawing.Point(73, 466);
             this.Max_Drawdown_LBL3.Name = "Max_Drawdown_LBL3";
             this.Max_Drawdown_LBL3.Size = new System.Drawing.Size(184, 25);
             this.Max_Drawdown_LBL3.TabIndex = 8;
@@ -268,7 +268,7 @@
             // Stake_LBL3
             // 
             this.Stake_LBL3.AutoSize = true;
-            this.Stake_LBL3.Location = new System.Drawing.Point(150, 230);
+            this.Stake_LBL3.Location = new System.Drawing.Point(159, 226);
             this.Stake_LBL3.Name = "Stake_LBL3";
             this.Stake_LBL3.Size = new System.Drawing.Size(98, 25);
             this.Stake_LBL3.TabIndex = 22;

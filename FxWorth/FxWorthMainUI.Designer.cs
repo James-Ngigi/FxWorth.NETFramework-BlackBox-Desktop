@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -503,9 +503,9 @@
             this.Martingale_Level_LBL2.Location = new System.Drawing.Point(15, 49);
             this.Martingale_Level_LBL2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Martingale_Level_LBL2.Name = "Martingale_Level_LBL2";
-            this.Martingale_Level_LBL2.Size = new System.Drawing.Size(140, 25);
+            this.Martingale_Level_LBL2.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL2.TabIndex = 0;
-            this.Martingale_Level_LBL2.Text = "Martingale Level";
+            this.Martingale_Level_LBL2.Text = "Martingale Levels";
             // 
             // Max_Drawdown_TXT2
             // 
@@ -559,10 +559,20 @@
             0,
             0,
             0});
+            this.Martingale_Level_TXT2.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             this.Martingale_Level_TXT2.Name = "Martingale_Level_TXT2";
             this.Martingale_Level_TXT2.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT2.TabIndex = 25;
             this.Martingale_Level_TXT2.ThousandsSeparator = true;
+            this.Martingale_Level_TXT2.Value = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             // 
             // Phase_1_GRBX
             // 
@@ -654,9 +664,9 @@
             this.Martingale_Level_LBL.Location = new System.Drawing.Point(15, 40);
             this.Martingale_Level_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Martingale_Level_LBL.Name = "Martingale_Level_LBL";
-            this.Martingale_Level_LBL.Size = new System.Drawing.Size(140, 25);
+            this.Martingale_Level_LBL.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL.TabIndex = 0;
-            this.Martingale_Level_LBL.Text = "Martingale Level";
+            this.Martingale_Level_LBL.Text = "Martingale Levels";
             // 
             // Max_Drawdown_TXT1
             // 
@@ -705,10 +715,20 @@
             0,
             0,
             0});
+            this.Martingale_Level_TXT.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             this.Martingale_Level_TXT.Name = "Martingale_Level_TXT";
             this.Martingale_Level_TXT.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT.TabIndex = 16;
             this.Martingale_Level_TXT.ThousandsSeparator = true;
+            this.Martingale_Level_TXT.Value = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             // 
             // API_Token_GRBX
             // 
@@ -780,14 +800,14 @@
             this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
             this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
