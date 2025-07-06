@@ -6,12 +6,12 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("FxBackendClient")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("This part of the system connects to the backend service of FxWorth Web Service to fetch api tokens and clients Api Tokens with their Profit Targets to Trade for.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("FxWorth")]
 [assembly: AssemblyProduct("FxBackendClient")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyTrademark("FxWorth™")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("9a1e47a8-70a7-452f-bded-036b28e85112")]
+[assembly: Guid("DEADBEAF-2025-C8DE-BADD-CAFE00000003")]
 
 // Version information for an assembly consists of the following four values:
 //

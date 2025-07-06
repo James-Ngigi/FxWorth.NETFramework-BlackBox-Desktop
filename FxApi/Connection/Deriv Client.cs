@@ -25,11 +25,16 @@ namespace FxApi
         private WebSocket sock;
         private readonly SemaphoreSlim reconnectLock = new SemaphoreSlim(1, 1);
         private int reconnectAttempts = 0;
-        private readonly int maxReconnectAttempts = 20;
+        private readonly int maxReconnectAttempts = 200;
         private Timer connectionTimeoutTimer;
         private readonly TimeSpan maxReconnectDelay = TimeSpan.FromSeconds(180);
         private readonly TimeSpan reconnectDelayIncrement = TimeSpan.FromSeconds(1);
         private CancellationTokenSource reconnectCancellationTokenSource;
+
+        // NEW: Persistent connection mode
+        private bool isPersistentModeEnabled = false;
+        private readonly int maxPersistentReconnectAttempts = int.MaxValue;
+        private readonly TimeSpan persistentReconnectDelay = TimeSpan.FromSeconds(5);
 
         private object socketSendLock = new object();
         private bool isOnline = false;
@@ -56,6 +61,21 @@ namespace FxApi
         }
 
         public EventHandler<StateChangedArgs> StateChanged;
+
+        /// <summary>
+        /// Enables or disables persistent connection mode
+        /// In persistent mode, the client will attempt unlimited reconnections
+        /// </summary>
+        public void SetPersistentMode(bool enabled)
+        {
+            isPersistentModeEnabled = enabled;
+            logger.Info($"<=> Persistent connection mode {(enabled ? "enabled" : "disabled")} for {Credentials.Token}");
+        }
+
+        /// <summary>
+        /// Gets whether persistent connection mode is enabled
+        /// </summary>
+        public bool IsPersistentModeEnabled => isPersistentModeEnabled;
 
         protected void Send(object obj)
         {
@@ -223,6 +243,7 @@ namespace FxApi
 
         /// <summary>
         /// Attempts reconnection to the WebSocket with exponential backoff algorithm.
+        /// Enhanced to support persistent connection mode with unlimited attempts.
         /// </summary>
         private async void AttemptReconnectWithBackoff()
         {
@@ -231,18 +252,35 @@ namespace FxApi
             var token = reconnectCancellationTokenSource.Token;
             reconnectAttempts++;
 
-            if (reconnectAttempts <= maxReconnectAttempts && !isDisposed)
+            // Determine max attempts based on persistent mode
+            int maxAttempts = isPersistentModeEnabled ? maxPersistentReconnectAttempts : maxReconnectAttempts;
+            
+            if (reconnectAttempts <= maxAttempts && !isDisposed)
             {
-                int reconnectDelayMs = (int)(Math.Pow(2, reconnectAttempts - 1) * reconnectDelayIncrement.TotalMilliseconds);
-                reconnectDelayMs = new Random().Next(reconnectDelayMs / 2, reconnectDelayMs * 3 / 2);
-                int maxReconnectDelayMs = (int)maxReconnectDelay.TotalMilliseconds;
-
-                if (reconnectDelayMs > maxReconnectDelayMs)
+                int reconnectDelayMs;
+                
+                if (isPersistentModeEnabled)
                 {
-                    reconnectDelayMs = maxReconnectDelayMs;
+                    // Use fixed delay for persistent mode to avoid exponential growth
+                    reconnectDelayMs = (int)persistentReconnectDelay.TotalMilliseconds;
+                    // Add some jitter to avoid thundering herd
+                    reconnectDelayMs = new Random().Next(reconnectDelayMs / 2, reconnectDelayMs * 3 / 2);
+                }
+                else
+                {
+                    // Use exponential backoff for normal mode
+                    reconnectDelayMs = (int)(Math.Pow(2, reconnectAttempts - 1) * reconnectDelayIncrement.TotalMilliseconds);
+                    reconnectDelayMs = new Random().Next(reconnectDelayMs / 2, reconnectDelayMs * 3 / 2);
+                    int maxReconnectDelayMs = (int)maxReconnectDelay.TotalMilliseconds;
+
+                    if (reconnectDelayMs > maxReconnectDelayMs)
+                    {
+                        reconnectDelayMs = maxReconnectDelayMs;
+                    }
                 }
 
-                logger.Info($"<=> Reconnection attempt {reconnectAttempts} of {maxReconnectAttempts}, waiting for {reconnectDelayMs / 1000.0} seconds...");
+                string mode = isPersistentModeEnabled ? "persistent" : "normal";
+                logger.Info($"<=> Reconnection attempt {reconnectAttempts} ({mode} mode), waiting for {reconnectDelayMs / 1000.0} seconds...");
 
                 try
                 {
@@ -257,7 +295,7 @@ namespace FxApi
                     logger.Info("<=> Reconnection attempt cancelled.");
                 }
             }
-            else
+            else if (!isPersistentModeEnabled)
             {
                 logger.Error($"<=> Maximum reconnection attempts reached or client disposed ({reconnectAttempts}). Stopping further attempts.");
             }

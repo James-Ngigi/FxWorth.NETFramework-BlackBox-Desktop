@@ -65,6 +65,18 @@ namespace FxWorth
         public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
+        
+        // NEW: Persistent connection management
+        private Timer persistentConnectionTimer;
+        private Dictionary<Credentials, ConnectionState> connectionStates = new Dictionary<Credentials, ConnectionState>();
+        private Dictionary<Credentials, DateTime> lastConnectionAttempt = new Dictionary<Credentials, DateTime>();
+        private readonly TimeSpan CONNECTION_RETRY_INTERVAL = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan CONNECTION_HEALTH_CHECK_INTERVAL = TimeSpan.FromSeconds(3);
+        private readonly TimeSpan AUTH_RETRY_INTERVAL = TimeSpan.FromSeconds(10);
+        private readonly int MAX_AUTH_RETRIES = 5;
+        private readonly int MAX_CONNECTION_RETRIES = int.MaxValue; // Keep trying until manually stopped
+        private bool isPersistentConnectionEnabled = false;
+        private readonly object connectionManagementLock = new object();
 
         public decimal InitialStakeLayer1 { get; set; }
 
@@ -134,6 +146,9 @@ namespace FxWorth
             clientStateCheckTimer.Elapsed += ClientStateCheckTimer_Elapsed;
             clientStateCheckTimer.Start();
 
+            // Initialize persistent connection management
+            InitializePersistentConnectionManagement();
+
             if (File.Exists(path))
             {
                 var json = File.ReadAllText(path);
@@ -151,6 +166,11 @@ namespace FxWorth
                     }
                 }
             }
+
+            // Start the persistent connection manager
+            persistentConnectionTimer = new Timer(5000); // Check every 5 seconds
+            persistentConnectionTimer.Elapsed += PersistentConnectionTimer_Elapsed;
+            persistentConnectionTimer.Start();
         }
 
         private void ClientStateCheckTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -200,6 +220,9 @@ namespace FxWorth
 
             clientStateCheckTimer.Stop();
             clientStateCheckTimer.Dispose();
+
+            persistentConnectionTimer.Stop();
+            persistentConnectionTimer.Dispose();
         }
 
         /// Adds a new trading account to the list of managed lucky clients.
@@ -255,12 +278,191 @@ namespace FxWorth
         // Starts all managed `AuthClient` instances, initiating connections to Deriv accounts.
         public void StartAll()
         {
-            // Iterate through each AuthClient in the clients dictionary.
+            logger.Info("Starting all managed AuthClient instances with persistent connection management");
+            
+            // Start persistent connection management
+            StartPersistentConnectionManagement();
+            
+            // Initialize all clients
             foreach (var client in clients.Values)
             {
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
-                client.Start();
+                
+                // Initialize connection state
+                var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+                if (credentials != null)
+                {
+                    connectionStates[credentials] = ConnectionState.Connecting;
+                    lastConnectionAttempt[credentials] = DateTime.Now;
+                }
+                
+                try
+                {
+                    // Enable persistent mode for this client
+                    client.SetPersistentMode(true);
+                    
+                    client.Start();
+                    logger.Info($"Started client {credentials?.AppId} with persistent connection mode");
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, $"Failed to start client {credentials?.AppId}");
+                    if (credentials != null)
+                    {
+                        connectionStates[credentials] = ConnectionState.ConnectionFailed;
+                    }
+                }
             }
+            
+            logger.Info($"Started {clients.Count} AuthClient instances with persistent connection monitoring");
+        }
+
+        /// <summary>
+        /// Starts persistent connection monitoring for all clients
+        /// </summary>
+        private void StartPersistentConnectionManagement()
+        {
+            lock (connectionManagementLock)
+            {
+                if (isPersistentConnectionEnabled) return;
+                isPersistentConnectionEnabled = true;
+                
+                foreach (var client in clients)
+                {
+                    if (!connectionStates.ContainsKey(client.Key))
+                    {
+                        connectionStates[client.Key] = ConnectionState.Disconnected;
+                    }
+                }
+                persistentConnectionTimer.Start();
+                logger.Info("Persistent connection management started for all clients");
+            }
+        }
+
+        /// <summary>
+        /// Timer event handler for persistent connection monitoring
+        /// </summary>
+        private void PersistentConnectionTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            if (!isPersistentConnectionEnabled) return;
+            
+            lock (connectionManagementLock)
+            {
+                foreach (var clientPair in clients.ToList())
+                {
+                    var credentials = clientPair.Key;
+                    var client = clientPair.Value;
+                    
+                    if (!credentials.IsChecked) continue;
+                    
+                    if (ShouldAttemptReconnection(credentials, client))
+                    {
+                        AttemptClientReconnection(credentials, client);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determines if a client should attempt reconnection
+        /// </summary>
+        private bool ShouldAttemptReconnection(Credentials credentials, AuthClient client)
+        {
+            if (!connectionStates.ContainsKey(credentials))
+            {
+                connectionStates[credentials] = ConnectionState.Disconnected;
+                return true;
+            }
+
+            var currentState = connectionStates[credentials];
+            
+            if (currentState == ConnectionState.Connected && !client.IsOnline)
+            {
+                connectionStates[credentials] = ConnectionState.Disconnected;
+                logger.Warn($"Client {credentials.AppId} marked as connected but is offline. Updating state.");
+                return true;
+            }
+
+            if (currentState == ConnectionState.Disconnected || 
+                currentState == ConnectionState.ConnectionFailed || 
+                currentState == ConnectionState.AuthenticationFailed)
+            {
+                if (!lastConnectionAttempt.ContainsKey(credentials))
+                {
+                    return true;
+                }
+
+                var timeSinceLastAttempt = DateTime.Now - lastConnectionAttempt[credentials];
+                return timeSinceLastAttempt > CONNECTION_RETRY_INTERVAL;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to reconnect a specific client with enhanced error handling
+        /// </summary>
+        private void AttemptClientReconnection(Credentials credentials, AuthClient client)
+        {
+            try
+            {
+                lastConnectionAttempt[credentials] = DateTime.Now;
+                connectionStates[credentials] = ConnectionState.Connecting;
+
+                logger.Info($"Attempting reconnection for client {credentials.AppId}");
+
+                client.Stop();
+                
+                Task.Delay(1000).ContinueWith(_ =>
+                {
+                    try
+                    {
+                        client.Start();
+                        MonitorAuthenticationSuccess(credentials, client);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, $"Failed to restart client {credentials.AppId}");
+                        connectionStates[credentials] = ConnectionState.ConnectionFailed;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, $"Error during reconnection attempt for client {credentials.AppId}");
+                connectionStates[credentials] = ConnectionState.ConnectionFailed;
+            }
+        }
+
+        /// <summary>
+        /// Monitors authentication success for a client
+        /// </summary>
+        private void MonitorAuthenticationSuccess(Credentials credentials, AuthClient client)
+        {
+            var authCheckTimer = new Timer(AUTH_RETRY_INTERVAL.TotalMilliseconds);
+            var authCheckCount = 0;
+            
+            authCheckTimer.Elapsed += (sender, e) =>
+            {
+                authCheckCount++;
+                
+                if (client.IsOnline)
+                {
+                    connectionStates[credentials] = ConnectionState.Authenticated;
+                    logger.Info($"Client {credentials.AppId} successfully authenticated");
+                    authCheckTimer.Stop();
+                    authCheckTimer.Dispose();
+                }
+                else if (authCheckCount >= MAX_AUTH_RETRIES)
+                {
+                    connectionStates[credentials] = ConnectionState.AuthenticationFailed;
+                    logger.Warn($"Authentication failed for client {credentials.AppId} after {MAX_AUTH_RETRIES} attempts");
+                    authCheckTimer.Stop();
+                    authCheckTimer.Dispose();
+                }
+            };
+            
+            authCheckTimer.Start();
         }
 
         /// Subscribes to market data for a specific symbol and configures technical indicators (RSI)
@@ -617,8 +819,18 @@ namespace FxWorth
         /// Stops all managed `AuthClient` instances, disconnecting from Deriv accounts and halting trading activity.
         public void StopAll()
         {
+            // Stop persistent connection management first
+            lock (connectionManagementLock)
+            {
+                isPersistentConnectionEnabled = false;
+                persistentConnectionTimer?.Stop();
+                logger.Info("Persistent connection management stopped");
+            }
+            
             foreach (var client in clients.Values)
             {
+                // Disable persistent mode before stopping
+                client.SetPersistentMode(false);
                 client.Stop();
                 
                 // Reset trading parameters
@@ -633,6 +845,10 @@ namespace FxWorth
                 
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
             }            
+            
+            // Reset connection states
+            connectionStates.Clear();
+            lastConnectionAttempt.Clear();
             
             // Reset hierarchy state
             hierarchyNavigator = null;
@@ -1180,6 +1396,125 @@ namespace FxWorth
             hierarchyNavigator.AssignClientToLevel(currentLevelId, client);
             logger.Info("Entered hierarchy mode");
         }
+
+        /// <summary>
+        /// Initializes the persistent connection management system
+        /// </summary>
+        private void InitializePersistentConnectionManagement()
+        {
+            persistentConnectionTimer = new Timer(CONNECTION_HEALTH_CHECK_INTERVAL.TotalMilliseconds);
+            persistentConnectionTimer.Elapsed += PersistentConnectionTimer_Elapsed;
+            logger.Info("Persistent connection management system initialized");
+        }
+
+        /// <summary>
+        /// Updates the connection state for a given credential
+        /// </summary>
+        private void UpdateConnectionState(Credentials creds, ConnectionState state)
+        {
+            if (!connectionStates.ContainsKey(creds))
+            {
+                connectionStates[creds] = state;
+            }
+            else
+            {
+                connectionStates[creds] = state;
+            }
+
+            // Optionally, raise an event or log the state change
+            logger.Info($"Connection state for {creds.AppId} updated to {state}");
+        }
+
+        /// <summary>
+        /// Attempts to reconnect a client
+        /// </summary>
+        private void AttemptReconnection(Credentials creds)
+        {
+            var client = Clients[creds];
+
+            // Limit the number of authentication retries
+            int authRetryCount = 0;
+
+            while (authRetryCount < MAX_AUTH_RETRIES)
+            {
+                try
+                {
+                    client.Start();
+                    logger.Info($"Reconnection successful for {creds.AppId}");
+                    UpdateConnectionState(creds, ConnectionState.Connected);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    authRetryCount++;
+                    logger.Warn($"Reconnection attempt {authRetryCount} failed for {creds.AppId}: {ex.Message}");
+
+                    // Wait before retrying
+                    Task.Delay(AUTH_RETRY_INTERVAL).Wait();
+                }
+            }
+
+            logger.Error($"Max reconnection attempts reached for {creds.AppId}. Manual intervention required.");
+        }
+
+        /// <summary>
+        /// Gets the current connection status for all clients
+        /// </summary>
+        public Dictionary<string, string> GetConnectionStatus()
+        {
+            var status = new Dictionary<string, string>();
+            
+            foreach (var clientPair in clients)
+            {
+                var credentials = clientPair.Key;
+                var client = clientPair.Value;
+                
+                var connectionState = connectionStates.ContainsKey(credentials) ? 
+                    connectionStates[credentials].ToString() : "Unknown";
+                
+                var lastAttempt = lastConnectionAttempt.ContainsKey(credentials) ? 
+                    lastConnectionAttempt[credentials].ToString("HH:mm:ss") : "Never";
+                
+                status[$"{credentials.AppId}"] = $"State: {connectionState}, Online: {client.IsOnline}, Last Attempt: {lastAttempt}";
+            }
+            
+            return status;
+        }
+
+        /// <summary>
+        /// Forces reconnection for a specific client
+        /// </summary>
+        public void ForceReconnection(string appId)
+        {
+            var credentials = Credentials.FirstOrDefault(c => c.AppId == appId);
+            if (credentials != null && clients.ContainsKey(credentials))
+            {
+                var client = clients[credentials];
+                logger.Info($"Forcing reconnection for client {appId}");
+                
+                connectionStates[credentials] = ConnectionState.Connecting;
+                lastConnectionAttempt[credentials] = DateTime.Now;
+                
+                client.Stop();
+                Task.Delay(1000).ContinueWith(_ => client.Start());
+            }
+        }
+
+        /// <summary>
+        /// Gets count of connected clients
+        /// </summary>
+        public int GetConnectedClientCount()
+        {
+            return clients.Count(c => c.Value.IsOnline);
+        }
+
+        /// <summary>
+        /// Gets count of total clients
+        /// </summary>
+        public int GetTotalClientCount()
+        {
+            return clients.Count;
+        }
     }
 
     /// Event arguments for the AuthFailed event. Contains the credentials that failed authentication.
@@ -1247,6 +1582,39 @@ namespace FxWorth
             OriginalTradingParameters = (TradingParameters)originalParameters.Clone();
             EntryTimestamp = DateTime.Now;
         }
+    }
+
+    /// <summary>
+    /// Represents the connection state of a client for persistent connection management
+    /// </summary>
+    public enum ConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+        Authenticated,
+        AuthenticationFailed,
+        ConnectionFailed,
+        Retrying
+    }
+
+    /// <summary>
+    /// Tracks connection attempts and authentication state for persistent connection management
+    /// </summary>
+    public class ClientConnectionTracker
+    {
+        public ConnectionState State { get; set; } = ConnectionState.Disconnected;
+        public int ConnectionAttempts { get; set; } = 0;
+        public int AuthAttempts { get; set; } = 0;
+        public DateTime LastConnectionAttempt { get; set; } = DateTime.MinValue;
+        public DateTime LastAuthAttempt { get; set; } = DateTime.MinValue;
+        public bool IsEnabled { get; set; } = true;
+        public string LastError { get; set; } = string.Empty;
+        public bool ShouldRetry => IsEnabled && 
+                                  (State == ConnectionState.Disconnected || 
+                                   State == ConnectionState.ConnectionFailed || 
+                                   State == ConnectionState.AuthenticationFailed) &&
+                                  DateTime.Now - LastConnectionAttempt > TimeSpan.FromSeconds(5);
     }
 
     /// <summary>

@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("FxWorth")]
 [assembly: AssemblyProduct("FinTech")]
 [assembly: AssemblyCopyright("Copyright ©  2020-2025")]
-[assembly: AssemblyTrademark("FXWorth™")]
+[assembly: AssemblyTrademark("FxWorth™")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
@@ -31,6 +31,6 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("5.1.1.1")]
+[assembly: AssemblyVersion("5.1.1.2")]
 [assembly: AssemblyFileVersion("0.0.0.0")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("FxUnitTests")]
