@@ -42,6 +42,7 @@ namespace FxWorth
         public EventHandler<EventArgs> InternetSpeedChanged;
         public EventHandler<AuthFailedArgs> AuthFailed;
         public EventHandler<TradeEventArgs> TradeUpdated;
+        public EventHandler<EventArgs> ForceStatusRefresh;
 
         private bool isTradePending = false;
         public Rsi rsi;
@@ -142,7 +143,7 @@ namespace FxWorth
             pinger.PingChanged += PingChanged;
 
             this.path = path;
-            clientStateCheckTimer = new Timer(12000);
+            clientStateCheckTimer = new Timer(300); // 300ms for frequent status updates
             clientStateCheckTimer.Elapsed += ClientStateCheckTimer_Elapsed;
             clientStateCheckTimer.Start();
 
@@ -193,6 +194,9 @@ namespace FxWorth
                     previousClientStates[pair.Key] = currentState;
                 }
             }
+            
+            // Force refresh the UI status column every timer tick
+            ForceStatusRefresh?.Raise(this, EventArgs.Empty);
         }
 
         /// Event handler triggered when the ping latency changes.

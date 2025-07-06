@@ -248,6 +248,7 @@ namespace FxWorth
             storage.ClientsStateChanged += ClientsStateChanged;
             storage.InternetSpeedChanged += OnInternetSpeedChanged;
             storage.AuthFailed += OnAuthFailed;
+            storage.ForceStatusRefresh += OnForceStatusRefresh;
             
             // Set up UI trading parameters delegate
             storage.GetUITradingParameters = GetCurrentUITradingParameters;
@@ -474,6 +475,40 @@ namespace FxWorth
                         row.Cells[0].Value = false;
                         return;
                     }
+                }
+            });
+        }
+
+        private void OnForceStatusRefresh(object sender, EventArgs e)
+        {
+            this.InvokeIfRequired(() =>
+            {
+                try
+                {
+                    foreach (DataGridViewRow row in Main_Token_Table.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+
+                        var token = row.Cells[1].Value?.ToString();
+                        var appId = row.Cells[2].Value?.ToString();
+                        
+                        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(appId)) continue;
+
+                        var key = storage.Clients.Keys.FirstOrDefault(x => x.AppId == appId && x.Token == token);
+                        if (key == null) continue;
+
+                        var client = storage.Clients[key];
+                        if (client == null) continue;
+
+                        var currentStatus = row.Cells[5].Value?.ToString() ?? "Unknown";
+                        string newStatus = DetermineClientRuntimeStatus(client, key, currentStatus, storage.IsTradingAllowed);
+                        
+                        row.Cells[5].Value = newStatus;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, "Error in OnForceStatusRefresh");
                 }
             });
         }
