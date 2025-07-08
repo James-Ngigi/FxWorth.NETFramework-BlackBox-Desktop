@@ -350,8 +350,11 @@ namespace FxWorth.Hierarchy
             HierarchyLevel currentLevel = hierarchyLevels[currentLevelId];
             
             // Determine the layer number from the depth
+            // For nested levels: "1.1.1" = Layer 2, "1.1.1.1" = Layer 3, etc.
             int layerDepth = parts.Length;
-            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerDepth, storage.customLayerConfigs);
+            int actualLayerForConfig = layerDepth - 1;
+            
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(actualLayerForConfig, storage.customLayerConfigs);
             
             // Create new nested level with the same parameters as current level
             HierarchyLevel newLevel = new HierarchyLevel(
@@ -564,32 +567,46 @@ namespace FxWorth.Hierarchy
             };
 
             // Apply hierarchy level parameters with proper precedence
-            // For nested levels, use the depth (number of parts) to determine layer behavior
+            // Calculate the logical layer number for nested levels
             string[] levelParts = levelId.Split('.');
-            int layerNumber = int.Parse(levelParts[0]);
-            int layerDepth = levelParts.Length; // This accounts for nested levels
-            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerDepth, storage.customLayerConfigs);
+            
+            // For nested levels:
+            // "1.1" = Layer 1 (depth 2, layer 1)
+            // "1.1.1" = Layer 2 (depth 3, layer 2) 
+            // "1.1.1.1" = Layer 3 (depth 4, layer 3)
+            // etc.
+            int actualLayerForConfig = levelParts.Length - 1;
+            
+            logger.Info($"Level {levelId}: parts={levelParts.Length}, using config for Layer {actualLayerForConfig}");
+            
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(actualLayerForConfig, storage.customLayerConfigs);
 
-            if (layerDepth > 1 && customConfig != null)
+            if (actualLayerForConfig == 1)
             {
-                // Layer 2+ with custom configuration
+                // Layer 1 - use phase 2 parameters (hierarchy recovery parameters)
+                freshParameters.MartingaleLevel = customConfig?.MartingaleLevel ?? level.MartingaleLevel ?? phase2Params.MartingaleLevel;
+                freshParameters.MaxDrawdown = customConfig?.MaxDrawdown ?? level.MaxDrawdown ?? phase2Params.MaxDrawdown;
+                freshParameters.TempBarrier = customConfig?.BarrierOffset ?? level.BarrierOffset ?? phase2Params.Barrier;
+                
+                logger.Info($"Applied Layer 1 config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+            }
+            else if (customConfig != null)
+            {
+                // Layer 2+ with custom configuration - prioritize custom config
                 freshParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
                 freshParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
-            }
-            else if (layerDepth == 1)
-            {
-                // Layer 1 - use phase 2 parameters
-                freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase2Params.MartingaleLevel;
-                freshParameters.MaxDrawdown = level.MaxDrawdown ?? phase2Params.MaxDrawdown;
-                freshParameters.TempBarrier = level.BarrierOffset ?? phase2Params.Barrier;
+                
+                logger.Info($"Applied Layer {actualLayerForConfig} custom config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
             }
             else
             {
-                // Layer 2+ without custom configuration - use phase 1 parameters
+                // Layer 2+ without custom configuration - use phase 1 parameters as default
                 freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = level.MaxDrawdown ?? phase1Params.MaxDrawdown;
                 freshParameters.TempBarrier = level.BarrierOffset ?? phase1Params.Barrier;
+                
+                logger.Info($"Applied Layer {actualLayerForConfig} default config (Phase 1): MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
             }
 
             // Use TokenStorage.SetTradingParameters to apply the fresh parameters following the established pattern
@@ -665,28 +682,35 @@ namespace FxWorth.Hierarchy
             
             logger.Info($"Creating nested level {nestedLevelId} under parent {parentLevelId} for amount {amountToBeRecovered:F2}");
 
-            // Determine the layer number from the depth (number of dots + 1)
-            int layerDepth = parentLevelId.Split('.').Length + 1;
-            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerDepth, customLayerConfigs);
+            // Determine the layer number from the nested level depth
+            // For nested levels:
+            // "1.1" = Layer 1, "1.1.1" = Layer 2, "1.1.1.1" = Layer 3, etc.
+            string[] parentParts = parentLevelId.Split('.');
+            int layerDepth = parentParts.Length + 1; // Adding one more level of nesting
+            int actualLayerForConfig = layerDepth - 1; // Convert to layer number
+            
+            logger.Info($"Creating nested level under {parentLevelId}, depth={layerDepth}, using config for Layer {actualLayerForConfig}");
+            
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(actualLayerForConfig, customLayerConfigs);
 
             // Determine number of levels for this nested layer
             int nestedLevelsCount = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
             decimal amountPerLevel = Math.Round(amountToBeRecovered / nestedLevelsCount, 2);
 
-            logger.Info($"Nested layer at depth {layerDepth} will have {nestedLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
+            logger.Info($"Nested layer at depth {layerDepth} (Layer {actualLayerForConfig}) will have {nestedLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
 
             // Get parameters, prioritizing custom config over phase parameters
             int? martingaleLevel = customConfig?.MartingaleLevel ?? 
-                (layerDepth == 1 ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
+                (actualLayerForConfig == 1 ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
             
             decimal? maxDrawdown = customConfig?.MaxDrawdown ?? 
-                (layerDepth == 1 ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
+                (actualLayerForConfig == 1 ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
             
             decimal? barrierOffset = customConfig?.BarrierOffset ?? 
-                (layerDepth == 1 ? phase2Params.Barrier : phase1Params.Barrier);
+                (actualLayerForConfig == 1 ? phase2Params.Barrier : phase1Params.Barrier);
 
             // Determine initial stake for this nested level
-            decimal levelInitialStake = DetermineLevelInitialStake(layerDepth, customConfig, initialStake);
+            decimal levelInitialStake = DetermineLevelInitialStake(actualLayerForConfig, customConfig, initialStake);
 
             // Create and configure the new nested level
             HierarchyLevel newLevel = new HierarchyLevel(
@@ -706,7 +730,7 @@ namespace FxWorth.Hierarchy
                        $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
 
             // Check if this nested level's amount exceeds its MaxDrawdown and needs further nesting
-            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && layerDepth < maxHierarchyDepth)
+            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && actualLayerForConfig < maxHierarchyDepth)
             {
                 logger.Info($"Nested Level {nestedLevelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Can create deeper nesting if needed.");
             }
