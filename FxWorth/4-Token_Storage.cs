@@ -1163,7 +1163,8 @@ namespace FxWorth
                     currentLevel.InitialStake;
             }
 
-            hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            // Use the new CreateNestedLevel method instead of CreateLayer for proper nested level creation
+            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
             hierarchyNavigator.currentLevelId = nextLevelId;

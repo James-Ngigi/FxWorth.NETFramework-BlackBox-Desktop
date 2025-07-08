@@ -421,9 +421,11 @@ namespace FxWorth
                                         return;
                                     }
                                     
-                                    storage.hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
+                                    // Use the new CreateNestedLevel method for proper nested level creation
+                                    storage.hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
                                     storage.hierarchyNavigator.currentLevelId = nextLevelId;
+                                    storage.hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
                                     storage.SetHierarchyLevelTradingParameters(client);
                                     logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
                                 }

@@ -314,6 +314,65 @@ namespace FxWorth.Hierarchy
             return nextLevelId;
         }
 
+        /// <summary>
+        /// Creates the next level in a nested layer (e.g., from "1.1.1" to "1.1.2")
+        /// </summary>
+        public string CreateNextNestedLevelInLayer(string currentLevelId)
+        {
+            if (string.IsNullOrEmpty(currentLevelId) || !currentLevelId.Contains("."))
+            {
+                logger.Error($"Cannot create next nested level: Invalid level ID format {currentLevelId}");
+                return null;
+            }
+
+            string[] parts = currentLevelId.Split('.');
+            if (parts.Length < 3)
+            {
+                // This is not a nested level, use the regular method
+                return CreateNextLevelInLayer(currentLevelId);
+            }
+
+            // For nested levels like "1.1.1", increment the last part
+            int lastLevelNumber = int.Parse(parts[parts.Length - 1]);
+            int nextLevelNumber = lastLevelNumber + 1;
+            
+            // Build the next level ID
+            string nextLevelId = string.Join(".", parts.Take(parts.Length - 1)) + "." + nextLevelNumber;
+            
+            // Don't create if it already exists
+            if (hierarchyLevels.ContainsKey(nextLevelId))
+            {
+                logger.Info($"Nested level {nextLevelId} already exists, not creating it again");
+                return nextLevelId;
+            }
+            
+            // Find the parameters from the current level to use as a template
+            HierarchyLevel currentLevel = hierarchyLevels[currentLevelId];
+            
+            // Determine the layer number from the depth
+            int layerDepth = parts.Length;
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerDepth, storage.customLayerConfigs);
+            
+            // Create new nested level with the same parameters as current level
+            HierarchyLevel newLevel = new HierarchyLevel(
+                nextLevelId,
+                currentLevel.AmountToRecover, // Same amount as current level
+                currentLevel.InitialStake,
+                currentLevel.MartingaleLevel,
+                currentLevel.MaxDrawdown,
+                currentLevel.BarrierOffset
+            );
+            
+            hierarchyLevels[nextLevelId] = newLevel;
+            levelOrder.Add(nextLevelId);
+            
+            logger.Info($"Created next nested Level {nextLevelId}: AmountToRecover={newLevel.AmountToRecover:F2}, " +
+                       $"InitialStake={newLevel.InitialStake:F2}, MartingaleLevel={newLevel.MartingaleLevel}, " +
+                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, BarrierOffset={newLevel.BarrierOffset:F2}");
+                       
+            return nextLevelId;
+        }
+
         // This method moves through the hierarchy levels based on the current level ID.        
         public bool MoveToNextLevel(AuthClient client)
         {
@@ -373,8 +432,31 @@ namespace FxWorth.Hierarchy
             int currentLevelNumber = int.Parse(parts[1]);
             string newLevelId = null;
 
+            // Handle nested levels (more than 2 parts, e.g., "1.1.1")
+            if (parts.Length > 2 && currentLevel.IsCompleted)
+            {
+                // For nested levels, try to move to next level in the same nested layer first
+                int lastLevelNumber = int.Parse(parts[parts.Length - 1]);
+                
+                // Check if we can move to the next level in this nested layer
+                // For now, assume 2 levels per nested layer (can be made configurable)
+                if (lastLevelNumber < hierarchyLevelsCount)
+                {
+                    newLevelId = CreateNextNestedLevelInLayer(currentLevelId);
+                    if (newLevelId != null)
+                    {
+                        logger.Info($"Moving to next level in nested layer. Entering Level: {newLevelId}");
+                    }
+                }
+                else
+                {
+                    // Move up to parent level
+                    newLevelId = string.Join(".", parts.Take(parts.Length - 1));
+                    logger.Info($"Completed nested layer, moving up from {currentLevelId} to parent level {newLevelId}");
+                }
+            }
             // If we're in a nested layer (layer > 1), first try to move up to parent level
-            if (currentLayer > 1 && currentLevel.IsCompleted)
+            else if (currentLayer > 1 && currentLevel.IsCompleted)
             {
                 // Get parent level ID by removing the last part
                 newLevelId = string.Join(".", parts.Take(parts.Length - 1));
@@ -482,17 +564,20 @@ namespace FxWorth.Hierarchy
             };
 
             // Apply hierarchy level parameters with proper precedence
-            int layerNumber = int.Parse(levelId.Split('.')[0]);
-            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, storage.customLayerConfigs);
+            // For nested levels, use the depth (number of parts) to determine layer behavior
+            string[] levelParts = levelId.Split('.');
+            int layerNumber = int.Parse(levelParts[0]);
+            int layerDepth = levelParts.Length; // This accounts for nested levels
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerDepth, storage.customLayerConfigs);
 
-            if (layerNumber > 1 && customConfig != null)
+            if (layerDepth > 1 && customConfig != null)
             {
                 // Layer 2+ with custom configuration
                 freshParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
                 freshParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
             }
-            else if (layerNumber == 1)
+            else if (layerDepth == 1)
             {
                 // Layer 1 - use phase 2 parameters
                 freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase2Params.MartingaleLevel;
@@ -561,6 +646,70 @@ namespace FxWorth.Hierarchy
                 }
             }
             return total;
+        }
+
+        /// <summary>
+        /// Creates a nested level under the specified parent level when max drawdown is exceeded.
+        /// This creates levels like "1.1.1" under parent "1.1"
+        /// </summary>
+        public void CreateNestedLevel(string parentLevelId, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
+        {
+            if (!hierarchyLevels.ContainsKey(parentLevelId))
+            {
+                logger.Error($"Cannot create nested level: Parent level {parentLevelId} not found");
+                return;
+            }
+
+            var parentLevel = hierarchyLevels[parentLevelId];
+            string nestedLevelId = $"{parentLevelId}.1";
+            
+            logger.Info($"Creating nested level {nestedLevelId} under parent {parentLevelId} for amount {amountToBeRecovered:F2}");
+
+            // Determine the layer number from the depth (number of dots + 1)
+            int layerDepth = parentLevelId.Split('.').Length + 1;
+            CustomLayerConfig customConfig = GetCustomConfigForLayer(layerDepth, customLayerConfigs);
+
+            // Determine number of levels for this nested layer
+            int nestedLevelsCount = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
+            decimal amountPerLevel = Math.Round(amountToBeRecovered / nestedLevelsCount, 2);
+
+            logger.Info($"Nested layer at depth {layerDepth} will have {nestedLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
+
+            // Get parameters, prioritizing custom config over phase parameters
+            int? martingaleLevel = customConfig?.MartingaleLevel ?? 
+                (layerDepth == 1 ? phase2Params.MartingaleLevel : phase1Params.MartingaleLevel);
+            
+            decimal? maxDrawdown = customConfig?.MaxDrawdown ?? 
+                (layerDepth == 1 ? phase2Params.MaxDrawdown : phase1Params.MaxDrawdown);
+            
+            decimal? barrierOffset = customConfig?.BarrierOffset ?? 
+                (layerDepth == 1 ? phase2Params.Barrier : phase1Params.Barrier);
+
+            // Determine initial stake for this nested level
+            decimal levelInitialStake = DetermineLevelInitialStake(layerDepth, customConfig, initialStake);
+
+            // Create and configure the new nested level
+            HierarchyLevel newLevel = new HierarchyLevel(
+                nestedLevelId,
+                amountPerLevel,
+                levelInitialStake,
+                martingaleLevel,
+                maxDrawdown,
+                barrierOffset
+            );
+
+            hierarchyLevels[nestedLevelId] = newLevel;
+            levelOrder.Add(nestedLevelId);
+
+            logger.Info($"Created nested Level {nestedLevelId}: AmountToRecover={amountPerLevel:F2}, " +
+                       $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
+                       $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
+
+            // Check if this nested level's amount exceeds its MaxDrawdown and needs further nesting
+            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && layerDepth < maxHierarchyDepth)
+            {
+                logger.Info($"Nested Level {nestedLevelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Can create deeper nesting if needed.");
+            }
         }
     }
 }
