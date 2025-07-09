@@ -74,7 +74,7 @@ namespace FxWorth
         private readonly TimeSpan CONNECTION_RETRY_INTERVAL = TimeSpan.FromSeconds(5);
         private readonly TimeSpan CONNECTION_HEALTH_CHECK_INTERVAL = TimeSpan.FromSeconds(3);
         private readonly TimeSpan AUTH_RETRY_INTERVAL = TimeSpan.FromSeconds(10);
-        private readonly int MAX_AUTH_RETRIES = 5;
+        private readonly int MAX_AUTH_RETRIES = 15;
         private readonly int MAX_CONNECTION_RETRIES = int.MaxValue; // Keep trying until manually stopped
         private bool isPersistentConnectionEnabled = false;
         private readonly object connectionManagementLock = new object();
@@ -601,8 +601,6 @@ namespace FxWorth
                 logger.Error(ex, "Error in AttemptRsiRecovery");
             }
         }
-
-        /* -----------------------------------------SENSITIVE AREA----------------------------------------------------- */
 
         /// <summary>
         /// Event handler triggered when the RSI indicator crosses overbought or oversold thresholds.

@@ -97,14 +97,16 @@ namespace FxApi.Connection
                 if (!IsRecoveryMode)
                 {
                     IsRecoveryMode = true;
-                    AmountToBeRecoverd = 2 * Stake;
-                    logger.Debug($"In recovery mode. Amount to recover: {AmountToBeRecoverd}");
+                    // Enhanced recovery: Double the initial loss to recover both actual loss and a virtual profitable trade
+                    decimal initialLoss = Math.Abs(mlp);
+                    AmountToBeRecoverd = 2 * initialLoss; // Double the actual loss amount
+                    logger.Debug($"Enhanced recovery mode entered. Initial loss: {initialLoss:F2}, Amount to recover: {AmountToBeRecoverd:F2} (2x initial loss for virtual profit)");
                 }
                 else
                 {
-                    // Update amount to be recovered based on accumulated losses
+                    // Update amount to be recovered based on accumulated losses (normal addition after first entry)
                     AmountToBeRecoverd = -recoveryResults.Sum();
-                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd}");
+                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (accumulated losses)");
                 }
                 
                 // Progressive dynamic Martingale based on fractions ('(n)'over/max) toward max drawdown
