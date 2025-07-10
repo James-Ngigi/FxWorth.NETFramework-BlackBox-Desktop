@@ -14,7 +14,6 @@ namespace FxApi.Connection
     public class TradingParameters : ICloneable
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
         public decimal Barrier { get; set; }
         public string BuyBarrier => string.Format(CultureInfo.InvariantCulture, "{0:+#0.0#;-#0.0#;0}", TempBarrier != 0 ? TempBarrier : Barrier);
         public string SellBarrier => string.Format(CultureInfo.InvariantCulture, "{0:+#0.0#;-#0.0#;0}", TempBarrier != 0 ? -TempBarrier : -Barrier);
@@ -99,7 +98,7 @@ namespace FxApi.Connection
                     IsRecoveryMode = true;
                     // Enhanced recovery: Double the initial loss to recover both actual loss and a virtual profitable trade
                     decimal initialLoss = Math.Abs(mlp);
-                    AmountToBeRecoverd = 2 * initialLoss; // Double the actual loss amount
+                    AmountToBeRecoverd = 2.5m * initialLoss; // Triple the actual loss amount
                     logger.Debug($"Enhanced recovery mode entered. Initial loss: {initialLoss:F2}, Amount to recover: {AmountToBeRecoverd:F2} (2x initial loss for virtual profit)");
                 }
                 else
