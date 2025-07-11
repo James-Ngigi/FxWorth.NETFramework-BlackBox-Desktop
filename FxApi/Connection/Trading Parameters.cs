@@ -96,14 +96,18 @@ namespace FxApi.Connection
                 if (!IsRecoveryMode)
                 {
                     IsRecoveryMode = true;
-                    AmountToBeRecoverd = 2 * Stake;
-                    logger.Debug($"In recovery mode. Amount to recover: {AmountToBeRecoverd} (using stake: {Stake})");
+                    // Double the first loss: one for actual loss recovery, one for virtual trade profit
+                    decimal firstLoss = Math.Abs(mlp);
+                    AmountToBeRecoverd = 2 * firstLoss;
+                    logger.Debug($"Entering recovery mode. First loss: {firstLoss:F2}, Amount to recover: {AmountToBeRecoverd:F2} (includes virtual trade)");
                 }
                 else
                 {
-                    // Update amount to be recovered based on accumulated losses (normal addition after first entry)
-                    AmountToBeRecoverd = -recoveryResults.Sum();
-                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (accumulated losses)");
+                    // Update amount to be recovered: accumulated losses + virtual trade amount (first loss)
+                    decimal accumulatedLosses = -recoveryResults.Sum();
+                    decimal virtualTradeAmount = Math.Abs(recoveryResults.First()); // First loss = virtual trade amount
+                    AmountToBeRecoverd = accumulatedLosses + virtualTradeAmount;
+                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (losses: {accumulatedLosses:F2} + virtual trade: {virtualTradeAmount:F2})");
                 }
                 
                 // Dynamic logarithmic Martingale calculation - truly dynamic, no caps
@@ -158,7 +162,7 @@ namespace FxApi.Connection
 
                 decimal recoveryProfit = mlp + recoveryResults.Sum();
 
-                // Check if recovery is complete
+                // Check if recovery is complete (we've recovered actual losses + virtual trade)
                 if (recoveryProfit >= AmountToBeRecoverd || RecoveryAttemptsLeft == 0)
                 {
                     DynamicStake = Stake;
