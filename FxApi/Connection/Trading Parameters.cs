@@ -117,15 +117,17 @@ namespace FxApi.Connection
                     // Calculate risk ratio: how far along we are toward max drawdown (0.0 to 1.0+)
                     decimal riskRatio = AmountToBeRecoverd / MaxDrawdown;
                     
-                    // Logarithmic scaling with gearing factor
-                    // Formula: CurrentLevel = 1 + log(1 + riskRatio * GearingFactor)
-                    // This gives smooth, non-linear progression that scales infinitely
-                    decimal logValue = (decimal)Math.Log(1.0 + (double)(riskRatio * GearingFactor));
-                    CurrentMartingaleLevel = Math.Max(1, (int)Math.Ceiling(1.0m + logValue));
+                    double logValue = Math.Log(1.0 + (double)riskRatio);
+    
+                    // Apply the GearingFactor as a direct, sensitive multiplier to the log-scaled risk.
+                    // This is the new, leveraged formula.
+                    decimal scaledLevel = (decimal)logValue * GearingFactor;
                     
-                    logger.Debug($"Dynamic Martingale: Risk ratio={riskRatio:F3}, GearingFactor={GearingFactor:F1}, " +
-                               $"LogValue={logValue:F3}, Level={CurrentMartingaleLevel} " +
-                               $"(Amount: {AmountToBeRecoverd:F2}, MaxDrawdown: {MaxDrawdown:F2})");
+                    // Ensure the level is at least 1.
+                    CurrentMartingaleLevel = Math.Max(1, (int)Math.Ceiling(scaledLevel));
+                    
+                    logger.Debug($"Leveraged Logarithmic Martingale: RiskRatio={riskRatio:F3}, GearingFactor={GearingFactor:F1}, " +
+                            $"Level={CurrentMartingaleLevel} (Amount: {AmountToBeRecoverd:F2})");
                 }
                 else
                 {
