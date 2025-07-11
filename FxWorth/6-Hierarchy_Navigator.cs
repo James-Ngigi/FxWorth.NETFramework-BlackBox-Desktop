@@ -19,6 +19,7 @@ namespace FxWorth.Hierarchy
         public string currentLevelId { get; set; }
         public int hierarchyLevelsCount { get; private set; }
         public int maxHierarchyDepth { get; private set; }
+        private Dictionary<int, int> layerLevelCounts = new Dictionary<int, int>(); // Track level count per layer
         private PhaseParameters phase1Params;
         private PhaseParameters phase2Params;
         private readonly TokenStorage storage;
@@ -96,11 +97,12 @@ namespace FxWorth.Hierarchy
             
             CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, customLayerConfigs);
 
-            // Determine number of levels for this layer and store for later use
-            hierarchyLevelsCount = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
-            decimal amountPerLevel = Math.Round(amountToBeRecovered / hierarchyLevelsCount, 2);
+            // Determine number of levels for this layer and store per layer
+            int layerLevelsCount = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
+            layerLevelCounts[layerNumber] = layerLevelsCount; // Store level count for this specific layer
+            decimal amountPerLevel = Math.Round(amountToBeRecovered / layerLevelsCount, 2);
 
-            logger.Info($"Layer {layerNumber} will have {hierarchyLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
+            logger.Info($"Layer {layerNumber} will have {layerLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
 
             // Create just the first level of this layer - others will be created as needed
             string levelId = $"{layerNumber}.1";
@@ -272,10 +274,11 @@ namespace FxWorth.Hierarchy
             int currentLayer = int.Parse(parts[0]);
             int currentLevelNumber = int.Parse(parts[1]);
             
-            // Check if we're at the max level count for this layer
-            if (currentLevelNumber >= hierarchyLevelsCount)
+            // Check if we're at the max level count for this specific layer
+            int layerMaxLevels = GetLevelCountForLayer(currentLayer);
+            if (currentLevelNumber >= layerMaxLevels)
             {
-                logger.Info($"Cannot create next level in layer {currentLayer}: Already at max level {currentLevelNumber} of {hierarchyLevelsCount}");
+                logger.Info($"Cannot create next level in layer {currentLayer}: Already at max level {currentLevelNumber} of {layerMaxLevels}");
                 return null;
             }
             
@@ -441,9 +444,13 @@ namespace FxWorth.Hierarchy
                 // For nested levels, try to move to next level in the same nested layer first
                 int lastLevelNumber = int.Parse(parts[parts.Length - 1]);
                 
+                // Determine the layer number for nested levels and get the correct level count
+                int layerDepth = parts.Length;
+                int actualLayerForConfig = layerDepth - 1;
+                int nestedLayerMaxLevels = GetLevelCountForLayer(actualLayerForConfig);
+                
                 // Check if we can move to the next level in this nested layer
-                // For now, assume 2 levels per nested layer (can be made configurable)
-                if (lastLevelNumber < hierarchyLevelsCount)
+                if (lastLevelNumber < nestedLayerMaxLevels)
                 {
                     newLevelId = CreateNextNestedLevelInLayer(currentLevelId);
                     if (newLevelId != null)
@@ -471,9 +478,10 @@ namespace FxWorth.Hierarchy
                 if (currentLevel.IsCompleted)
                 {
                     layer1CompletedLevels++;
-                    logger.Info($"Completed level {currentLevelId} - that's {layer1CompletedLevels} of {hierarchyLevelsCount} levels in Layer 1");
+                    int layer1TotalLevels = GetLevelCountForLayer(1); // Get the specific level count for Layer 1
+                    logger.Info($"Completed level {currentLevelId} - that's {layer1CompletedLevels} of {layer1TotalLevels} levels in Layer 1");
                     
-                    if (layer1CompletedLevels >= hierarchyLevelsCount)                    
+                    if (layer1CompletedLevels >= layer1TotalLevels)                    
                     {
                         // All Layer 1 levels completed - exit hierarchy mode
                         IsInHierarchyMode = false;
@@ -500,7 +508,7 @@ namespace FxWorth.Hierarchy
                 }
             }
             // If we get here and the level is completed, create and move to next level in same layer
-            else if (currentLevel.IsCompleted && currentLevelNumber < hierarchyLevelsCount)
+            else if (currentLevel.IsCompleted && currentLevelNumber < GetLevelCountForLayer(currentLayer))
             {
                 newLevelId = CreateNextLevelInLayer(currentLevelId);
                 if (newLevelId != null)
@@ -693,8 +701,9 @@ namespace FxWorth.Hierarchy
             
             CustomLayerConfig customConfig = GetCustomConfigForLayer(actualLayerForConfig, customLayerConfigs);
 
-            // Determine number of levels for this nested layer
+            // Determine number of levels for this nested layer and store it
             int nestedLevelsCount = Math.Max(2, customConfig?.HierarchyLevels ?? hierarchyLevelsCount);
+            layerLevelCounts[actualLayerForConfig] = nestedLevelsCount; // Store level count for this nested layer
             decimal amountPerLevel = Math.Round(amountToBeRecovered / nestedLevelsCount, 2);
 
             logger.Info($"Nested layer at depth {layerDepth} (Layer {actualLayerForConfig}) will have {nestedLevelsCount} levels, {amountPerLevel:F2} per level when fully created");
@@ -734,6 +743,28 @@ namespace FxWorth.Hierarchy
             {
                 logger.Info($"Nested Level {nestedLevelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Can create deeper nesting if needed.");
             }
+        }
+
+        /// <summary>
+        /// Gets the layer number from a level ID (e.g., "1.2" returns 1, "2.1" returns 2)
+        /// </summary>
+        private int GetLayerNumberFromLevelId(string levelId)
+        {
+            if (string.IsNullOrEmpty(levelId) || !levelId.Contains("."))
+                return 1;
+            
+            string[] parts = levelId.Split('.');
+            return int.Parse(parts[0]);
+        }
+
+        /// <summary>
+        /// Gets the number of levels for a specific layer
+        /// </summary>
+        private int GetLevelCountForLayer(int layerNumber)
+        {
+            int count = layerLevelCounts.TryGetValue(layerNumber, out int levelCount) ? levelCount : hierarchyLevelsCount;
+            logger.Debug($"GetLevelCountForLayer({layerNumber}) = {count}");
+            return count;
         }
     }
 }

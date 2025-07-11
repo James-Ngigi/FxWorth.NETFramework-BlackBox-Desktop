@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -624,11 +624,6 @@
             this.Max_Depth_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Max_Depth_TXT.Location = new System.Drawing.Point(214, 200);
             this.Max_Depth_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Max_Depth_TXT.Maximum = new decimal(new int[] {
-            12,
-            0,
-            0,
-            0});
             this.Max_Depth_TXT.Name = "Max_Depth_TXT";
             this.Max_Depth_TXT.Size = new System.Drawing.Size(128, 34);
             this.Max_Depth_TXT.TabIndex = 19;
@@ -812,14 +807,14 @@
             this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
             this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
