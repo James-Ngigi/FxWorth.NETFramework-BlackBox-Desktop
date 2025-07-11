@@ -12,7 +12,8 @@ using static FxWorth.Hierarchy.HierarchyNavigator;
 using System.Timers;
 
 namespace FxWorth
-{    /// <summary>
+{    
+    /// <summary>
     /// The `TokenStorage` class is the core component of the FxWorth application. 
     /// It manages multiple trading accounts (represented by API tokens and App IDs(Masked as Acc ID/Client ID)), handles connections to 
     /// the Deriv API, subscribes to market data, implements trading logic based on the RSI technical indicator, 
