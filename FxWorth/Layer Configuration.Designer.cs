@@ -204,7 +204,7 @@
             1,
             0,
             0,
-            0});
+            131072});
             this.Martingale_Level_TXT3.Name = "Martingale_Level_TXT3";
             this.Martingale_Level_TXT3.Size = new System.Drawing.Size(177, 34);
             this.Martingale_Level_TXT3.TabIndex = 5;
