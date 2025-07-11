@@ -1364,15 +1364,11 @@ namespace FxWorth
             {
                 Hierarchy_Levels_TXT.Value = 2;
             }
-
-            // Ensure Max_Depth_TXT is at least Hierarchy_Levels_TXT + 1
-            Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Value, Hierarchy_Levels_TXT.Value + 1);
         }
 
         private void Max_Depth_TXT_ValueChanged(object sender, EventArgs e)
         {
-            // Ensure Max_Depth_TXT is at least Hierarchy_Levels_TXT + 1
-            Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Value, Hierarchy_Levels_TXT.Value + 1);
+            // Max depth can now be set independently of hierarchy levels
         }
 
         private async Task<bool> EnsureOperatorLogin()

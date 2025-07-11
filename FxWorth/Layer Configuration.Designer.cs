@@ -109,11 +109,11 @@
             // Martingale_Level_LBL3
             // 
             this.Martingale_Level_LBL3.AutoSize = true;
-            this.Martingale_Level_LBL3.Location = new System.Drawing.Point(109, 406);
+            this.Martingale_Level_LBL3.Location = new System.Drawing.Point(131, 410);
             this.Martingale_Level_LBL3.Name = "Martingale_Level_LBL3";
-            this.Martingale_Level_LBL3.Size = new System.Drawing.Size(148, 25);
+            this.Martingale_Level_LBL3.Size = new System.Drawing.Size(126, 25);
             this.Martingale_Level_LBL3.TabIndex = 6;
-            this.Martingale_Level_LBL3.Text = "Martingale Levels";
+            this.Martingale_Level_LBL3.Text = "Gearing Factor";
             // 
             // Hierarchy_Levels_LBL2
             // 
@@ -186,7 +186,13 @@
             // 
             // Martingale_Level_TXT3
             // 
+            this.Martingale_Level_TXT3.DecimalPlaces = 2;
             this.Martingale_Level_TXT3.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Martingale_Level_TXT3.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            131072});
             this.Martingale_Level_TXT3.Location = new System.Drawing.Point(345, 401);
             this.Martingale_Level_TXT3.Margin = new System.Windows.Forms.Padding(4);
             this.Martingale_Level_TXT3.Maximum = new decimal(new int[] {
