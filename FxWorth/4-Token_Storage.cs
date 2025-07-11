@@ -1147,6 +1147,13 @@ namespace FxWorth
         {
             int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
 
+            // Check if creating the next layer would exceed max hierarchy depth
+            if (hierarchyNavigator != null && nextLayer > hierarchyNavigator.maxHierarchyDepth)
+            {
+                logger.Warn($"Cannot create layer {nextLayer}: Would exceed maximum hierarchy depth {hierarchyNavigator.maxHierarchyDepth}. Current level {currentLevel.LevelId} will continue trading with higher risk.");
+                return;
+            }
+
             decimal initialStakeForNextLayer;
             if (nextLayer == 2)
             {

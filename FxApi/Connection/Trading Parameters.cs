@@ -96,10 +96,8 @@ namespace FxApi.Connection
                 if (!IsRecoveryMode)
                 {
                     IsRecoveryMode = true;
-                    // Enhanced recovery: Double the initial loss to recover both actual loss and a virtual profitable trade
-                    decimal initialLoss = Math.Abs(mlp);
-                    AmountToBeRecoverd = 2.75m * initialLoss; // Triple the actual loss amount
-                    logger.Debug($"Enhanced recovery mode entered. Initial loss: {initialLoss:F2}, Amount to recover: {AmountToBeRecoverd:F2} (2x initial loss for virtual profit)");
+                    AmountToBeRecoverd = 2 * Stake;
+                    logger.Debug($"In recovery mode. Amount to recover: {AmountToBeRecoverd} (using stake: {Stake})");
                 }
                 else
                 {

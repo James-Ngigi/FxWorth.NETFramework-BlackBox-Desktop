@@ -220,8 +220,8 @@
             this.Hierarchy_Levels_TXT2.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Hierarchy_Levels_TXT2.Location = new System.Drawing.Point(344, 341);
             this.Hierarchy_Levels_TXT2.Margin = new System.Windows.Forms.Padding(4);
-            this.Hierarchy_Levels_TXT2.Maximum = new decimal(new int[] {
-            10,
+            this.Hierarchy_Levels_TXT2.Minimum = new decimal(new int[] {
+            1,
             0,
             0,
             0});

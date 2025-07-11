@@ -83,6 +83,13 @@ namespace FxWorth.Hierarchy
         /// <param name="initialStakeLayer1"> This is the initial stake to be used for the first layer.</param>
         private void CreateHierarchy(decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStakeLayer1)
         {
+            // Check if hierarchy creation is allowed
+            if (maxHierarchyDepth == 0)
+            {
+                logger.Warn($"Cannot create hierarchy: Maximum hierarchy depth is set to 0. No levels can be created from root level.");
+                return;
+            }
+
             IsInHierarchyMode = true; // Enter hierarchy mode
 
             // Only create Layer 1 initially
@@ -93,7 +100,14 @@ namespace FxWorth.Hierarchy
         /// This Create Layer method is called when the maximum drawdown in a level is reached.
         public void CreateLayer(int layerNumber, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
         {
-            logger.Info($"Creating Layer {layerNumber} for amount {amountToBeRecovered:F2}");
+            logger.Info($"Creating Layer {layerNumber} for amount {amountToBeRecovered:F2} (Max depth allowed: {maxHierarchyDepth})");
+            
+            // Check if this layer exceeds max depth
+            if (LayerExceedsMaxDepth(layerNumber))
+            {
+                logger.Error($"Cannot create Layer {layerNumber}: Exceeds maximum hierarchy depth of {maxHierarchyDepth}");
+                return;
+            }
             
             CustomLayerConfig customConfig = GetCustomConfigForLayer(layerNumber, customLayerConfigs);
 
@@ -138,11 +152,15 @@ namespace FxWorth.Hierarchy
                        $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
 
             // Check if this level's amount exceeds its MaxDrawdown and needs to create a new layer
-            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && layerNumber < maxHierarchyDepth)
+            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && !LayerExceedsMaxDepth(layerNumber + 1))
                 {
                 logger.Info($"Level {levelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Creating new layer.");
                     CreateLayer(layerNumber + 1, amountPerLevel, tradingParameters, customLayerConfigs, levelInitialStake);
                 }
+            else if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && LayerExceedsMaxDepth(layerNumber + 1))
+            {
+                logger.Warn($"Level {levelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}), but cannot create new layer - would exceed max depth {maxHierarchyDepth}. Level will trade with higher risk.");
+            }
             }
 
         private decimal DetermineLevelInitialStake(int layerNumber, CustomLayerConfig customConfig, decimal defaultInitialStake)
@@ -325,6 +343,13 @@ namespace FxWorth.Hierarchy
             if (string.IsNullOrEmpty(currentLevelId) || !currentLevelId.Contains("."))
             {
                 logger.Error($"Cannot create next nested level: Invalid level ID format {currentLevelId}");
+                return null;
+            }
+
+            // Check if creating another nested level would exceed max depth
+            if (WouldExceedMaxDepth(currentLevelId))
+            {
+                logger.Warn($"Cannot create next nested level from {currentLevelId}: Would exceed maximum hierarchy depth {maxHierarchyDepth}");
                 return null;
             }
 
@@ -685,6 +710,13 @@ namespace FxWorth.Hierarchy
                 return;
             }
 
+            // Check if creating a nested level would exceed max depth
+            if (WouldExceedMaxDepth(parentLevelId))
+            {
+                logger.Warn($"Cannot create nested level under {parentLevelId}: Would exceed maximum hierarchy depth {maxHierarchyDepth}");
+                return;
+            }
+
             var parentLevel = hierarchyLevels[parentLevelId];
             string nestedLevelId = $"{parentLevelId}.1";
             
@@ -739,9 +771,16 @@ namespace FxWorth.Hierarchy
                        $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
 
             // Check if this nested level's amount exceeds its MaxDrawdown and needs further nesting
-            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && actualLayerForConfig < maxHierarchyDepth)
+            if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue))
             {
-                logger.Info($"Nested Level {nestedLevelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Can create deeper nesting if needed.");
+                if (!WouldExceedMaxDepth(nestedLevelId))
+                {
+                    logger.Info($"Nested Level {nestedLevelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}). Can create deeper nesting if needed.");
+                }
+                else
+                {
+                    logger.Warn($"Nested Level {nestedLevelId} amount ({amountPerLevel:F2}) exceeds MaxDrawdown ({maxDrawdown:F2}), but cannot create deeper nesting - would exceed max depth {maxHierarchyDepth}.");
+                }
             }
         }
 
@@ -765,6 +804,58 @@ namespace FxWorth.Hierarchy
             int count = layerLevelCounts.TryGetValue(layerNumber, out int levelCount) ? levelCount : hierarchyLevelsCount;
             logger.Debug($"GetLevelCountForLayer({layerNumber}) = {count}");
             return count;
+        }
+
+        /// <summary>
+        /// Calculates the actual layer depth from a level ID 
+        /// "1.1" = depth 1, "1.1.1" = depth 2, "1.1.1.1" = depth 3, etc.
+        /// </summary>
+        private int GetDepthFromLevelId(string levelId)
+        {
+            if (string.IsNullOrEmpty(levelId))
+                return 0;
+            
+            string[] parts = levelId.Split('.');
+            return parts.Length - 1; // "1.1" has 2 parts = depth 1, "1.1.1" has 3 parts = depth 2
+        }
+
+        /// <summary>
+        /// Checks if creating a new nested level would exceed the maximum hierarchy depth
+        /// </summary>
+        private bool WouldExceedMaxDepth(string currentLevelId)
+        {
+            int currentDepth = GetDepthFromLevelId(currentLevelId);
+            int newDepth = currentDepth + 1; // Creating a nested level adds one more depth
+            bool wouldExceed = newDepth > maxHierarchyDepth;
+            
+            logger.Debug($"Depth check for {currentLevelId}: current depth={currentDepth}, new depth would be={newDepth}, max allowed={maxHierarchyDepth}, would exceed={wouldExceed}");
+            return wouldExceed;
+        }
+
+        /// <summary>
+        /// Checks if a layer number exceeds the maximum hierarchy depth
+        /// </summary>
+        private bool LayerExceedsMaxDepth(int layerNumber)
+        {
+            bool exceeds = layerNumber > maxHierarchyDepth;
+            logger.Debug($"Layer {layerNumber} exceeds max depth {maxHierarchyDepth}: {exceeds}");
+            return exceeds;
+        }
+
+        /// <summary>
+        /// Public method to check if nested levels can be created from a given level
+        /// </summary>
+        public bool CanCreateNestedLevel(string parentLevelId)
+        {
+            if (maxHierarchyDepth == 0)
+            {
+                logger.Debug($"Cannot create nested levels: Max hierarchy depth is 0");
+                return false;
+            }
+            
+            bool canCreate = !WouldExceedMaxDepth(parentLevelId);
+            logger.Debug($"CanCreateNestedLevel({parentLevelId}): {canCreate} (max depth: {maxHierarchyDepth})");
+            return canCreate;
         }
     }
 }

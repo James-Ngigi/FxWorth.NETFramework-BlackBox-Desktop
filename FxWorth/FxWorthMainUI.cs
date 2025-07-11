@@ -396,7 +396,12 @@ namespace FxWorth
                                 decimal currentAmountToBeRecovered = client.TradingParameters.AmountToBeRecoverd;
 
                                 decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
-                                if (currentAmountToBeRecovered > maxDrawdown && currentLevel.LevelId.Split('.').Length < storage.MaxHierarchyDepth + 1)
+                                
+                                // Check if amount exceeds max drawdown AND if creating nested level wouldn't exceed max depth
+                                bool exceedsDrawdown = currentAmountToBeRecovered > maxDrawdown;
+                                bool canCreateNestedLevel = storage.hierarchyNavigator?.CanCreateNestedLevel(currentLevel.LevelId) ?? false;
+                                
+                                if (exceedsDrawdown && canCreateNestedLevel)
                                 {
                                     int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
                                     decimal initialStakeForNextLayer;
@@ -428,6 +433,10 @@ namespace FxWorth
                                     storage.hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
                                     storage.SetHierarchyLevelTradingParameters(client);
                                     logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
+                                }
+                                else if (exceedsDrawdown && !canCreateNestedLevel)
+                                {
+                                    logger.Warn($"Level {currentLevel.LevelId} exceeds max drawdown (${currentAmountToBeRecovered:F2} > ${maxDrawdown:F2}) but cannot create nested level - would exceed maximum hierarchy depth {storage.MaxHierarchyDepth}. Level will continue trading with higher risk.");
                                 }
                             }
                         }
@@ -531,28 +540,28 @@ namespace FxWorth
             var layout = JsonConvert.DeserializeObject<Layout>(jstr);
 
             // Market Data Parameters
-            Period0_TXT.Value = layout.MarketDataParameters.Rsi.Period;
-            Overbought0_TXT.Value = (decimal)layout.MarketDataParameters.Rsi.Overbought;
-            Oversold_TXT.Value = (decimal)layout.MarketDataParameters.Rsi.Oversold;
-            Close_Interval0_TXT.Value = Math.Abs(layout.MarketDataParameters.Rsi.TimeFrame);
+            Period0_TXT.Value = Math.Max(Period0_TXT.Minimum, Math.Min(Period0_TXT.Maximum, layout.MarketDataParameters.Rsi.Period));
+            Overbought0_TXT.Value = Math.Max(Overbought0_TXT.Minimum, Math.Min(Overbought0_TXT.Maximum, (decimal)layout.MarketDataParameters.Rsi.Overbought));
+            Oversold_TXT.Value = Math.Max(Oversold_TXT.Minimum, Math.Min(Oversold_TXT.Maximum, (decimal)layout.MarketDataParameters.Rsi.Oversold));
+            Close_Interval0_TXT.Value = Math.Max(Close_Interval0_TXT.Minimum, Math.Min(Close_Interval0_TXT.Maximum, Math.Abs(layout.MarketDataParameters.Rsi.TimeFrame)));
             Close_Interval0_CMBX.SelectedIndex = layout.MarketDataParameters.Rsi.TimeFrame > 0 ? 1 : 0;
             Choose_Asset_CMBX.SelectedIndex = Choose_Asset_CMBX.Items.IndexOf(layout.MarketDataParameters.Symbol);
 
             // Trading Parameters - Phase 1
-            Barrier_Offset_TXT.Value = layout.TradingParameters.Barrier;
-            Duration_TXT.Value = layout.TradingParameters.Duration;
+            Barrier_Offset_TXT.Value = Math.Max(Barrier_Offset_TXT.Minimum, Math.Min(Barrier_Offset_TXT.Maximum, layout.TradingParameters.Barrier));
+            Duration_TXT.Value = Math.Max(Duration_TXT.Minimum, Math.Min(Duration_TXT.Maximum, layout.TradingParameters.Duration));
             Duration0_CMBX.SelectedIndex = Duration0_CMBX.Items.IndexOf(layout.TradingParameters.DurationType);
-            Stake_TXT.Value = layout.TradingParameters.Stake;
-            Max_Drawdown_TXT1.Value = layout.TradingParameters.MaxDrawdown;
-            Martingale_Level_TXT.Value = layout.TradingParameters.MartingaleLevel;
-            Stake_TXT2.Value = layout.TradingParameters.InitialStake4Layer1;
-            Hierarchy_Levels_TXT.Value = layout.TradingParameters.HierarchyLevels;
-            Max_Depth_TXT.Value = layout.TradingParameters.MaxHierarchyDepth;
+            Stake_TXT.Value = Math.Max(Stake_TXT.Minimum, Math.Min(Stake_TXT.Maximum, layout.TradingParameters.Stake));
+            Max_Drawdown_TXT1.Value = Math.Max(Max_Drawdown_TXT1.Minimum, Math.Min(Max_Drawdown_TXT1.Maximum, layout.TradingParameters.MaxDrawdown));
+            Martingale_Level_TXT.Value = Math.Max(Martingale_Level_TXT.Minimum, Math.Min(Martingale_Level_TXT.Maximum, layout.TradingParameters.MartingaleLevel));
+            Stake_TXT2.Value = Math.Max(Stake_TXT2.Minimum, Math.Min(Stake_TXT2.Maximum, layout.TradingParameters.InitialStake4Layer1));
+            Hierarchy_Levels_TXT.Value = Math.Max(Hierarchy_Levels_TXT.Minimum, Math.Min(Hierarchy_Levels_TXT.Maximum, layout.TradingParameters.HierarchyLevels));
+            Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Minimum, Math.Min(Max_Depth_TXT.Maximum, layout.TradingParameters.MaxHierarchyDepth));
 
             // Trading Parameters - Phase 2 (Hierarchy)
-            Barrier_Offset_TXT2.Value = layout.Phase2Parameters.Barrier;
-            Martingale_Level_TXT2.Value = layout.Phase2Parameters.MartingaleLevel;
-            Max_Drawdown_TXT2.Value = layout.Phase2Parameters.MaxDrawdown;
+            Barrier_Offset_TXT2.Value = Math.Max(Barrier_Offset_TXT2.Minimum, Math.Min(Barrier_Offset_TXT2.Maximum, layout.Phase2Parameters.Barrier));
+            Martingale_Level_TXT2.Value = Math.Max(Martingale_Level_TXT2.Minimum, Math.Min(Martingale_Level_TXT2.Maximum, layout.Phase2Parameters.MartingaleLevel));
+            Max_Drawdown_TXT2.Value = Math.Max(Max_Drawdown_TXT2.Minimum, Math.Min(Max_Drawdown_TXT2.Maximum, layout.Phase2Parameters.MaxDrawdown));
 
             // Null check for backward compatibility.
             if (layout.CustomLayerConfigs != null)
