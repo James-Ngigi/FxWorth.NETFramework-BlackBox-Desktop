@@ -902,10 +902,11 @@ namespace FxWorth.Hierarchy
                 else if (currentLayer == 1)
                 {
                     // We're in Layer 1 and no more levels available - complete hierarchy
-                    logger.Info("Layer 1 exhausted due to depth constraints - completing hierarchy");
+                    logger.Info("Layer 1 exhausted due to depth constraints - completing hierarchy and restoring root level trading");
                     IsInHierarchyMode = false;
                     newLevelId = "0";
-                    client.TradingParameters = null;
+                    // Restore root level trading parameters instead of nullifying - call TokenStorage method
+                    storage.RestoreRootLevelTradingParameters(client);
                 }
                 else
                 {

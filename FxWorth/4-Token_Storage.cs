@@ -1294,7 +1294,7 @@ namespace FxWorth
         /// Restores the root level trading parameters when exiting hierarchy mode
         /// Updates the take profit to reflect the remaining amount needed to reach the original target
         /// </summary>
-        private void RestoreRootLevelTradingParameters(AuthClient client)
+        public void RestoreRootLevelTradingParameters(AuthClient client)
         {
             if (!rootLevelProfitStates.TryGetValue(client, out RootLevelProfitState rootState))
             {
