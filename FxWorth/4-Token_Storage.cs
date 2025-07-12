@@ -25,7 +25,7 @@ namespace FxWorth
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private bool isTradingGloballyAllowed = true;
         public static int MaxTokensCount = 150;
-        private static int slowInternetConst = 650;
+        private static int slowInternetConst = 6650;
         
         // Delegate to get UI trading parameters
         public Func<TradingParameters> GetUITradingParameters { get; set; }

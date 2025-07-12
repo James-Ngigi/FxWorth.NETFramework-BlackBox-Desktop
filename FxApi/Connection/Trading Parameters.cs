@@ -96,16 +96,19 @@ namespace FxApi.Connection
                 if (!IsRecoveryMode)
                 {
                     IsRecoveryMode = true;
-                    // Double the first loss: one for actual loss recovery, one for virtual trade profit
+                    // Add the expected profit from the initial stake to ensure we exit recovery mode with profit
                     decimal firstLoss = Math.Abs(mlp);
-                    AmountToBeRecoverd = 2 * firstLoss;
-                    logger.Debug($"Entering recovery mode. First loss: {firstLoss:F2}, Amount to recover: {AmountToBeRecoverd:F2} (includes virtual trade)");
+                    decimal expectedProfit = PreviousProfit; // The profit the initial stake would have made
+                    AmountToBeRecoverd = firstLoss + expectedProfit;
+                    logger.Debug($"Entering recovery mode. First loss: {firstLoss:F2}, Expected profit: {expectedProfit:F2}, Amount to recover: {AmountToBeRecoverd:F2}");
                 }
                 else
                 {
-                    // Update amount to be recovered based on accumulated losses (normal addition after first entry)
-                    AmountToBeRecoverd = -recoveryResults.Sum();
-                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (accumulated losses)");
+                    // Update amount to be recovered: accumulated losses + maintain the original profit margin
+                    decimal accumulatedLosses = -recoveryResults.Sum();
+                    decimal originalProfitMargin = PreviousProfit; // Keep the original expected profit
+                    AmountToBeRecoverd = accumulatedLosses + originalProfitMargin;
+                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (losses: {accumulatedLosses:F2} + profit margin: {originalProfitMargin:F2})");
                 }
                 
                 // Update dynamic Martingale level (always dynamic now)
