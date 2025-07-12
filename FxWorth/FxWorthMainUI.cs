@@ -436,7 +436,28 @@ namespace FxWorth
                                 }
                                 else if (exceedsDrawdown && !canCreateNestedLevel)
                                 {
-                                    logger.Warn($"Level {currentLevel.LevelId} exceeds max drawdown (${currentAmountToBeRecovered:F2} > ${maxDrawdown:F2}) but cannot create nested level - would exceed maximum hierarchy depth {storage.MaxHierarchyDepth}. Level will continue trading with higher risk.");
+                                    logger.Warn($"Level {currentLevel.LevelId} exceeds max drawdown (${currentAmountToBeRecovered:F2} > ${maxDrawdown:F2}) but cannot create nested level - would exceed maximum hierarchy depth {storage.MaxHierarchyDepth}. Attempting to move to next level or parent.");
+                                    
+                                    // Try to handle the max drawdown situation by moving to appropriate next level
+                                    string previousLevelId = storage.hierarchyNavigator.currentLevelId;
+                                    bool handledSuccessfully = storage.hierarchyNavigator.HandleMaxDrawdownExceeded(client, currentLevel.LevelId);
+                                    
+                                    if (handledSuccessfully && storage.hierarchyNavigator.currentLevelId != previousLevelId)
+                                    {
+                                        if (storage.hierarchyNavigator.currentLevelId == "0")
+                                        {
+                                            logger.Info("Moved to root level due to depth limits and hierarchy completion.");
+                                        }
+                                        else
+                                        {
+                                            storage.SetHierarchyLevelTradingParameters(client);
+                                            logger.Info($"Successfully moved to level {storage.hierarchyNavigator.currentLevelId} due to depth limits and max drawdown exceeded.");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        logger.Info($"Cannot move to alternative level - staying in {currentLevel.LevelId} with higher risk due to depth and level constraints.");
+                                    }
                                 }
                             }
                         }

@@ -857,5 +857,76 @@ namespace FxWorth.Hierarchy
             logger.Debug($"CanCreateNestedLevel({parentLevelId}): {canCreate} (max depth: {maxHierarchyDepth})");
             return canCreate;
         }
+
+        /// <summary>
+        /// Handles moving to the next appropriate level when max drawdown is exceeded 
+        /// but depth limits prevent creating nested levels
+        /// </summary>
+        public bool HandleMaxDrawdownExceeded(AuthClient client, string currentLevelId)
+        {
+            if (!hierarchyLevels.TryGetValue(currentLevelId, out HierarchyLevel currentLevel))
+            {
+                logger.Error($"Cannot handle max drawdown exceeded: Level {currentLevelId} not found");
+                return false;
+            }
+
+            logger.Info($"Handling max drawdown exceeded for level {currentLevelId} (depth limits prevent nesting)");
+
+            string[] parts = currentLevelId.Split('.');
+            int currentLayer = int.Parse(parts[0]);
+            int currentLevelNumber = int.Parse(parts[1]);
+            string newLevelId = null;
+
+            // Try to create next level in the same layer first
+            int layerMaxLevels = GetLevelCountForLayer(currentLayer);
+            logger.Debug($"Level {currentLevelId}: current level number={currentLevelNumber}, max levels in layer={layerMaxLevels}");
+            
+            if (currentLevelNumber < layerMaxLevels)
+            {
+                // Move to next level in same layer
+                newLevelId = CreateNextLevelInLayer(currentLevelId);
+                if (newLevelId != null)
+                {
+                    logger.Info($"Created and moved to next level {newLevelId} in same layer due to max drawdown and depth constraints");
+                }
+            }
+            else
+            {
+                // No more levels in current layer, try to move up to parent level
+                if (parts.Length > 2)
+                {
+                    // We're in a nested level, move up to parent
+                    newLevelId = string.Join(".", parts.Take(parts.Length - 1));
+                    logger.Info($"Moving up to parent level {newLevelId} due to max drawdown and no more levels in current layer");
+                }
+                else if (currentLayer == 1)
+                {
+                    // We're in Layer 1 and no more levels available - complete hierarchy
+                    logger.Info("Layer 1 exhausted due to depth constraints - completing hierarchy");
+                    IsInHierarchyMode = false;
+                    newLevelId = "0";
+                    client.TradingParameters = null;
+                }
+                else
+                {
+                    // We're in a higher layer with no more levels - move up
+                    logger.Info($"Layer {currentLayer} exhausted - moving up in hierarchy");
+                    newLevelId = "1." + (layer1CompletedLevels + 1); // Move back to Layer 1 continuation
+                }
+            }
+
+            // Update current level ID if we determined a new level
+            if (!string.IsNullOrEmpty(newLevelId))
+            {
+                this.currentLevelId = newLevelId;
+                if (newLevelId != "0")
+                {
+                    AssignClientToLevel(newLevelId, client);
+                }
+                return true;
+            }
+
+            return false;
+        }
     }
 }
