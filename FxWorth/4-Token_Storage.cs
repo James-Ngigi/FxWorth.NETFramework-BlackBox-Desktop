@@ -76,7 +76,7 @@ namespace FxWorth
         private readonly TimeSpan CONNECTION_HEALTH_CHECK_INTERVAL = TimeSpan.FromSeconds(3);
         private readonly TimeSpan AUTH_RETRY_INTERVAL = TimeSpan.FromSeconds(10);
         private readonly int MAX_AUTH_RETRIES = 15;
-        private readonly int MAX_CONNECTION_RETRIES = int.MaxValue; // Keep trying until manually stopped
+        //private readonly int MAX_CONNECTION_RETRIES = int.MaxValue; // Keep trying until manually stopped
         private bool isPersistentConnectionEnabled = false;
         private readonly object connectionManagementLock = new object();
 
@@ -1170,7 +1170,7 @@ namespace FxWorth
             }
 
             // Use the new CreateNestedLevel method instead of CreateLayer for proper nested level creation
-            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
             hierarchyNavigator.currentLevelId = nextLevelId;

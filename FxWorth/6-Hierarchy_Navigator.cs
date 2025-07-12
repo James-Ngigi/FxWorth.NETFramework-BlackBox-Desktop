@@ -8,6 +8,180 @@ using NLog;
 namespace FxWorth.Hierarchy
 {
     /// <summary>
+    /// Unified level state management for hierarchy navigation
+    /// Encapsulates all state preservation and restoration logic
+    /// </summary>
+    public class LevelStateManager
+    {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly Dictionary<string, TradingParameters> savedStates = new Dictionary<string, TradingParameters>();
+
+        /// <summary>
+        /// Saves the current trading state for a level
+        /// </summary>
+        public void SaveLevelState(string levelId, AuthClient client)
+        {
+            if (client?.TradingParameters == null)
+            {
+                logger.Warn($"Cannot save state for {levelId} - client or trading parameters are null");
+                return;
+            }
+
+            try
+            {
+                var stateBackup = (TradingParameters)client.TradingParameters.Clone();
+                savedStates[levelId] = stateBackup;
+                
+                logger.Info($"Saved state for level {levelId}: " +
+                           $"RecoveryResults={stateBackup.RecoveryResults.Count}, " +
+                           $"DynamicStake=${stateBackup.DynamicStake:F2}, " +
+                           $"AmountToBeRecovered=${stateBackup.AmountToBeRecoverd:F2}, " +
+                           $"TakeProfit=${stateBackup.TakeProfit:F2}");
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Failed to save state for level {levelId}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Resets TotalProfit to prevent cross-level contamination while preserving other trading state
+        /// This ensures each level starts with clean profit tracking
+        /// </summary>
+        public void ResetTotalProfitForNewLevel(AuthClient client, string levelId)
+        {
+            if (client?.TradingParameters == null) return;
+
+            decimal previousTotalProfit = client.TradingParameters.TotalProfit;
+            client.TradingParameters.ResetForHierarchyTransition();
+            
+            logger.Info($"Reset TotalProfit for level {levelId}: {previousTotalProfit:F2} -> 0.00 to prevent cross-level contamination");
+        }
+
+        /// <summary>
+        /// Restores the saved trading state for a level
+        /// </summary>
+        public bool RestoreLevelState(string levelId, AuthClient client)
+        {
+            if (!savedStates.TryGetValue(levelId, out TradingParameters savedState))
+            {
+                logger.Debug($"No saved state found for level {levelId}");
+                return false;
+            }
+
+            try
+            {
+                client.TradingParameters = (TradingParameters)savedState.Clone();
+                savedStates.Remove(levelId); // Clean up after restoration
+                
+                logger.Info($"Restored state for level {levelId}: " +
+                           $"RecoveryResults={savedState.RecoveryResults.Count}, " +
+                           $"DynamicStake=${savedState.DynamicStake:F2}, " +
+                           $"AmountToBeRecovered=${savedState.AmountToBeRecoverd:F2}, " +
+                           $"TakeProfit=${savedState.TakeProfit:F2}");
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Failed to restore state for level {levelId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a saved state exists for a level
+        /// </summary>
+        public bool HasSavedState(string levelId)
+        {
+            return savedStates.ContainsKey(levelId);
+        }
+
+        /// <summary>
+        /// Clears all saved states (for cleanup)
+        /// </summary>
+        public void ClearAllStates()
+        {
+            logger.Info($"Clearing {savedStates.Count} saved level states");
+            savedStates.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Level relationship analyzer for navigation logic
+    /// Encapsulates all parent-child relationship identification
+    /// </summary>
+    public class LevelRelationshipAnalyzer
+    {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
+        /// <summary>
+        /// Determines the relationship between current level and potential next level
+        /// </summary>
+        public enum LevelRelationship
+        {
+            SameLayer,      // Moving to next level in same layer (1.1 -> 1.2)
+            ChildLevel,     // Moving to child level (1.1 -> 1.1.1)
+            ParentLevel,    // Moving to parent level (1.1.1 -> 1.1)
+            RootLevel,      // Moving to root level (any -> 0)
+            Invalid         // Invalid transition
+        }
+
+        /// <summary>
+        /// Gets the parent level ID for a given level
+        /// </summary>
+        public string GetParentLevelId(string levelId)
+        {
+            if (string.IsNullOrEmpty(levelId) || !levelId.Contains("."))
+                return "0"; // Root level
+
+            string[] parts = levelId.Split('.');
+            if (parts.Length <= 2)
+                return "0"; // Already at Layer 1, parent is root
+
+            return string.Join(".", parts.Take(parts.Length - 1));
+        }
+
+        /// <summary>
+        /// Gets the next level ID in the same layer
+        /// </summary>
+        public string GetNextLevelInSameLayer(string currentLevelId)
+        {
+            if (string.IsNullOrEmpty(currentLevelId) || !currentLevelId.Contains("."))
+                return null;
+
+            string[] parts = currentLevelId.Split('.');
+            int currentNumber = int.Parse(parts[parts.Length - 1]);
+            int nextNumber = currentNumber + 1;
+
+            parts[parts.Length - 1] = nextNumber.ToString();
+            return string.Join(".", parts);
+        }
+
+        /// <summary>
+        /// Gets the first child level ID for a given parent
+        /// </summary>
+        public string GetFirstChildLevelId(string parentLevelId)
+        {
+            return $"{parentLevelId}.1";
+        }
+
+        /// <summary>
+        /// Gets the depth of a level (0 = root, 1 = Layer 1, 2 = Layer 2, etc.)
+        /// </summary>
+        public int GetLevelDepth(string levelId)
+        {
+            if (levelId == "0")
+                return 0;
+
+            if (string.IsNullOrEmpty(levelId) || !levelId.Contains("."))
+                return 0;
+
+            return levelId.Split('.').Length - 1;
+        }
+    }
+
+    /// <summary>
     /// The `HierarchyNavigator` class manages the hierarchy of trading levels for a recovery strategy.
     /// Its engaged once an api token exceeds its MaxDrawdown.
     /// </summary>
@@ -26,6 +200,9 @@ namespace FxWorth.Hierarchy
         public bool IsInHierarchyMode { get; private set; } = false;
         internal int layer1CompletedLevels = 0;
         private Dictionary<string, AuthClient> levelClients = new Dictionary<string, AuthClient>();
+        // Unified state management and level relationship analysis
+        private readonly LevelStateManager stateManager = new LevelStateManager();
+        private readonly LevelRelationshipAnalyzer relationshipAnalyzer = new LevelRelationshipAnalyzer();
 
         /// <summary>
         /// Initializes a new instance of the `HierarchyNavigator` class to navigate through the layers and thier levels of the hierarchy instance engaged
@@ -54,11 +231,19 @@ namespace FxWorth.Hierarchy
             {
                 levelClients[levelId] = client;
                 
+                // Check if we're returning to a parent level with saved state
+                if (RestoreParentLevelState(levelId, client))
+                {
+                    logger.Info($"Successfully restored saved state for parent level {levelId}");
+                    return; // Don't reset profit when restoring saved state
+                }
+                
                 // Create fresh trading parameters for this level following the same pattern as root level
                 // Get the base parameters from the current client's configuration
                 if (client.TradingParameters != null)
                 {
                     LoadLevelTradingParameters(levelId, client, client.TradingParameters);
+                    logger.Info($"Created fresh trading parameters and reset profit for new level {levelId}");
                 }
                 else
                 {
@@ -404,163 +589,207 @@ namespace FxWorth.Hierarchy
             return nextLevelId;
         }
 
-        // This method moves through the hierarchy levels based on the current level ID.        
-        public bool MoveToNextLevel(AuthClient client)
+        /// <summary>
+        /// UNIFIED NAVIGATION METHOD - Handles ALL level transitions
+        /// This is the ONLY method that should be used for level navigation
+        /// </summary>
+        public bool NavigateToLevel(AuthClient client, string targetLevelId, string reason = "")
         {
-            if (string.IsNullOrEmpty(currentLevelId) || currentLevelId == "0")
+            if (string.IsNullOrEmpty(targetLevelId))
             {
-                logger.Error("Cannot move to next level: Invalid current level ID");
+                logger.Error("Cannot navigate: target level ID is null or empty");
                 return false;
             }
 
-            var currentLevel = GetCurrentLevel();
-            if (currentLevel == null)
+            string fromLevel = currentLevelId ?? "0";
+            logger.Info($"Navigation requested: {fromLevel} -> {targetLevelId} ({reason})");
+
+            // Handle root level transition
+            if (targetLevelId == "0")
             {
-                logger.Error($"Cannot move to next level: Current level {currentLevelId} not found");
-                return false;
+                return NavigateToRootLevel(client);
             }
+
+            // Analyze the relationship between current and target level
+            var relationship = AnalyzeLevelTransition(fromLevel, targetLevelId);
             
-            // Log detailed level state for debugging
-            logger.Info($"MoveToNextLevel check for level {currentLevelId}: " +
-                      $"IsCompleted={currentLevel.IsCompleted}, " +
-                      $"RecoveryResults.Count={currentLevel.RecoveryResults.Count}, " +
-                      $"TotalProfit=${currentLevel.GetTotalProfit():F2}, " +
-                      $"AmountToRecover=${currentLevel.AmountToRecover:F2}");
+            switch (relationship)
+            {
+                case "parent":
+                    return NavigateToParentLevel(client, targetLevelId);
+                case "child":
+                    return NavigateToChildLevel(client, targetLevelId);
+                case "sibling":
+                    return NavigateToSiblingLevel(client, targetLevelId);
+                default:
+                    logger.Error($"Invalid level transition: {fromLevel} -> {targetLevelId}");
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Analyzes the relationship between two levels
+        /// </summary>
+        private string AnalyzeLevelTransition(string fromLevel, string toLevel)
+        {
+            if (fromLevel == "0" || toLevel == "0")
+                return "root";
+
+            string[] fromParts = fromLevel.Split('.');
+            string[] toParts = toLevel.Split('.');
+
+            // Parent relationship: toLevel has fewer parts and is a prefix of fromLevel
+            if (toParts.Length < fromParts.Length)
+            {
+                bool isParent = true;
+                for (int i = 0; i < toParts.Length; i++)
+                {
+                    if (fromParts[i] != toParts[i])
+                    {
+                        isParent = false;
+                        break;
+                    }
+                }
+                if (isParent) return "parent";
+            }
+
+            // Child relationship: toLevel has more parts and fromLevel is a prefix
+            if (toParts.Length > fromParts.Length)
+            {
+                bool isChild = true;
+                for (int i = 0; i < fromParts.Length; i++)
+                {
+                    if (fromParts[i] != toParts[i])
+                    {
+                        isChild = false;
+                        break;
+                    }
+                }
+                if (isChild) return "child";
+            }
+
+            // Sibling relationship: same depth, same parent prefix
+            if (toParts.Length == fromParts.Length)
+            {
+                bool sameLevelGroup = true;
+                for (int i = 0; i < fromParts.Length - 1; i++)
+                {
+                    if (fromParts[i] != toParts[i])
+                    {
+                        sameLevelGroup = false;
+                        break;
+                    }
+                }
+                if (sameLevelGroup) return "sibling";
+            }
+
+            return "invalid";
+        }
+
+        /// <summary>
+        /// Navigates to root level (exits hierarchy)
+        /// </summary>
+        private bool NavigateToRootLevel(AuthClient client)
+        {
+            logger.Info("Navigating to root level - exiting hierarchy mode");
+            IsInHierarchyMode = false;
+            currentLevelId = "0";
             
-            // If the level is already marked as completed (e.g., in OnTakeProfitReached),
-            // then we don't need additional checks - proceed with the transition
-            if (!currentLevel.IsCompleted)
-            {
-                // Only recalculate completion status if not already completed
-                if (currentLevel.RecoveryResults.Any())
-                {
-                    decimal profitAmount = currentLevel.GetTotalProfit();
-                    decimal lossAmount = currentLevel.GetTotalLoss();
-                    
-                    logger.Info($"Level {currentLevelId} movement check: Profit=${profitAmount:F2}, Loss=${lossAmount:F2}, Target=${currentLevel.AmountToRecover:F2}");
-                    
-                    if (profitAmount >= currentLevel.AmountToRecover)
-                    {
-                        logger.Info($"Level {currentLevelId} has recovered ${profitAmount:F2} which exceeds needed amount ${currentLevel.AmountToRecover:F2}");
-                        currentLevel.IsCompleted = true;
-                    }
-                }
-                
-                // Don't move if level hasn't processed any trades or isn't completed
-                if (!currentLevel.IsCompleted)
-                {
-                    logger.Info($"Cannot move from level {currentLevelId}: Level has not been marked as completed");
-                    return false;
-                }
-            }
+            // Restore root level trading parameters
+            storage.RestoreRootLevelTradingParameters(client);
+            
+            // Clean up all saved states
+            stateManager.ClearAllStates();
+            
+            return true;
+        }
 
-            // Log exit from current level
-            logger.Info($"Exiting Level: {currentLevelId} (Completed: {currentLevel.IsCompleted}, " +
-                        $"Recovery Amount: {currentLevel.CurrentRecoveryAmount}, MaxDrawdown: {currentLevel.MaxDrawdown})");
-
-            string[] parts = currentLevelId.Split('.');
-            int currentLayer = int.Parse(parts[0]);
-            int currentLevelNumber = int.Parse(parts[1]);
-            string newLevelId = null;
-
-            // Handle nested levels (more than 2 parts, e.g., "1.1.1")
-            if (parts.Length > 2 && currentLevel.IsCompleted)
+        /// <summary>
+        /// Navigates to a parent level (moving up in hierarchy)
+        /// </summary>
+        private bool NavigateToParentLevel(AuthClient client, string parentLevelId)
+        {
+            logger.Info($"Navigating to parent level: {currentLevelId} -> {parentLevelId}");
+            
+            // Try to restore saved state for the parent level
+            if (stateManager.RestoreLevelState(parentLevelId, client))
             {
-                // For nested levels, try to move to next level in the same nested layer first
-                int lastLevelNumber = int.Parse(parts[parts.Length - 1]);
-                
-                // Determine the layer number for nested levels and get the correct level count
-                int layerDepth = parts.Length;
-                int actualLayerForConfig = layerDepth - 1;
-                int nestedLayerMaxLevels = GetLevelCountForLayer(actualLayerForConfig);
-                
-                // Check if we can move to the next level in this nested layer
-                if (lastLevelNumber < nestedLayerMaxLevels)
-                {
-                    newLevelId = CreateNextNestedLevelInLayer(currentLevelId);
-                    if (newLevelId != null)
-                    {
-                        logger.Info($"Moving to next level in nested layer. Entering Level: {newLevelId}");
-                    }
-                }
-                else
-                {
-                    // Move up to parent level
-                    newLevelId = string.Join(".", parts.Take(parts.Length - 1));
-                    logger.Info($"Completed nested layer, moving up from {currentLevelId} to parent level {newLevelId}");
-                }
-            }
-            // If we're in a nested layer (layer > 1), first try to move up to parent level
-            else if (currentLayer > 1 && currentLevel.IsCompleted)
-            {
-                // Get parent level ID by removing the last part
-                newLevelId = string.Join(".", parts.Take(parts.Length - 1));
-                logger.Info($"Moving up from nested layer {currentLevelId} to parent level {newLevelId}");
-            }
-            // If in Layer 1
-            else if (currentLayer == 1)
-            {
-                if (currentLevel.IsCompleted)
-                {
-                    layer1CompletedLevels++;
-                    int layer1TotalLevels = GetLevelCountForLayer(1); // Get the specific level count for Layer 1
-                    logger.Info($"Completed level {currentLevelId} - that's {layer1CompletedLevels} of {layer1TotalLevels} levels in Layer 1");
-                    
-                    if (layer1CompletedLevels >= layer1TotalLevels)                    
-                    {
-                        // All Layer 1 levels completed - exit hierarchy mode
-                        IsInHierarchyMode = false;
-                        newLevelId = "0";
-                        layer1CompletedLevels = 0;
-                        client.TradingParameters = null;
-                        
-                        logger.Info("Layer 1 fully recovered. Returning to root level trading.");
-                    }
-                    else
-                    {
-                        // Create and move to next level in Layer 1
-                        newLevelId = CreateNextLevelInLayer(currentLevelId);
-                        if (newLevelId != null)                        
-                        {
-                            logger.Info($"Moving to next Level 1 position. Entering Level: {newLevelId}");
-                        }
-                        else
-                        {
-                            logger.Error($"Failed to create next level after {currentLevelId}");
-                            return false;
-                        }
-                    }
-                }
-            }
-            // If we get here and the level is completed, create and move to next level in same layer
-            else if (currentLevel.IsCompleted && currentLevelNumber < GetLevelCountForLayer(currentLayer))
-            {
-                newLevelId = CreateNextLevelInLayer(currentLevelId);
-                if (newLevelId != null)
-                {
-                    logger.Info($"Moving to next level in same layer. Entering Level: {newLevelId}");
-                }
-                else
-                {
-                    logger.Error($"Failed to create next level after {currentLevelId}");
-                    return false;
-                }
-            }
-
-            // Only update the current level ID if we've determined a valid new level
-            if (!string.IsNullOrEmpty(newLevelId))
-            {
-                currentLevelId = newLevelId;
-                if (newLevelId != "0")  // Don't assign client for root level
-                {
-                    AssignClientToLevel(newLevelId, client);
-                }
+                currentLevelId = parentLevelId;
+                levelClients[parentLevelId] = client;
+                logger.Info($"Successfully restored parent level {parentLevelId} from saved state");
                 return true;
             }
-
-            // If we get here, we're staying in the current level
-            logger.Info($"No movement: Staying in current level {currentLevelId}");
+            
+            // If no saved state, create fresh parameters for the parent level
+            if (hierarchyLevels.ContainsKey(parentLevelId))
+            {
+                currentLevelId = parentLevelId;
+                AssignClientToLevel(parentLevelId, client);
+                logger.Info($"Created fresh parameters for parent level {parentLevelId}");
+                return true;
+            }
+            
+            logger.Error($"Cannot navigate to parent level {parentLevelId} - level does not exist");
             return false;
+        }
+
+        /// <summary>
+        /// Navigates to a child level (moving down in hierarchy)
+        /// </summary>
+        private bool NavigateToChildLevel(AuthClient client, string childLevelId)
+        {
+            logger.Info($"Navigating to child level: {currentLevelId} -> {childLevelId}");
+            
+            // Save current level state before moving to child
+            if (!string.IsNullOrEmpty(currentLevelId) && currentLevelId != "0")
+            {
+                stateManager.SaveLevelState(currentLevelId, client);
+            }
+            
+            // Check if child level exists, create if needed
+            if (!hierarchyLevels.ContainsKey(childLevelId))
+            {
+                logger.Error($"Child level {childLevelId} does not exist and cannot be created automatically");
+                return false;
+            }
+            
+            currentLevelId = childLevelId;
+            AssignClientToLevel(childLevelId, client);
+            
+            // Reset profit tracking for new level to prevent cross-level contamination
+            stateManager.ResetTotalProfitForNewLevel(client, childLevelId);
+            
+            logger.Info($"Successfully navigated to child level {childLevelId}");
+            return true;
+        }
+
+        /// <summary>
+        /// Navigates to a sibling level (same hierarchy depth)
+        /// </summary>
+        private bool NavigateToSiblingLevel(AuthClient client, string siblingLevelId)
+        {
+            logger.Info($"Navigating to sibling level: {currentLevelId} -> {siblingLevelId}");
+            
+            // Check if sibling level exists, create if needed
+            if (!hierarchyLevels.ContainsKey(siblingLevelId))
+            {
+                // Try to create the sibling level
+                string createdLevelId = CreateNextLevelInLayer(currentLevelId);
+                if (createdLevelId != siblingLevelId)
+                {
+                    logger.Error($"Failed to create sibling level {siblingLevelId}");
+                    return false;
+                }
+            }
+            
+            currentLevelId = siblingLevelId;
+            AssignClientToLevel(siblingLevelId, client);
+            
+            // Reset profit tracking for new level to prevent cross-level contamination
+            stateManager.ResetTotalProfitForNewLevel(client, siblingLevelId);
+            
+            logger.Info($"Successfully navigated to sibling level {siblingLevelId}");
+            return true;
         }        
         
         /// This method creates fresh trading parameters for the hierarchy level following the same pattern as root level initialization.
@@ -646,6 +875,14 @@ namespace FxWorth.Hierarchy
             // This creates proper parameter clones and sets up event handlers
             var tempParameters = freshParameters;
             storage.SetTradingParameters(tempParameters);
+            
+            // Ensure clean profit tracking for the new level by resetting TotalProfit
+            // This prevents profit accumulation from previous levels from contaminating the new level
+            if (client.TradingParameters != null)
+            {
+                client.TradingParameters.ResetForHierarchyTransition();
+                logger.Info($"Reset TotalProfit for fresh level {levelId} to prevent cross-level contamination");
+            }
 
             logger.Info($"Created fresh trading parameters for level {levelId}: TakeProfit=${freshParameters.TakeProfit:F2}, " +
                         $"Stake=${freshParameters.Stake:F2}, DynamicStake=${freshParameters.DynamicStake:F2}, " +
@@ -702,7 +939,7 @@ namespace FxWorth.Hierarchy
         /// Creates a nested level under the specified parent level when max drawdown is exceeded.
         /// This creates levels like "1.1.1" under parent "1.1"
         /// </summary>
-        public void CreateNestedLevel(string parentLevelId, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
+        public void CreateNestedLevel(string parentLevelId, AuthClient client, decimal amountToBeRecovered, TradingParameters tradingParameters, Dictionary<int, CustomLayerConfig> customLayerConfigs, decimal initialStake)
         {
             if (!hierarchyLevels.ContainsKey(parentLevelId))
             {
@@ -716,6 +953,9 @@ namespace FxWorth.Hierarchy
                 logger.Warn($"Cannot create nested level under {parentLevelId}: Would exceed maximum hierarchy depth {maxHierarchyDepth}");
                 return;
             }
+
+            // IMPORTANT: Save the parent level's current state before entering nested level
+            SaveParentLevelState(parentLevelId, client);
 
             var parentLevel = hierarchyLevels[parentLevelId];
             string nestedLevelId = $"{parentLevelId}.1";
@@ -861,6 +1101,7 @@ namespace FxWorth.Hierarchy
         /// <summary>
         /// Handles moving to the next appropriate level when max drawdown is exceeded 
         /// but depth limits prevent creating nested levels
+        /// Uses the unified navigation system
         /// </summary>
         public bool HandleMaxDrawdownExceeded(AuthClient client, string currentLevelId)
         {
@@ -872,62 +1113,178 @@ namespace FxWorth.Hierarchy
 
             logger.Info($"Handling max drawdown exceeded for level {currentLevelId} (depth limits prevent nesting)");
 
+            // Determine the next appropriate level when nesting is not possible
+            string nextLevelId = DetermineNextLevelForMaxDrawdown(currentLevelId);
+            if (string.IsNullOrEmpty(nextLevelId))
+            {
+                logger.Warn($"No alternative level available from {currentLevelId} due to max drawdown");
+                return false;
+            }
+
+            // Use unified navigation to move to the determined level
+            return NavigateToLevel(client, nextLevelId, "Max drawdown exceeded, depth limits prevent nesting");
+        }
+
+        /// <summary>
+        /// Determines the next level when max drawdown is exceeded but nesting is not possible
+        /// </summary>
+        private string DetermineNextLevelForMaxDrawdown(string currentLevelId)
+        {
             string[] parts = currentLevelId.Split('.');
             int currentLayer = int.Parse(parts[0]);
             int currentLevelNumber = int.Parse(parts[1]);
-            string newLevelId = null;
 
             // Try to create next level in the same layer first
             int layerMaxLevels = GetLevelCountForLayer(currentLayer);
-            logger.Debug($"Level {currentLevelId}: current level number={currentLevelNumber}, max levels in layer={layerMaxLevels}");
-            
             if (currentLevelNumber < layerMaxLevels)
             {
                 // Move to next level in same layer
-                newLevelId = CreateNextLevelInLayer(currentLevelId);
-                if (newLevelId != null)
-                {
-                    logger.Info($"Created and moved to next level {newLevelId} in same layer due to max drawdown and depth constraints");
-                }
+                return CreateNextLevelInLayer(currentLevelId);
+            }
+
+            // No more levels in current layer
+            if (parts.Length > 2)
+            {
+                // We're in a nested level, move up to parent
+                return string.Join(".", parts.Take(parts.Length - 1));
+            }
+            else if (currentLayer == 1)
+            {
+                // We're in Layer 1 and no more levels available - complete hierarchy
+                return "0";
             }
             else
             {
-                // No more levels in current layer, try to move up to parent level
-                if (parts.Length > 2)
+                // We're in a higher layer with no more levels - move back to Layer 1
+                return "1." + (layer1CompletedLevels + 1);
+            }
+        }
+
+        /// <summary>
+        /// Saves the current trading parameters state for a level before entering nested levels
+        /// </summary>
+        private void SaveParentLevelState(string levelId, AuthClient client)
+        {
+            stateManager.SaveLevelState(levelId, client);
+        }
+
+        /// <summary>
+        /// Restores the saved trading parameters state when returning to a parent level
+        /// </summary>
+        private bool RestoreParentLevelState(string levelId, AuthClient client)
+        {
+            return stateManager.RestoreLevelState(levelId, client);
+        }
+
+        /// <summary>
+        /// Simplified MoveToNextLevel that automatically determines the next level
+        /// and uses the unified navigation system
+        /// </summary>
+        public bool MoveToNextLevel(AuthClient client)
+        {
+            if (string.IsNullOrEmpty(currentLevelId) || currentLevelId == "0")
+            {
+                logger.Error("Cannot move to next level: Invalid current level ID");
+                return false;
+            }
+
+            var currentLevel = GetCurrentLevel();
+            if (currentLevel == null)
+            {
+                logger.Error($"Cannot move to next level: Current level {currentLevelId} not found");
+                return false;
+            }
+
+            // Check if level is completed
+            if (!currentLevel.IsCompleted)
+            {
+                // Check completion status based on recovery results
+                if (currentLevel.RecoveryResults.Any())
                 {
-                    // We're in a nested level, move up to parent
-                    newLevelId = string.Join(".", parts.Take(parts.Length - 1));
-                    logger.Info($"Moving up to parent level {newLevelId} due to max drawdown and no more levels in current layer");
+                    decimal profitAmount = currentLevel.GetTotalProfit();
+                    if (profitAmount >= currentLevel.AmountToRecover)
+                    {
+                        logger.Info($"Level {currentLevelId} completed: ${profitAmount:F2} >= ${currentLevel.AmountToRecover:F2}");
+                        currentLevel.IsCompleted = true;
+                    }
                 }
-                else if (currentLayer == 1)
+
+                if (!currentLevel.IsCompleted)
                 {
-                    // We're in Layer 1 and no more levels available - complete hierarchy
-                    logger.Info("Layer 1 exhausted due to depth constraints - completing hierarchy and restoring root level trading");
-                    IsInHierarchyMode = false;
-                    newLevelId = "0";
-                    // Restore root level trading parameters instead of nullifying - call TokenStorage method
-                    storage.RestoreRootLevelTradingParameters(client);
+                    logger.Info($"Cannot move from level {currentLevelId}: Level not completed");
+                    return false;
+                }
+            }
+
+            // Determine the next level based on hierarchy rules
+            string nextLevelId = DetermineNextLevel(currentLevelId);
+            if (string.IsNullOrEmpty(nextLevelId))
+            {
+                logger.Info($"No next level available from {currentLevelId}");
+                return false;
+            }
+
+            // Use unified navigation to move to the next level
+            return NavigateToLevel(client, nextLevelId, "Level completed");
+        }
+
+        /// <summary>
+        /// Determines the next level ID based on current level and hierarchy rules
+        /// </summary>
+        private string DetermineNextLevel(string currentLevelId)
+        {
+            string[] parts = currentLevelId.Split('.');
+            int currentLayer = int.Parse(parts[0]);
+            int currentLevelNumber = int.Parse(parts[1]);
+
+            // For nested levels (more than 2 parts)
+            if (parts.Length > 2)
+            {
+                int lastLevelNumber = int.Parse(parts[parts.Length - 1]);
+                int layerDepth = parts.Length;
+                int actualLayerForConfig = layerDepth - 1;
+                int nestedLayerMaxLevels = GetLevelCountForLayer(actualLayerForConfig);
+
+                // Try next level in same nested layer
+                if (lastLevelNumber < nestedLayerMaxLevels)
+                {
+                    return CreateNextNestedLevelInLayer(currentLevelId);
                 }
                 else
                 {
-                    // We're in a higher layer with no more levels - move up
-                    logger.Info($"Layer {currentLayer} exhausted - moving up in hierarchy");
-                    newLevelId = "1." + (layer1CompletedLevels + 1); // Move back to Layer 1 continuation
+                    // Move up to parent level
+                    return string.Join(".", parts.Take(parts.Length - 1));
                 }
             }
 
-            // Update current level ID if we determined a new level
-            if (!string.IsNullOrEmpty(newLevelId))
+            // For Layer 1 levels
+            if (currentLayer == 1)
             {
-                this.currentLevelId = newLevelId;
-                if (newLevelId != "0")
+                layer1CompletedLevels++;
+                int layer1TotalLevels = GetLevelCountForLayer(1);
+
+                if (layer1CompletedLevels >= layer1TotalLevels)
                 {
-                    AssignClientToLevel(newLevelId, client);
+                    // All Layer 1 levels completed - exit to root
+                    layer1CompletedLevels = 0;
+                    return "0";
                 }
-                return true;
+                else
+                {
+                    // Move to next level in Layer 1
+                    return CreateNextLevelInLayer(currentLevelId);
+                }
             }
 
-            return false;
+            // For other layers, try to move to next level in same layer
+            int layerMaxLevels = GetLevelCountForLayer(currentLayer);
+            if (currentLevelNumber < layerMaxLevels)
+            {
+                return CreateNextLevelInLayer(currentLevelId);
+            }
+
+            // No more levels available
+            return null;
         }
     }
 }

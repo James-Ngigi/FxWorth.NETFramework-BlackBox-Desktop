@@ -23,7 +23,7 @@ namespace FxApi.Connection
         public string DurationType { get; set; }
         public decimal MaxDrawdown { get; set; }
         public int MartingaleLevel { get; set; }
-        public decimal GearingFactor => Math.Max(0.1m, (decimal)MartingaleLevel);
+        
         private int currentMartingaleLevel = 1;
         public int HierarchyLevels { get; set; }
         public int MaxHierarchyDepth { get; set; }
@@ -103,38 +103,34 @@ namespace FxApi.Connection
                 }
                 else
                 {
-                    // Update amount to be recovered: accumulated losses + virtual trade amount (first loss)
-                    decimal accumulatedLosses = -recoveryResults.Sum();
-                    decimal virtualTradeAmount = Math.Abs(recoveryResults.First()); // First loss = virtual trade amount
-                    AmountToBeRecoverd = accumulatedLosses + virtualTradeAmount;
-                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (losses: {accumulatedLosses:F2} + virtual trade: {virtualTradeAmount:F2})");
+                    // Update amount to be recovered based on accumulated losses (normal addition after first entry)
+                    AmountToBeRecoverd = -recoveryResults.Sum();
+                    logger.Debug($"Updated amount to recover: {AmountToBeRecoverd:F2} (accumulated losses)");
                 }
                 
-                // Dynamic logarithmic Martingale calculation - truly dynamic, no caps
-                // Uses logarithmic scaling based on AmountToBeRecovered relative to MaxDrawdown
-                // GearingFactor (from MartingaleLevel) controls recovery personality/aggressiveness
+                // Update dynamic Martingale level (always dynamic now)
+                // Progressive dynamic Martingale based on fractions toward max drawdown
+                // MartingaleLevel from UI determines the maximum progression levels
+                int maxDynamicMartingaleLevel = Math.Max(1, MartingaleLevel); // Ensure minimum of 1
                 
-                if (AmountToBeRecoverd > 0 && MaxDrawdown > 0)
+                // Calculate progressive thresholds: 1/max, 2/max, 3/max, etc. of max drawdown
+                CurrentMartingaleLevel = 1; // Start with level 1
+                
+                for (int level = 2; level <= maxDynamicMartingaleLevel; level++)
                 {
-                    // Calculate risk ratio: how far along we are toward max drawdown (0.0 to 1.0+)
-                    decimal riskRatio = AmountToBeRecoverd / MaxDrawdown;
-                    
-                    double logValue = Math.Log(1.0 + (double)riskRatio);
-    
-                    // Apply the GearingFactor as a direct, sensitive multiplier to the log-scaled risk.
-                    // This is the new, leveraged formula.
-                    decimal scaledLevel = (decimal)logValue * GearingFactor;
-                    
-                    // Ensure the level is at least 1.
-                    CurrentMartingaleLevel = Math.Max(1, (int)Math.Ceiling(scaledLevel));
-                    
-                    logger.Debug($"Leveraged Logarithmic Martingale: RiskRatio={riskRatio:F3}, GearingFactor={GearingFactor:F1}, " +
-                            $"Level={CurrentMartingaleLevel} (Amount: {AmountToBeRecoverd:F2})");
+                    decimal threshold = MaxDrawdown * (level - 1) / maxDynamicMartingaleLevel;
+                    if (AmountToBeRecoverd >= threshold)
+                    {
+                        CurrentMartingaleLevel = level;
+                    }
+                    else
+                    {
+                        break; // Stop at first threshold not met
+                    }
                 }
-                else
-                {
-                    CurrentMartingaleLevel = 1;
-                }
+                
+                logger.Debug($"Dynamic Martingale level set to {CurrentMartingaleLevel} " +
+                           $"(Amount to recover: {AmountToBeRecoverd} vs Max drawdown: {MaxDrawdown}, Max levels: {maxDynamicMartingaleLevel})");
 
                 // Sacrosancts
                 // Calculate recovery stake using Martingale strategy
@@ -196,7 +192,8 @@ namespace FxApi.Connection
         public void ResetForHierarchyTransition()
         {
             RecoveryResults.Clear();
-            logger.Info("Reset recovery results for hierarchy level transition");
+            TotalProfit = 0; // Reset total profit to prevent cross-level contamination
+            logger.Info("Reset recovery results and total profit for hierarchy level transition");
         }
 
         /// <summary>

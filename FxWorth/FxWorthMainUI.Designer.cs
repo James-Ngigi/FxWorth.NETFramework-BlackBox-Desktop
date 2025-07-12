@@ -503,9 +503,9 @@
             this.Martingale_Level_LBL2.Location = new System.Drawing.Point(15, 49);
             this.Martingale_Level_LBL2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Martingale_Level_LBL2.Name = "Martingale_Level_LBL2";
-            this.Martingale_Level_LBL2.Size = new System.Drawing.Size(127, 25);
+            this.Martingale_Level_LBL2.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL2.TabIndex = 0;
-            this.Martingale_Level_LBL2.Text = "Gearing Factor";
+            this.Martingale_Level_LBL2.Text = "Martingale Levels";
             // 
             // Max_Drawdown_TXT2
             // 
@@ -551,13 +551,7 @@
             // 
             // Martingale_Level_TXT2
             // 
-            this.Martingale_Level_TXT2.DecimalPlaces = 2;
             this.Martingale_Level_TXT2.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Martingale_Level_TXT2.Increment = new decimal(new int[] {
-            1,
-            0,
-            0,
-            131072});
             this.Martingale_Level_TXT2.Location = new System.Drawing.Point(214, 44);
             this.Martingale_Level_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Martingale_Level_TXT2.Maximum = new decimal(new int[] {
@@ -665,9 +659,9 @@
             this.Martingale_Level_LBL.Location = new System.Drawing.Point(15, 40);
             this.Martingale_Level_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Martingale_Level_LBL.Name = "Martingale_Level_LBL";
-            this.Martingale_Level_LBL.Size = new System.Drawing.Size(127, 25);
+            this.Martingale_Level_LBL.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL.TabIndex = 0;
-            this.Martingale_Level_LBL.Text = "Gearing Factor";
+            this.Martingale_Level_LBL.Text = "Martingale Levels";
             // 
             // Max_Drawdown_TXT1
             // 
@@ -708,13 +702,7 @@
             // 
             // Martingale_Level_TXT
             // 
-            this.Martingale_Level_TXT.DecimalPlaces = 2;
             this.Martingale_Level_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Martingale_Level_TXT.Increment = new decimal(new int[] {
-            1,
-            0,
-            0,
-            131072});
             this.Martingale_Level_TXT.Location = new System.Drawing.Point(214, 35);
             this.Martingale_Level_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Martingale_Level_TXT.Maximum = new decimal(new int[] {
