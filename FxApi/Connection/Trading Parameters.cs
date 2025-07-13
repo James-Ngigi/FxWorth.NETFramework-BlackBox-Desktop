@@ -157,12 +157,11 @@ namespace FxApi.Connection
                 // Add the profit to recoveryResults
                 recoveryResults.Add(mlp);
                 AmountToBeRecoverd = -recoveryResults.Sum();
-                RecoveryAttemptsLeft--;
 
                 decimal recoveryProfit = mlp + recoveryResults.Sum();
 
                 // Check if recovery is complete (we've recovered actual losses + virtual trade)
-                if (recoveryProfit >= AmountToBeRecoverd || RecoveryAttemptsLeft == 0)
+                if (recoveryProfit >= AmountToBeRecoverd)
                 {
                     DynamicStake = Stake;
                     IsRecoveryMode = false;
