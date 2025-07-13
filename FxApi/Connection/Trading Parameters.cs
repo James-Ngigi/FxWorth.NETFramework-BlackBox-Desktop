@@ -188,15 +188,17 @@ namespace FxApi.Connection
         }     
         
         /// <summary>
-        /// Reseting the recovery results and the levels profit for hierarchy transitions.
-        /// This method follows the principle of not interfering with trading object's logical calculations.
-        /// It only clears recovery-related data that should be reset between levels.
+        /// DEPRECATED: This method should no longer be used as it interferes with trading object calculations.
+        /// Trading objects are sacred and should not have their calculations modified by hierarchy navigation.
+        /// The hierarchy navigator should only track profits, not reset them.
+        /// Use hierarchy-specific profit tracking instead.
         /// </summary>
+        [Obsolete("Do not use - interferes with trading object calculations. Use hierarchy profit tracking instead.")]
         public void ResetForHierarchyTransition()
         {
-            RecoveryResults.Clear();
-            TotalProfit = 0; // Reset total profit to prevent cross-level contamination
-            logger.Info("Reset recovery results and total profit for hierarchy level transition");
+            // This method is deprecated to prevent interference with trading object calculations
+            // Trading objects should maintain their state - only external profit tracking should be used
+            logger.Warn("DEPRECATED: ResetForHierarchyTransition called - this interferes with trading object calculations");
         }
 
         /// <summary>

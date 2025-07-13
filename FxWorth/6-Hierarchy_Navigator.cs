@@ -9,15 +9,73 @@ namespace FxWorth.Hierarchy
 {
     /// <summary>
     /// Unified level state management for hierarchy navigation
-    /// Encapsulates all state preservation and restoration logic
+    /// Implements pure profit tracking without interfering with trading object calculations
     /// </summary>
     public class LevelStateManager
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly Dictionary<string, TradingParameters> savedStates = new Dictionary<string, TradingParameters>();
+        private readonly Dictionary<string, HierarchyLevelProfitTracker> levelProfitTrackers = new Dictionary<string, HierarchyLevelProfitTracker>();
 
         /// <summary>
-        /// Saves the current trading state for a level
+        /// Tracks profit for a hierarchy level without interfering with trading object calculations
+        /// </summary>
+        public void TrackLevelProfit(string levelId, decimal profit)
+        {
+            if (!levelProfitTrackers.ContainsKey(levelId))
+            {
+                levelProfitTrackers[levelId] = new HierarchyLevelProfitTracker();
+            }
+            
+            levelProfitTrackers[levelId].AddProfit(profit);
+            logger.Debug($"Tracked profit for level {levelId}: {profit:F2}, Total: {levelProfitTrackers[levelId].TotalProfit:F2}");
+        }
+
+        /// <summary>
+        /// Gets the accumulated profit for a level
+        /// </summary>
+        public decimal GetLevelProfit(string levelId)
+        {
+            return levelProfitTrackers.TryGetValue(levelId, out var tracker) ? tracker.TotalProfit : 0;
+        }
+
+        /// <summary>
+        /// Gets the accumulated profit for all child levels of a parent
+        /// </summary>
+        public decimal GetChildrenAccumulatedProfit(string parentLevelId)
+        {
+            decimal totalChildProfit = 0;
+            
+            foreach (var kvp in levelProfitTrackers)
+            {
+                string levelId = kvp.Key;
+                var tracker = kvp.Value;
+                
+                // Check if this level is a child of the parent
+                if (IsChildLevel(levelId, parentLevelId))
+                {
+                    totalChildProfit += tracker.TotalProfit;
+                    logger.Debug($"Child level {levelId} contributed {tracker.TotalProfit:F2} to parent {parentLevelId}");
+                }
+            }
+            
+            logger.Info($"Total accumulated profit from children of {parentLevelId}: {totalChildProfit:F2}");
+            return totalChildProfit;
+        }
+
+        /// <summary>
+        /// Checks if a level is a child of another level
+        /// </summary>
+        private bool IsChildLevel(string levelId, string parentLevelId)
+        {
+            if (string.IsNullOrEmpty(levelId) || string.IsNullOrEmpty(parentLevelId))
+                return false;
+                
+            return levelId.StartsWith(parentLevelId + ".") && levelId != parentLevelId;
+        }
+
+        /// <summary>
+        /// Saves the current trading state for a level (captures the state at max drawdown)
         /// </summary>
         public void SaveLevelState(string levelId, AuthClient client)
         {
@@ -45,21 +103,19 @@ namespace FxWorth.Hierarchy
         }
 
         /// <summary>
-        /// Resets TotalProfit to prevent cross-level contamination while preserving other trading state
-        /// This ensures each level starts with clean profit tracking
+        /// DEPRECATED: No longer resets TotalProfit to prevent interference with trading calculations
+        /// Trading objects are sacred and should not be modified by hierarchy navigation
         /// </summary>
+        [Obsolete("Do not use - interferes with trading object calculations")]
         public void ResetTotalProfitForNewLevel(AuthClient client, string levelId)
         {
-            if (client?.TradingParameters == null) return;
-
-            decimal previousTotalProfit = client.TradingParameters.TotalProfit;
-            client.TradingParameters.ResetForHierarchyTransition();
-            
-            logger.Info($"Reset TotalProfit for level {levelId}: {previousTotalProfit:F2} -> 0.00 to prevent cross-level contamination");
+            logger.Warn($"DEPRECATED: ResetTotalProfitForNewLevel called for {levelId} - this interferes with trading object calculations");
+            // No longer reset TotalProfit - trading objects should remain untouched
         }
 
         /// <summary>
-        /// Restores the saved trading state for a level
+        /// Restores the saved trading state for a level and calculates remaining profit target
+        /// based on children's accumulated profits
         /// </summary>
         public bool RestoreLevelState(string levelId, AuthClient client)
         {
@@ -71,14 +127,27 @@ namespace FxWorth.Hierarchy
 
             try
             {
-                client.TradingParameters = (TradingParameters)savedState.Clone();
+                // Clone the saved state to restore
+                var restoredState = (TradingParameters)savedState.Clone();
+                
+                // Calculate accumulated profit from children
+                decimal childrenProfit = GetChildrenAccumulatedProfit(levelId);
+                
+                // Calculate remaining profit needed for this level
+                decimal originalTakeProfit = savedState.TakeProfit;
+                decimal remainingProfitNeeded = Math.Max(0, originalTakeProfit - childrenProfit);
+                
+                // Update the take profit to reflect remaining amount needed
+                restoredState.TakeProfit = remainingProfitNeeded;
+                
+                client.TradingParameters = restoredState;
                 savedStates.Remove(levelId); // Clean up after restoration
                 
                 logger.Info($"Restored state for level {levelId}: " +
-                           $"RecoveryResults={savedState.RecoveryResults.Count}, " +
-                           $"DynamicStake=${savedState.DynamicStake:F2}, " +
-                           $"AmountToBeRecovered=${savedState.AmountToBeRecoverd:F2}, " +
-                           $"TakeProfit=${savedState.TakeProfit:F2}");
+                           $"OriginalTakeProfit=${originalTakeProfit:F2}, " +
+                           $"ChildrenProfit=${childrenProfit:F2}, " +
+                           $"RemainingNeeded=${remainingProfitNeeded:F2}, " +
+                           $"DynamicStake=${restoredState.DynamicStake:F2}");
                 
                 return true;
             }
@@ -234,8 +303,8 @@ namespace FxWorth.Hierarchy
                 // Check if we're returning to a parent level with saved state
                 if (RestoreParentLevelState(levelId, client))
                 {
-                    logger.Info($"Successfully restored saved state for parent level {levelId}");
-                    return; // Don't reset profit when restoring saved state
+                    logger.Info($"Successfully restored saved state for parent level {levelId} with children profit adjustments");
+                    return; // State restored with proper profit adjustments - don't interfere further
                 }
                 
                 // Create fresh trading parameters for this level following the same pattern as root level
@@ -243,7 +312,7 @@ namespace FxWorth.Hierarchy
                 if (client.TradingParameters != null)
                 {
                     LoadLevelTradingParameters(levelId, client, client.TradingParameters);
-                    logger.Info($"Created fresh trading parameters and reset profit for new level {levelId}");
+                    logger.Info($"Created fresh trading parameters for new level {levelId} (trading object calculations preserved)");
                 }
                 else
                 {
@@ -756,10 +825,8 @@ namespace FxWorth.Hierarchy
             currentLevelId = childLevelId;
             AssignClientToLevel(childLevelId, client);
             
-            // Reset profit tracking for new level to prevent cross-level contamination
-            stateManager.ResetTotalProfitForNewLevel(client, childLevelId);
-            
-            logger.Info($"Successfully navigated to child level {childLevelId}");
+            // Do NOT reset TotalProfit - trading objects are sacred
+            logger.Info($"Successfully navigated to child level {childLevelId} (trading object calculations preserved)");
             return true;
         }
 
@@ -785,10 +852,8 @@ namespace FxWorth.Hierarchy
             currentLevelId = siblingLevelId;
             AssignClientToLevel(siblingLevelId, client);
             
-            // Reset profit tracking for new level to prevent cross-level contamination
-            stateManager.ResetTotalProfitForNewLevel(client, siblingLevelId);
-            
-            logger.Info($"Successfully navigated to sibling level {siblingLevelId}");
+            // Do NOT reset TotalProfit - trading objects are sacred
+            logger.Info($"Successfully navigated to sibling level {siblingLevelId} (trading object calculations preserved)");
             return true;
         }        
         
@@ -876,13 +941,9 @@ namespace FxWorth.Hierarchy
             var tempParameters = freshParameters;
             storage.SetTradingParameters(tempParameters);
             
-            // Ensure clean profit tracking for the new level by resetting TotalProfit
-            // This prevents profit accumulation from previous levels from contaminating the new level
-            if (client.TradingParameters != null)
-            {
-                client.TradingParameters.ResetForHierarchyTransition();
-                logger.Info($"Reset TotalProfit for fresh level {levelId} to prevent cross-level contamination");
-            }
+            // DO NOT reset TotalProfit - trading objects are sacred and should not be interfered with
+            // The hierarchy navigator should only track profits externally, not modify trading calculations
+            logger.Info($"Created fresh trading parameters for level {levelId} (trading object calculations preserved)");
 
             logger.Info($"Created fresh trading parameters for level {levelId}: TakeProfit=${freshParameters.TakeProfit:F2}, " +
                         $"Stake=${freshParameters.Stake:F2}, DynamicStake=${freshParameters.DynamicStake:F2}, " +
@@ -1195,6 +1256,14 @@ namespace FxWorth.Hierarchy
                 return false;
             }
 
+            // Track the profit from this completed level
+            if (currentLevel.IsCompleted && client.TradingParameters != null)
+            {
+                decimal levelProfit = client.TradingParameters.TotalProfit;
+                stateManager.TrackLevelProfit(currentLevelId, levelProfit);
+                logger.Info($"Tracked profit for completed level {currentLevelId}: {levelProfit:F2}");
+            }
+
             // Check if level is completed
             if (!currentLevel.IsCompleted)
             {
@@ -1221,6 +1290,19 @@ namespace FxWorth.Hierarchy
             if (string.IsNullOrEmpty(nextLevelId))
             {
                 logger.Info($"No next level available from {currentLevelId}");
+                
+                // If we're stuck due to max depth, try to navigate up to parent
+                if (IsAtMaxDepth(currentLevelId))
+                {
+                    string parentLevelId = GetParentLevelId(currentLevelId);
+                    if (!string.IsNullOrEmpty(parentLevelId))
+                    {
+                        logger.Info($"Level {currentLevelId} at max depth, attempting to navigate up to parent {parentLevelId}");
+                        return NavigateToLevel(client, parentLevelId, "Max depth reached - navigating up");
+                    }
+                }
+                
+                logger.Info($"Could not transition to next level - staying in current level");
                 return false;
             }
 
@@ -1229,7 +1311,36 @@ namespace FxWorth.Hierarchy
         }
 
         /// <summary>
+        /// Checks if a level is at maximum hierarchy depth
+        /// </summary>
+        private bool IsAtMaxDepth(string levelId)
+        {
+            if (string.IsNullOrEmpty(levelId)) return false;
+            
+            string[] parts = levelId.Split('.');
+            int currentDepth = parts.Length;
+            
+            bool atMaxDepth = currentDepth >= maxHierarchyDepth;
+            logger.Debug($"Level {levelId}: depth={currentDepth}, maxDepth={maxHierarchyDepth}, atMaxDepth={atMaxDepth}");
+            return atMaxDepth;
+        }
+
+        /// <summary>
+        /// Gets the parent level ID for a given level
+        /// </summary>
+        private string GetParentLevelId(string levelId)
+        {
+            if (string.IsNullOrEmpty(levelId)) return null;
+            
+            string[] parts = levelId.Split('.');
+            if (parts.Length <= 2) return "0"; // If at layer level, parent is root
+            
+            return string.Join(".", parts.Take(parts.Length - 1));
+        }
+
+        /// <summary>
         /// Determines the next level ID based on current level and hierarchy rules
+        /// Handles proper upward navigation when max depth is reached
         /// </summary>
         private string DetermineNextLevel(string currentLevelId)
         {
@@ -1248,18 +1359,32 @@ namespace FxWorth.Hierarchy
                 // Try next level in same nested layer
                 if (lastLevelNumber < nestedLayerMaxLevels)
                 {
-                    return CreateNextNestedLevelInLayer(currentLevelId);
+                    string nextNestedLevel = CreateNextNestedLevelInLayer(currentLevelId);
+                    if (!string.IsNullOrEmpty(nextNestedLevel))
+                    {
+                        return nextNestedLevel;
+                    }
                 }
-                else
-                {
-                    // Move up to parent level
-                    return string.Join(".", parts.Take(parts.Length - 1));
-                }
+                
+                // No more levels in nested layer OR at max depth - move up to parent level
+                string parentLevelId = string.Join(".", parts.Take(parts.Length - 1));
+                logger.Info($"Level {currentLevelId} completed, navigating up to parent level {parentLevelId}");
+                return parentLevelId;
             }
 
             // For Layer 1 levels
             if (currentLayer == 1)
             {
+                // Check if we can create a nested level (not at max depth)
+                if (CanCreateNestedLevel(currentLevelId))
+                {
+                    // Try to create nested level instead of sibling
+                    string nestedLevelId = currentLevelId + ".1";
+                    logger.Info($"Creating nested level {nestedLevelId} from completed level {currentLevelId}");
+                    return nestedLevelId;
+                }
+                
+                // Can't create nested level, try next sibling level
                 layer1CompletedLevels++;
                 int layer1TotalLevels = GetLevelCountForLayer(1);
 
@@ -1267,12 +1392,15 @@ namespace FxWorth.Hierarchy
                 {
                     // All Layer 1 levels completed - exit to root
                     layer1CompletedLevels = 0;
+                    logger.Info("All Layer 1 levels completed - returning to root level");
                     return "0";
                 }
                 else
                 {
                     // Move to next level in Layer 1
-                    return CreateNextLevelInLayer(currentLevelId);
+                    string nextLevel = CreateNextLevelInLayer(currentLevelId);
+                    logger.Info($"Moving to next sibling level in Layer 1: {nextLevel}");
+                    return nextLevel;
                 }
             }
 
@@ -1280,11 +1408,60 @@ namespace FxWorth.Hierarchy
             int layerMaxLevels = GetLevelCountForLayer(currentLayer);
             if (currentLevelNumber < layerMaxLevels)
             {
-                return CreateNextLevelInLayer(currentLevelId);
+                string nextLevel = CreateNextLevelInLayer(currentLevelId);
+                logger.Info($"Moving to next level in Layer {currentLayer}: {nextLevel}");
+                return nextLevel;
             }
 
-            // No more levels available
+            // No more levels available in current layer - move up
+            logger.Info($"No more levels in Layer {currentLayer} - need to navigate up");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Tracks profit for individual hierarchy levels without interfering with trading object calculations
+    /// Implements pure profit tracking that respects the sacred nature of trading objects
+    /// </summary>
+    public class HierarchyLevelProfitTracker
+    {
+        private readonly List<decimal> profits = new List<decimal>();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
+        public decimal TotalProfit { get; private set; }
+        public decimal TotalLoss { get; private set; }
+        public decimal NetProfit => TotalProfit - TotalLoss;
+
+        /// <summary>
+        /// Adds a profit/loss entry to the tracker
+        /// </summary>
+        public void AddProfit(decimal amount)
+        {
+            profits.Add(amount);
+            
+            if (amount > 0)
+            {
+                TotalProfit += amount;
+            }
+            else
+            {
+                TotalLoss += Math.Abs(amount);
+            }
+            
+            logger.Debug($"Added profit entry: {amount:F2}, TotalProfit: {TotalProfit:F2}, TotalLoss: {TotalLoss:F2}, Net: {NetProfit:F2}");
+        }
+
+        /// <summary>
+        /// Gets all profit entries
+        /// </summary>
+        public List<decimal> GetAllProfits()
+        {
+            return new List<decimal>(profits);
+        }
+
+        /// <summary>
+        /// Gets the count of profit entries
+        /// </summary>
+        public int Count => profits.Count;
     }
 }

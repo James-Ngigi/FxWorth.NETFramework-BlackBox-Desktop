@@ -198,7 +198,7 @@
             1,
             0,
             0,
-            131072});
+            0});
             this.Martingale_Level_TXT3.Name = "Martingale_Level_TXT3";
             this.Martingale_Level_TXT3.Size = new System.Drawing.Size(177, 34);
             this.Martingale_Level_TXT3.TabIndex = 5;
@@ -291,10 +291,10 @@
             0,
             0});
             this.Stake_TXT3.Minimum = new decimal(new int[] {
-            5,
+            35,
             0,
             0,
-            65536});
+            131072});
             this.Stake_TXT3.Name = "Stake_TXT3";
             this.Stake_TXT3.Size = new System.Drawing.Size(178, 34);
             this.Stake_TXT3.TabIndex = 2;

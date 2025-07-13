@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -417,6 +417,11 @@
             0,
             0,
             0});
+            this.Stake_TXT2.Minimum = new decimal(new int[] {
+            35,
+            0,
+            0,
+            131072});
             this.Stake_TXT2.Name = "Stake_TXT2";
             this.Stake_TXT2.Size = new System.Drawing.Size(128, 34);
             this.Stake_TXT2.TabIndex = 28;
@@ -515,7 +520,7 @@
             1,
             0,
             0,
-            131072});
+            65536});
             this.Max_Drawdown_TXT2.Location = new System.Drawing.Point(214, 99);
             this.Max_Drawdown_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Max_Drawdown_TXT2.Maximum = new decimal(new int[] {
@@ -563,7 +568,7 @@
             1,
             0,
             0,
-            131072});
+            0});
             this.Martingale_Level_TXT2.Name = "Martingale_Level_TXT2";
             this.Martingale_Level_TXT2.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT2.TabIndex = 25;
@@ -665,8 +670,13 @@
             // 
             // Max_Drawdown_TXT1
             // 
-            this.Max_Drawdown_TXT1.DecimalPlaces = 1;
+            this.Max_Drawdown_TXT1.DecimalPlaces = 2;
             this.Max_Drawdown_TXT1.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Max_Drawdown_TXT1.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            131072});
             this.Max_Drawdown_TXT1.Location = new System.Drawing.Point(214, 90);
             this.Max_Drawdown_TXT1.Margin = new System.Windows.Forms.Padding(4);
             this.Max_Drawdown_TXT1.Maximum = new decimal(new int[] {
@@ -684,7 +694,7 @@
             this.Max_Drawdown_TXT1.TabIndex = 17;
             this.Max_Drawdown_TXT1.ThousandsSeparator = true;
             this.Max_Drawdown_TXT1.Value = new decimal(new int[] {
-            40,
+            10,
             0,
             0,
             0});
@@ -714,7 +724,7 @@
             1,
             0,
             0,
-            131072});
+            0});
             this.Martingale_Level_TXT.Name = "Martingale_Level_TXT";
             this.Martingale_Level_TXT.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT.TabIndex = 16;
@@ -795,14 +805,14 @@
             this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
             this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
@@ -987,7 +997,7 @@
             this.Stake_TXT.Location = new System.Drawing.Point(162, 218);
             this.Stake_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Stake_TXT.Maximum = new decimal(new int[] {
-            10000,
+            15,
             0,
             0,
             0});
