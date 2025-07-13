@@ -156,18 +156,26 @@ namespace FxApi.Connection
             {
                 // Add the profit to recoveryResults
                 recoveryResults.Add(mlp);
-                AmountToBeRecoverd = -recoveryResults.Sum();
+                
+                decimal recoveryProfit = recoveryResults.Sum(); // Net result: negative for losses, positive for profits
 
-                decimal recoveryProfit = mlp + recoveryResults.Sum();
-
-                // Check if recovery is complete (we've recovered actual losses + virtual trade)
-                if (recoveryProfit >= AmountToBeRecoverd)
+                // Check if recovery is complete (we've recovered actual losses + profit margin)
+                // We need to check if our net recovery profit is positive and >= the original expected profit
+                if (recoveryProfit >= PreviousProfit)
                 {
-                    DynamicStake = Stake;
+                    DynamicStake = Stake;  // Reset to initial stake
                     IsRecoveryMode = false;
                     recoveryResults.Clear();
                     CurrentMartingaleLevel = 1;
-                    logger.Info("Exiting recovery mode - recovery complete");
+                    logger.Info($"Exiting recovery mode - recovery complete with profit margin: {PreviousProfit:F2}");
+                }
+                else
+                {
+                    // Update amount to be recovered for next iteration
+                    decimal accumulatedLosses = -recoveryResults.Where(x => x < 0).Sum(); // Only count losses
+                    decimal originalProfitMargin = PreviousProfit;
+                    AmountToBeRecoverd = accumulatedLosses + originalProfitMargin;
+                    logger.Debug($"Recovery continuing. Current net: {recoveryProfit:F2}, Target: {PreviousProfit:F2}");
                 }
             }
             else if (!IsRecoveryMode)

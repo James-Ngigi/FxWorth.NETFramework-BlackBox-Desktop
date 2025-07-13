@@ -786,6 +786,35 @@ namespace FxWorth.Hierarchy
                 currentLevelId = parentLevelId;
                 levelClients[parentLevelId] = client;
                 logger.Info($"Successfully restored parent level {parentLevelId} from saved state");
+                
+                // CRITICAL CHECK: If the restored parent level has remaining profit needed = 0,
+                // it means the level is complete and should transition to its next level
+                if (client.TradingParameters != null && client.TradingParameters.TakeProfit <= 0)
+                {
+                    logger.Info($"Parent level {parentLevelId} is complete (remaining profit needed = {client.TradingParameters.TakeProfit:F2}) - determining next level");
+                    
+                    // Mark this level as completed and determine next level
+                    var levelInfo = hierarchyLevels[parentLevelId];
+                    levelInfo.IsCompleted = true;
+                    
+                    string nextLevelId = DetermineNextLevel(parentLevelId);
+                    if (!string.IsNullOrEmpty(nextLevelId) && nextLevelId != parentLevelId)
+                    {
+                        logger.Info($"Parent level {parentLevelId} completed - transitioning to {nextLevelId}");
+                        return NavigateToLevel(client, nextLevelId, "Parent level completed with sufficient children profit");
+                    }
+                    else if (nextLevelId == "0")
+                    {
+                        // All hierarchy levels completed - exit to root
+                        logger.Info($"All hierarchy levels completed - returning to root level");
+                        return NavigateToRootLevel(client);
+                    }
+                    else
+                    {
+                        logger.Info($"Parent level {parentLevelId} completed - no more levels to process");
+                    }
+                }
+                
                 return true;
             }
             
@@ -809,17 +838,20 @@ namespace FxWorth.Hierarchy
         {
             logger.Info($"Navigating to child level: {currentLevelId} -> {childLevelId}");
             
+            // CRITICAL SAFEGUARD: Nested levels should only exist if they were created due to max drawdown
+            // If a nested level doesn't exist, it means max drawdown was never exceeded
+            // DO NOT create nested levels automatically here - they should only be created via CreateNestedLevel
+            if (!hierarchyLevels.ContainsKey(childLevelId))
+            {
+                logger.Error($"Child level {childLevelId} does not exist and cannot be created automatically");
+                logger.Error($"SAFEGUARD: Nested levels are only created when max drawdown is exceeded, not on take profit completion");
+                return false;
+            }
+            
             // Save current level state before moving to child
             if (!string.IsNullOrEmpty(currentLevelId) && currentLevelId != "0")
             {
                 stateManager.SaveLevelState(currentLevelId, client);
-            }
-            
-            // Check if child level exists, create if needed
-            if (!hierarchyLevels.ContainsKey(childLevelId))
-            {
-                logger.Error($"Child level {childLevelId} does not exist and cannot be created automatically");
-                return false;
             }
             
             currentLevelId = childLevelId;
@@ -1344,6 +1376,8 @@ namespace FxWorth.Hierarchy
         /// </summary>
         private string DetermineNextLevel(string currentLevelId)
         {
+            logger.Info($"DetermineNextLevel called for: {currentLevelId}");
+            
             string[] parts = currentLevelId.Split('.');
             int currentLayer = int.Parse(parts[0]);
             int currentLevelNumber = int.Parse(parts[1]);
@@ -1351,6 +1385,8 @@ namespace FxWorth.Hierarchy
             // For nested levels (more than 2 parts)
             if (parts.Length > 2)
             {
+                logger.Info($"Processing nested level {currentLevelId} with {parts.Length} parts");
+                
                 int lastLevelNumber = int.Parse(parts[parts.Length - 1]);
                 int layerDepth = parts.Length;
                 int actualLayerForConfig = layerDepth - 1;
@@ -1362,6 +1398,7 @@ namespace FxWorth.Hierarchy
                     string nextNestedLevel = CreateNextNestedLevelInLayer(currentLevelId);
                     if (!string.IsNullOrEmpty(nextNestedLevel))
                     {
+                        logger.Info($"Moving to next nested level: {nextNestedLevel}");
                         return nextNestedLevel;
                     }
                 }
@@ -1375,18 +1412,15 @@ namespace FxWorth.Hierarchy
             // For Layer 1 levels
             if (currentLayer == 1)
             {
-                // Check if we can create a nested level (not at max depth)
-                if (CanCreateNestedLevel(currentLevelId))
-                {
-                    // Try to create nested level instead of sibling
-                    string nestedLevelId = currentLevelId + ".1";
-                    logger.Info($"Creating nested level {nestedLevelId} from completed level {currentLevelId}");
-                    return nestedLevelId;
-                }
+                logger.Info($"Processing Layer 1 level {currentLevelId} - take profit reached, moving to next sibling");
                 
-                // Can't create nested level, try next sibling level
+                // IMPORTANT: Nested levels are only created when MAX DRAWDOWN is exceeded,
+                // NOT when take profit is reached. When take profit is reached, move to next sibling level.
+                
                 layer1CompletedLevels++;
                 int layer1TotalLevels = GetLevelCountForLayer(1);
+
+                logger.Info($"Layer 1 progress: {layer1CompletedLevels}/{layer1TotalLevels} levels completed");
 
                 if (layer1CompletedLevels >= layer1TotalLevels)
                 {
@@ -1397,9 +1431,9 @@ namespace FxWorth.Hierarchy
                 }
                 else
                 {
-                    // Move to next level in Layer 1
+                    // Move to next level in Layer 1 (sibling level)
                     string nextLevel = CreateNextLevelInLayer(currentLevelId);
-                    logger.Info($"Moving to next sibling level in Layer 1: {nextLevel}");
+                    logger.Info($"Level {currentLevelId} completed normally - moving to next sibling level in Layer 1: {nextLevel}");
                     return nextLevel;
                 }
             }

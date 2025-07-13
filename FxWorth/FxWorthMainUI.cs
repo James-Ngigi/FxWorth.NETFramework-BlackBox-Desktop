@@ -397,6 +397,14 @@ namespace FxWorth
 
                                 decimal maxDrawdown = currentLevel.MaxDrawdown ?? (currentLevel.LevelId.StartsWith("1.") ? storage.phase2Parameters.MaxDrawdown : storage.phase1Parameters.MaxDrawdown);
                                 
+                                // CRITICAL CHECK: Do not create nested levels for completed levels
+                                // Completed levels should transition horizontally (to siblings) not vertically (to nested)
+                                if (currentLevel.IsCompleted)
+                                {
+                                    logger.Info($"Level {currentLevel.LevelId} is marked as completed - skipping max drawdown checks to prevent unwanted nested level creation");
+                                    return;
+                                }
+                                
                                 // Check if amount exceeds max drawdown AND if creating nested level wouldn't exceed max depth
                                 bool exceedsDrawdown = currentAmountToBeRecovered > maxDrawdown;
                                 bool canCreateNestedLevel = storage.hierarchyNavigator?.CanCreateNestedLevel(currentLevel.LevelId) ?? false;
