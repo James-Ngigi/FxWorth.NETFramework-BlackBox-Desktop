@@ -159,9 +159,11 @@ namespace FxApi.Connection
                 
                 decimal recoveryProfit = recoveryResults.Sum(); // Net result: negative for losses, positive for profits
 
+                RecoveryAttemptsLeft--;
+
                 // Check if recovery is complete (we've recovered actual losses + profit margin)
                 // We need to check if our net recovery profit is positive and >= the original expected profit
-                if (recoveryProfit >= PreviousProfit)
+                if (recoveryProfit >= PreviousProfit || RecoveryAttemptsLeft <= 0)
                 {
                     DynamicStake = Stake;  // Reset to initial stake
                     IsRecoveryMode = false;

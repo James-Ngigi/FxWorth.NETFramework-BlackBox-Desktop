@@ -204,6 +204,7 @@
     <Compile Include="Messages\Get Active Symbols Full Message.cs" />
     <Compile Include="Messages\Get Ticks History Message.cs" />
     <Compile Include="Messages\History.cs" />
+    <Compile Include="Indicators\ATR_Dual_ROC.cs" />
     <Compile Include="Indicators\IIndicator.cs" />
     <Compile Include="Indicators\Indices.cs" />
     <Compile Include="Connection\Market-Data Client.cs" />

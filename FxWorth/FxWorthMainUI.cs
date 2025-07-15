@@ -6,6 +6,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -90,6 +91,8 @@ namespace FxWorth
         private Timer _tradingPingTimer;
         private const int TRADING_PING_INTERVAL_MS = 10000;
         private const string TRADING_STATUS = "Trading";
+        private Label _delta1Label;
+        private Label _delta2Label;
 
         private void UpdateLatencyLabel(int latency)
         {
@@ -302,11 +305,106 @@ namespace FxWorth
                 BindingFlags.Instance).Where(x => x.FieldType.Name == nameof(NumericUpDown)).ToList();
             LoadLayout();
 
+            // Initialize delta labels for color-coded display
+            InitializeDeltaLabels();
+
             foreach (var f in fields)
             {
                 var ctr = (NumericUpDown)f.GetValue(this);
                 ctr.ContextMenuStrip = Cut_Copy_Paste_CMS;
                 numerics.Add(ctr);
+            }
+        }
+
+        private void InitializeDeltaLabels()
+        {
+            // Create Δ1 label
+            _delta1Label = new Label();
+            _delta1Label.Name = "Delta1Label";
+            _delta1Label.AutoSize = true;
+            _delta1Label.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
+            _delta1Label.Location = new Point(10, 20);
+            _delta1Label.Text = "Δ1: 0.00%";
+            _delta1Label.ForeColor = Color.Black;
+            Trade_Logs_GRBX.Controls.Add(_delta1Label);
+
+            // Create Δ2 label  
+            _delta2Label = new Label();
+            _delta2Label.Name = "Delta2Label";
+            _delta2Label.AutoSize = true;
+            _delta2Label.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
+            _delta2Label.Location = new Point(150, 20);
+            _delta2Label.Text = "Δ2: 0.00%";
+            _delta2Label.ForeColor = Color.Black;
+            Trade_Logs_GRBX.Controls.Add(_delta2Label);
+
+            // Update GroupBox header to remove delta values
+            Trade_Logs_GRBX.Text = "Trade table report ⤵";
+        }
+
+        private void UpdateDeltaLabels()
+        {
+            if (_delta1Label == null || _delta2Label == null) return;
+
+            double currentROC1 = storage.atrDualRoc?.currentROC1 ?? double.NaN;
+            double currentROC2 = storage.atrDualRoc?.currentROC2 ?? double.NaN;
+            
+            // Get threshold values from UI controls
+            double roc1Threshold = (double)ROC1.Value;
+            double roc2Threshold = (double)ROC2.Value;
+
+            // Update Δ1 label and color
+            if (!double.IsNaN(currentROC1))
+            {
+                _delta1Label.Text = string.Format("Δ1: {0:N2}%", currentROC1);
+                
+                // Δ1 goes green when below ROC1 threshold, red when above
+                if (currentROC1 < roc1Threshold)
+                {
+                    // The further below the threshold, the greener it gets
+                    double distanceFromThreshold = Math.Abs(currentROC1 - roc1Threshold);
+                    int greenIntensity = Math.Min(255, (int)(100 + distanceFromThreshold * 10));
+                    _delta1Label.ForeColor = Color.FromArgb(0, greenIntensity, 0);
+                }
+                else
+                {
+                    // Above threshold - red color
+                    double distanceFromThreshold = Math.Abs(currentROC1 - roc1Threshold);
+                    int redIntensity = Math.Min(255, (int)(100 + distanceFromThreshold * 10));
+                    _delta1Label.ForeColor = Color.FromArgb(redIntensity, 0, 0);
+                }
+            }
+            else
+            {
+                _delta1Label.Text = "Δ1: ---%";
+                _delta1Label.ForeColor = Color.Gray;
+            }
+
+            // Update Δ2 label and color
+            if (!double.IsNaN(currentROC2))
+            {
+                _delta2Label.Text = string.Format("Δ2: {0:N2}%", currentROC2);
+                
+                // Δ2 goes green when above ROC2 threshold, red when below
+                if (currentROC2 > roc2Threshold)
+                {
+                    // The further above the threshold, the greener it gets
+                    double distanceFromThreshold = Math.Abs(currentROC2 - roc2Threshold);
+                    int greenIntensity = Math.Min(255, (int)(100 + distanceFromThreshold * 10));
+                    _delta2Label.ForeColor = Color.FromArgb(0, greenIntensity, 0);
+                }
+                else
+                {
+                    // Below threshold - red color
+                    double distanceFromThreshold = Math.Abs(currentROC2 - roc2Threshold);
+                    int redIntensity = Math.Min(255, (int)(100 + distanceFromThreshold * 10));
+                    _delta2Label.ForeColor = Color.FromArgb(redIntensity, 0, 0);
+                }
+            }
+            else
+            {
+                _delta2Label.Text = "Δ2: ---%";
+                _delta2Label.ForeColor = Color.Gray;
             }
         }
 
@@ -565,37 +663,75 @@ namespace FxWorth
                 return;
             }
 
-            var jstr = File.ReadAllText(layoutPath);
-            var layout = JsonConvert.DeserializeObject<Layout>(jstr);
-
-            // Market Data Parameters
-            Period0_TXT.Value = Math.Max(Period0_TXT.Minimum, Math.Min(Period0_TXT.Maximum, layout.MarketDataParameters.Rsi.Period));
-            Overbought0_TXT.Value = Math.Max(Overbought0_TXT.Minimum, Math.Min(Overbought0_TXT.Maximum, (decimal)layout.MarketDataParameters.Rsi.Overbought));
-            Oversold_TXT.Value = Math.Max(Oversold_TXT.Minimum, Math.Min(Oversold_TXT.Maximum, (decimal)layout.MarketDataParameters.Rsi.Oversold));
-            Close_Interval0_TXT.Value = Math.Max(Close_Interval0_TXT.Minimum, Math.Min(Close_Interval0_TXT.Maximum, Math.Abs(layout.MarketDataParameters.Rsi.TimeFrame)));
-            Close_Interval0_CMBX.SelectedIndex = layout.MarketDataParameters.Rsi.TimeFrame > 0 ? 1 : 0;
-            Choose_Asset_CMBX.SelectedIndex = Choose_Asset_CMBX.Items.IndexOf(layout.MarketDataParameters.Symbol);
-
-            // Trading Parameters - Phase 1
-            Barrier_Offset_TXT.Value = Math.Max(Barrier_Offset_TXT.Minimum, Math.Min(Barrier_Offset_TXT.Maximum, layout.TradingParameters.Barrier));
-            Duration_TXT.Value = Math.Max(Duration_TXT.Minimum, Math.Min(Duration_TXT.Maximum, layout.TradingParameters.Duration));
-            Duration0_CMBX.SelectedIndex = Duration0_CMBX.Items.IndexOf(layout.TradingParameters.DurationType);
-            Stake_TXT.Value = Math.Max(Stake_TXT.Minimum, Math.Min(Stake_TXT.Maximum, layout.TradingParameters.Stake));
-            Max_Drawdown_TXT1.Value = Math.Max(Max_Drawdown_TXT1.Minimum, Math.Min(Max_Drawdown_TXT1.Maximum, layout.TradingParameters.MaxDrawdown));
-            Martingale_Level_TXT.Value = Math.Max(Martingale_Level_TXT.Minimum, Math.Min(Martingale_Level_TXT.Maximum, layout.TradingParameters.MartingaleLevel));
-            Stake_TXT2.Value = Math.Max(Stake_TXT2.Minimum, Math.Min(Stake_TXT2.Maximum, layout.TradingParameters.InitialStake4Layer1));
-            Hierarchy_Levels_TXT.Value = Math.Max(Hierarchy_Levels_TXT.Minimum, Math.Min(Hierarchy_Levels_TXT.Maximum, layout.TradingParameters.HierarchyLevels));
-            Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Minimum, Math.Min(Max_Depth_TXT.Maximum, layout.TradingParameters.MaxHierarchyDepth));
-
-            // Trading Parameters - Phase 2 (Hierarchy)
-            Barrier_Offset_TXT2.Value = Math.Max(Barrier_Offset_TXT2.Minimum, Math.Min(Barrier_Offset_TXT2.Maximum, layout.Phase2Parameters.Barrier));
-            Martingale_Level_TXT2.Value = Math.Max(Martingale_Level_TXT2.Minimum, Math.Min(Martingale_Level_TXT2.Maximum, layout.Phase2Parameters.MartingaleLevel));
-            Max_Drawdown_TXT2.Value = Math.Max(Max_Drawdown_TXT2.Minimum, Math.Min(Max_Drawdown_TXT2.Maximum, layout.Phase2Parameters.MaxDrawdown));
-
-            // Null check for backward compatibility.
-            if (layout.CustomLayerConfigs != null)
+            try
             {
-                customLayerConfigs = layout.CustomLayerConfigs;
+                var jstr = File.ReadAllText(layoutPath);
+                var layout = JsonConvert.DeserializeObject<Layout>(jstr);
+
+                // Validate that layout and its required properties are not null
+                if (layout?.MarketDataParameters?.AtrDualRoc == null)
+                {
+                    logger.Warn("LoadLayout: Layout file contains incomplete or invalid AtrDualRoc data. Skipping layout load.");
+                    return;
+                }
+
+                // Market Data Parameters - now safe to access AtrDualRoc properties
+                Period0_TXT.Value = Math.Max(Period0_TXT.Minimum, Math.Min(Period0_TXT.Maximum, layout.MarketDataParameters.AtrDualRoc.Period));
+                ROC1.Value = Math.Max(ROC1.Minimum, Math.Min(ROC1.Maximum, (decimal)layout.MarketDataParameters.AtrDualRoc.CompressionThreshold));
+                ContextLookback.Value = Math.Max(ContextLookback.Minimum, Math.Min(ContextLookback.Maximum, layout.MarketDataParameters.AtrDualRoc.LongRocPeriod));
+                ROC2.Value = Math.Max(ROC2.Minimum, Math.Min(ROC2.Maximum, (decimal)layout.MarketDataParameters.AtrDualRoc.ExpansionThreshold));
+                TriggerLookback.Value = Math.Max(TriggerLookback.Minimum, Math.Min(TriggerLookback.Maximum, layout.MarketDataParameters.AtrDualRoc.ShortRocPeriod));
+                Close_Interval0_TXT.Value = Math.Max(Close_Interval0_TXT.Minimum, Math.Min(Close_Interval0_TXT.Maximum, Math.Abs(layout.MarketDataParameters.AtrDualRoc.TimeFrame)));
+                Close_Interval0_CMBX.SelectedIndex = layout.MarketDataParameters.AtrDualRoc.TimeFrame > 0 ? 1 : 0;
+                
+                // Additional null check for Symbol
+                if (!string.IsNullOrEmpty(layout.MarketDataParameters.Symbol))
+                {
+                    Choose_Asset_CMBX.SelectedIndex = Choose_Asset_CMBX.Items.IndexOf(layout.MarketDataParameters.Symbol);
+                }
+
+                // Validate TradingParameters before accessing
+                if (layout.TradingParameters != null)
+                {
+                    // Trading Parameters - Phase 1
+                    Barrier_Offset_TXT.Value = Math.Max(Barrier_Offset_TXT.Minimum, Math.Min(Barrier_Offset_TXT.Maximum, layout.TradingParameters.Barrier));
+                    Duration_TXT.Value = Math.Max(Duration_TXT.Minimum, Math.Min(Duration_TXT.Maximum, layout.TradingParameters.Duration));
+                    
+                    if (!string.IsNullOrEmpty(layout.TradingParameters.DurationType))
+                    {
+                        Duration0_CMBX.SelectedIndex = Duration0_CMBX.Items.IndexOf(layout.TradingParameters.DurationType);
+                    }
+                    
+                    Stake_TXT.Value = Math.Max(Stake_TXT.Minimum, Math.Min(Stake_TXT.Maximum, layout.TradingParameters.Stake));
+                    Max_Drawdown_TXT1.Value = Math.Max(Max_Drawdown_TXT1.Minimum, Math.Min(Max_Drawdown_TXT1.Maximum, layout.TradingParameters.MaxDrawdown));
+                    Martingale_Level_TXT.Value = Math.Max(Martingale_Level_TXT.Minimum, Math.Min(Martingale_Level_TXT.Maximum, layout.TradingParameters.MartingaleLevel));
+                    Stake_TXT2.Value = Math.Max(Stake_TXT2.Minimum, Math.Min(Stake_TXT2.Maximum, layout.TradingParameters.InitialStake4Layer1));
+                    Hierarchy_Levels_TXT.Value = Math.Max(Hierarchy_Levels_TXT.Minimum, Math.Min(Hierarchy_Levels_TXT.Maximum, layout.TradingParameters.HierarchyLevels));
+                    Max_Depth_TXT.Value = Math.Max(Max_Depth_TXT.Minimum, Math.Min(Max_Depth_TXT.Maximum, layout.TradingParameters.MaxHierarchyDepth));
+                }
+
+                // Validate Phase2Parameters before accessing
+                if (layout.Phase2Parameters != null)
+                {
+                    // Trading Parameters - Phase 2 (Hierarchy)
+                    Barrier_Offset_TXT2.Value = Math.Max(Barrier_Offset_TXT2.Minimum, Math.Min(Barrier_Offset_TXT2.Maximum, layout.Phase2Parameters.Barrier));
+                    Martingale_Level_TXT2.Value = Math.Max(Martingale_Level_TXT2.Minimum, Math.Min(Martingale_Level_TXT2.Maximum, layout.Phase2Parameters.MartingaleLevel));
+                    Max_Drawdown_TXT2.Value = Math.Max(Max_Drawdown_TXT2.Minimum, Math.Min(Max_Drawdown_TXT2.Maximum, layout.Phase2Parameters.MaxDrawdown));
+                }
+
+                // Null check for backward compatibility.
+                if (layout.CustomLayerConfigs != null)
+                {
+                    customLayerConfigs = layout.CustomLayerConfigs;
+                }
+            }
+            catch (JsonException ex)
+            {
+                logger.Error(ex, "LoadLayout: Failed to deserialize layout.json. The file may be corrupted or have an invalid format.");
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "LoadLayout: Unexpected error occurred while loading layout.");
             }
         }
 
@@ -605,7 +741,10 @@ namespace FxWorth
             this.InvokeIfRequired(() =>
             {
                 Internet_conection_LBL.Text = string.Format("Latency: {0} ms", storage.PingClient.Latency);
-                Trade_Logs_GRBX.Text = string.Format("Trade table report ⤵ : RSI ➟ {0:N2}", storage.rsi?.Value);
+                
+                // Update delta labels with color coding
+                UpdateDeltaLabels();
+                
                 bool isTrading = false;
 
                 foreach (DataGridViewRow row in Main_Token_Table.Rows)
@@ -952,26 +1091,26 @@ namespace FxWorth
                 return;
             }
 
-            int rsiTimeFrame = (int)Close_Interval0_TXT.Value;
+            int atrTimeFrame = (int)Close_Interval0_TXT.Value;
 
             if (Close_Interval0_CMBX.SelectedIndex == 0)
             {
-                rsiTimeFrame *= -1;
+                atrTimeFrame *= -1;
             }
 
             if (Close_Interval0_CMBX.SelectedIndex >= 2)
             {
-                rsiTimeFrame *= 60;
+                atrTimeFrame *= 60;
             }
 
             if (Close_Interval0_CMBX.SelectedIndex >= 3)
             {
-                rsiTimeFrame *= 60;
+                atrTimeFrame *= 60;
             }
 
-            if (!TimeFrameValidator.IsSupportedCustomTimeFrame(rsiTimeFrame))
+            if (!TimeFrameValidator.IsSupportedCustomTimeFrame(atrTimeFrame))
             {
-                var mess = new RSI_Close_Interval("RSI", "RSI2");
+                var mess = new RSI_Close_Interval("ATR", "ATR Dual ROC");
                 mess.ShowDialog(this);
                 return;
             }
@@ -1033,9 +1172,11 @@ namespace FxWorth
 
             var md = storage.SubscribeMarketData(
                 (int)Period0_TXT.Value,
-                (double)Overbought0_TXT.Value,
-                (double)Oversold_TXT.Value,
-                rsiTimeFrame,
+                (double)ROC1.Value,
+                (int)ContextLookback.Value,
+                (double)ROC2.Value,
+                (int)TriggerLookback.Value,
+                atrTimeFrame,
                 Choose_Asset_CMBX.Text);
 
             storage.IsTradingAllowed = true;
