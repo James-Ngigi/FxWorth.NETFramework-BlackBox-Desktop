@@ -358,7 +358,7 @@ namespace FxApi
                 // Calculate ROC1: ((current_ATR - past_ATR) / past_ATR) * 100
                 currentROC1 = ((currentATR - pastATR) / pastATR) * 100.0;
 
-                logger.Debug($"ATR_Dual_ROC ROC1: {currentROC1:F2}% (Current ATR: {currentATR:F6}, Past ATR: {pastATR:F6})");
+                //logger.Debug($"ATR_Dual_ROC ROC1: {currentROC1:F2}% (Current ATR: {currentATR:F6}, Past ATR: {pastATR:F6})");
                 return true;
             }
             catch (Exception ex)
@@ -401,7 +401,7 @@ namespace FxApi
                 // Calculate ROC2: ((current_ATR - past_ATR) / past_ATR) * 100
                 currentROC2 = ((currentATR - pastATR) / pastATR) * 100.0;
 
-                logger.Debug($"ATR_Dual_ROC ROC2: {currentROC2:F2}% (Current ATR: {currentATR:F6}, Past ATR: {pastATR:F6})");
+                //logger.Debug($"ATR_Dual_ROC ROC2: {currentROC2:F2}% (Current ATR: {currentATR:F6}, Past ATR: {pastATR:F6})");
                 return true;
             }
             catch (Exception ex)
@@ -427,27 +427,27 @@ namespace FxApi
                 if (currentROC1 <= CompressionThreshold && !isTriggerArmed)
                 {
                     isTriggerArmed = true;
-                    logger.Info($"ATR_Dual_ROC ARMED: ROC1 {currentROC1:F2}% <= Compression Threshold {CompressionThreshold:F2}%");
+                    //logger.Info($"ATR_Dual_ROC ARMED: ROC1 {currentROC1:F2}% <= Compression Threshold {CompressionThreshold:F2}%");
                 }
 
                 // Check for Expansion (Firing Condition)
                 if (isTriggerArmed && currentROC2 > ExpansionThreshold)
                 {
-                    logger.Info($"ATR_Dual_ROC SIGNAL FIRED: ROC2 {currentROC2:F2}% > Expansion Threshold {ExpansionThreshold:F2}% (ATR: {Value:F6})");
+                    //logger.Info($"ATR_Dual_ROC SIGNAL FIRED: ROC2 {currentROC2:F2}% > Expansion Threshold {ExpansionThreshold:F2}% (ATR: {Value:F6})");
                     
                     // Fire the crossover event
                     Crossover?.Raise(this, EventArgs.Empty);
                     
                     // Immediately disarm to prevent multiple signals
                     isTriggerArmed = false;
-                    logger.Debug("ATR_Dual_ROC: Trigger disarmed after signal fire");
+                    //logger.Debug("ATR_Dual_ROC: Trigger disarmed after signal fire");
                 }
 
                 // Handle Disarming (compression no longer valid)
                 if (currentROC1 > CompressionThreshold && isTriggerArmed)
                 {
                     isTriggerArmed = false;
-                    logger.Debug($"ATR_Dual_ROC DISARMED: ROC1 {currentROC1:F2}% > Compression Threshold {CompressionThreshold:F2}%");
+                    //logger.Debug($"ATR_Dual_ROC DISARMED: ROC1 {currentROC1:F2}% > Compression Threshold {CompressionThreshold:F2}%");
                 }
             }
             catch (Exception ex)
@@ -492,7 +492,7 @@ namespace FxApi
                 {
                     // Update existing candle
                     cache[cache.Count - 1] = candle;
-                    logger.Debug($"ATR_Dual_ROC HandleUpdate: Updated existing candle at epoch {candle.epoch}");
+                    //logger.Debug($"ATR_Dual_ROC HandleUpdate: Updated existing candle at epoch {candle.epoch}");
                 }
                 else
                 {
@@ -502,7 +502,7 @@ namespace FxApi
                         cache.RemoveAt(0);
                     }
                     cache.Add(candle);
-                    logger.Debug($"ATR_Dual_ROC HandleUpdate: Added new candle at epoch {candle.epoch}, cache size: {cache.Count}");
+                    //logger.Debug($"ATR_Dual_ROC HandleUpdate: Added new candle at epoch {candle.epoch}, cache size: {cache.Count}");
                 }
 
                 // Only calculate if we have sufficient data

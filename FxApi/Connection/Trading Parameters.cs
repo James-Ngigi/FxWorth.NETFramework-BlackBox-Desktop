@@ -135,7 +135,6 @@ namespace FxApi.Connection
                 logger.Debug($"Dynamic Martingale level set to {CurrentMartingaleLevel} " +
                            $"(Amount to recover: {AmountToBeRecoverd} vs Max drawdown: {MaxDrawdown}, Max levels: {maxDynamicMartingaleLevel})");
 
-                // Sacrosancts
                 // Calculate recovery stake using Martingale strategy
                 var stakeToBeUsed = AmountToBeRecoverd * Stake / PreviousProfit; 
                 var martingaleValue = stakeToBeUsed / Stake;
@@ -156,28 +155,19 @@ namespace FxApi.Connection
             {
                 // Add the profit to recoveryResults
                 recoveryResults.Add(mlp);
-                
-                decimal recoveryProfit = recoveryResults.Sum(); // Net result: negative for losses, positive for profits
-
+                AmountToBeRecoverd = -recoveryResults.Sum();
                 RecoveryAttemptsLeft--;
 
-                // Check if recovery is complete (we've recovered actual losses + profit margin)
-                // We need to check if our net recovery profit is positive and >= the original expected profit
-                if (recoveryProfit >= PreviousProfit || RecoveryAttemptsLeft <= 0)
+                decimal recoveryProfit = mlp + recoveryResults.Sum();
+
+                // Check if recovery is complete (Condition for exit is based off the amount or recovery attempts left)
+                if (recoveryProfit >= AmountToBeRecoverd || RecoveryAttemptsLeft == 0)
                 {
-                    DynamicStake = Stake;  // Reset to initial stake
+                    DynamicStake = Stake;
                     IsRecoveryMode = false;
                     recoveryResults.Clear();
                     CurrentMartingaleLevel = 1;
-                    logger.Info($"Exiting recovery mode - recovery complete with profit margin: {PreviousProfit:F2}");
-                }
-                else
-                {
-                    // Update amount to be recovered for next iteration
-                    decimal accumulatedLosses = -recoveryResults.Where(x => x < 0).Sum(); // Only count losses
-                    decimal originalProfitMargin = PreviousProfit;
-                    AmountToBeRecoverd = accumulatedLosses + originalProfitMargin;
-                    logger.Debug($"Recovery continuing. Current net: {recoveryProfit:F2}, Target: {PreviousProfit:F2}");
+                    logger.Info("Exiting recovery mode - recovery complete");
                 }
             }
             else if (!IsRecoveryMode)
