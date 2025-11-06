@@ -56,7 +56,7 @@ namespace FxApi
         public bool IsTrading => model != null;
         public int transactionsCounter = 0;
         private long currentContractId;
-        private int currentTransactionTime;
+        private long currentTransactionTime;
 
 
         /*-------------------------------------------------------TRADING OPERATIONS COMPONENT--------------------------------------------------------------*/
@@ -726,13 +726,13 @@ namespace FxApi
         public string barrier { get; set; }
         public long contract_id { get; set; }
         public string currency { get; set; }
-        public int date_expiry { get; set; }
+        public long date_expiry { get; set; }
         public string display_name { get; set; }
         public string id { get; set; }
         public string longcode { get; set; }
         public string symbol { get; set; }
         public long transaction_id { get; set; }
-        public int transaction_time { get; set; }
+        public long transaction_time { get; set; }
     }
 
     /// Represents a message from the server containing transaction information.

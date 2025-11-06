@@ -61,7 +61,7 @@ namespace FxApi.Connection
         /// <param name="estimate">An estimated profit value, typically used when `mlp` is zero to determine the initial stake for recovery.</param>
         /// <param name="recoveryResults">The list of recovery results for the *current level*.</param>
         /// </summary>
-        public void Process(decimal mlp, decimal estimate, int appId, long contractId, int transactionTime)
+        public void Process(decimal mlp, decimal estimate, int appId, long contractId, long transactionTime)
         {
             // Update total profit
             TotalProfit += mlp;
