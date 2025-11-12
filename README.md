@@ -7,7 +7,7 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
 ## Current Status
 
 *   **Core Functionality:**
-    *   **Automated Trading:**  Executes pair trades (simultaneous "Higher" and "Lower" contracts) based on user-defined parameters and the ATR Dual ROC indicator.
+    *   **Automated Trading:**  Executes pair trades (simultaneous "Higher" and "Lower" contracts) (Straddle technique) based on user-defined parameters and the ATR Dual ROC indicator.
     *   **Real-time Data:**  Connects to the Deriv API via WebSockets to receive real-time market data (ticks and candles).
     *   **Multiple Account Management:**  Supports managing multiple Deriv accounts simultaneously, each with independent trading parameters.
     *   **Configurable Trading Parameters:**  Allows users to configure various trading parameters, including:
@@ -43,7 +43,7 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
     *   **Seamless Integration:**  Integrates seamlessly with the existing Martingale recovery logic.
     *   **Granular Risk Control:**  Provides fine-grained control over risk exposure during recovery.
 
-*   **Pair Trading:**  Employs a pair trading strategy to hedge trades and reduce risk.
+*   **Pair Trading:**  Employs the straddle pair trading strategy to hedge trades and reduce risk.
 
 *   **ATR Dual ROC "Sniper Model" Signals:**  Uses the Average True Range with dual Rate of Change calculations to generate trading signals based on volatility compression followed by expansion patterns.
 
