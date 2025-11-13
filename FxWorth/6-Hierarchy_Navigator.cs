@@ -76,6 +76,7 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Saves the current trading state for a level (captures the state at max drawdown)
+        /// REFACTORED: Removed profit tracking references - state is for restoration only.
         /// </summary>
         public void SaveLevelState(string levelId, AuthClient client)
         {
@@ -91,10 +92,10 @@ namespace FxWorth.Hierarchy
                 savedStates[levelId] = stateBackup;
                 
                 logger.Info($"Saved state for level {levelId}: " +
-                           $"RecoveryResults={stateBackup.RecoveryResults.Count}, " +
                            $"DynamicStake=${stateBackup.DynamicStake:F2}, " +
                            $"AmountToBeRecovered=${stateBackup.AmountToBeRecoverd:F2}, " +
-                           $"TakeProfit=${stateBackup.TakeProfit:F2}");
+                           $"TakeProfit=${stateBackup.TakeProfit:F2}, " +
+                           $"IsRecoveryMode={stateBackup.IsRecoveryMode}");
             }
             catch (Exception ex)
             {
@@ -186,13 +187,14 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Determines the relationship between current level and potential next level
+        /// The examples here assume the maximum number of levels in a layer are set to 3 for clarity.
         /// </summary>
         public enum LevelRelationship
         {
-            SameLayer,      // Moving to next level in same layer (1.1 -> 1.2)
-            ChildLevel,     // Moving to child level (1.1 -> 1.1.1)
-            ParentLevel,    // Moving to parent level (1.1.1 -> 1.1)
-            RootLevel,      // Moving to root level (any -> 0)
+            SameLayer,      // Moving to next level in same layer - (1.1 -> 1.2) or (1.2.1 -> 1.2.2)
+            ChildLevel,     // Moving to child level (New layer with its levels under the level) - (1.2 -> 1.2.1) - From Layer 2 level 2 to Layer 3 level 1
+            ParentLevel,    // Moving to parent level (Recovered Layer, or rather the last level of the layer recovered, therefore navigating to the upper layer, to the next level of the upper layer) - (1.2.3 -> 1.3) or (1.1.3 -> 1.2)
+            RootLevel,      // Moving to root level (any -> 0) - (1.3 -> 0) - From Layer 1 level 3 to Root - Exiting hierarchy
             Invalid         // Invalid transition
         }
 
@@ -269,7 +271,6 @@ namespace FxWorth.Hierarchy
         public bool IsInHierarchyMode { get; private set; } = false;
         internal int layer1CompletedLevels = 0;
         private Dictionary<string, AuthClient> levelClients = new Dictionary<string, AuthClient>();
-        // Unified state management and level relationship analysis
         private readonly LevelStateManager stateManager = new LevelStateManager();
         private readonly LevelRelationshipAnalyzer relationshipAnalyzer = new LevelRelationshipAnalyzer();
 
@@ -439,6 +440,7 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// The `HierarchyLevel` class represents a single level in the hierarchy of the trading strategy.
+        /// Pure data structure - no calculation logic, only configuration and metadata.
         /// </summary>
         public class HierarchyLevel
         {
@@ -448,88 +450,22 @@ namespace FxWorth.Hierarchy
             public int? MartingaleLevel { get; set; }            
             public decimal? MaxDrawdown { get; set; }
             public decimal? BarrierOffset { get; set; }
-            public List<decimal> RecoveryResults { get; set; } = new List<decimal>();
             public bool IsCompleted { get; set; }
-            public bool HasExceededMaxDrawdown => GetTotalLoss() > (MaxDrawdown ?? decimal.MaxValue);
-            public decimal CurrentRecoveryAmount => GetTotalLoss();
-            public bool IsRecoverySuccessful => GetTotalProfit() >= AmountToRecover;
-            public decimal GetTotalLoss()
-            {
-                return RecoveryResults.Where(r => r < 0).Sum(r => -r);
-            }
-            
-            // Get total profit from positive trade results
-            public decimal GetTotalProfit()
-            {
-                return RecoveryResults.Where(r => r > 0).Sum();
-            }
-            // Cache the latest dynamic stake used in recovery
-            public decimal CurrentDynamicStake { get; set; }
 
             public HierarchyLevel(string levelId, decimal amountToBeRecovered, decimal initialStake, int? martingaleLevel, decimal? maxDrawdown, decimal? barrierOffset)
             {
                 LevelId = levelId;
                 AmountToRecover = amountToBeRecovered;
                 InitialStake = initialStake;
-                CurrentDynamicStake = initialStake;
                 MartingaleLevel = martingaleLevel;
                 MaxDrawdown = maxDrawdown;
                 BarrierOffset = barrierOffset;
                 IsCompleted = false;
-            }            
-            
-            public void UpdateRecoveryResults(List<decimal> newResults)
-            {
-                if (newResults == null || !newResults.Any())
-                    return;
-
-                RecoveryResults = new List<decimal>(newResults);
-                IsCompleted = IsRecoverySuccessful;
             }
 
-            // Update level state from trading parameters to keep them synchronized
-            public void UpdateFromTradingParameters(TradingParameters tradingParameters)
+            public void Reset()
             {
-                if (tradingParameters == null)
-                    return;
-                
-                // Update recovery results
-                if (tradingParameters.RecoveryResults.Any())
-                {
-                    RecoveryResults = new List<decimal>(tradingParameters.RecoveryResults);
-                    
-                    // Log recovery progress using correct metrics
-                    decimal profitAmount = GetTotalProfit();
-                    decimal lossAmount = GetTotalLoss();
-                    decimal netAmount = profitAmount - lossAmount;
-                    
-                    logger.Info($"Level {LevelId} recovery progress: Total Profit=${profitAmount:F2}, Total Loss=${lossAmount:F2}, Net=${netAmount:F2}, Target=${AmountToRecover:F2}");
-                    
-                    // Check if recovery is successful (total profit exceeds target)
-                    if (profitAmount >= AmountToRecover)
-                    {
-                        logger.Info($"Level {LevelId} recovery target met: ${profitAmount:F2} >= ${AmountToRecover:F2} (required amount)");
-                        IsCompleted = true;
-                    }                }
-                
-                // NOTE: Do NOT update AmountToRecover from trading parameters!
-                // Each hierarchy level should maintain its fixed target amount.
-                // The trading parameters' AmountToBeRecoverd is dynamic and changes during recovery,
-                // but the level's AmountToRecover should remain constant as the level's target.
-                
-                // Update dynamic stake - keep track of the current stake being used
-                if (tradingParameters.DynamicStake > 0)
-                {
-                    CurrentDynamicStake = tradingParameters.DynamicStake;
-                }
-                
-                // Force update completion state
-                IsCompleted = IsRecoverySuccessful;
-            }            public void Reset()
-            {
-                RecoveryResults.Clear();
                 IsCompleted = false;
-                CurrentDynamicStake = InitialStake;
             }
         }
 
@@ -919,20 +855,18 @@ namespace FxWorth.Hierarchy
                 AmountToBeRecoverd = 0,  // Start fresh, no recovery needed initially
                 IsRecoveryMode = false,  // Always start fresh, never in recovery mode initially
                 DynamicStake = level.InitialStake,
-                LevelInitialStake = level.InitialStake,
-                
-                // Start with empty recovery results - fresh trading object
-                RecoveryResults = new List<decimal>()
+                LevelInitialStake = level.InitialStake
             };
 
             // Apply hierarchy level parameters with proper precedence
             // Calculate the logical layer number for nested levels
             string[] levelParts = levelId.Split('.');
-            
+
             // For nested levels:
-            // "1.1" = Layer 1 (depth 2, layer 1)
-            // "1.1.1" = Layer 2 (depth 3, layer 2) 
-            // "1.1.1.1" = Layer 3 (depth 4, layer 3)
+            // "1.1" = Layer 1 (depth 1, layer 1, level 1)
+            // "1.1.1" = Layer 2 (depth 2, layer 2, level 1) 
+            // "1.1.1.1" = Layer 3 (depth 3, layer 3, level 1)
+            // "1.3.2.1.3" = Layer 4 (depth 4, layer 4, level 3)
             // etc.
             int actualLayerForConfig = levelParts.Length - 1;
             
@@ -1056,8 +990,6 @@ namespace FxWorth.Hierarchy
             logger.Info($"Creating nested level {nestedLevelId} under parent {parentLevelId} for amount {amountToBeRecovered:F2}");
 
             // Determine the layer number from the nested level depth
-            // For nested levels:
-            // "1.1" = Layer 1, "1.1.1" = Layer 2, "1.1.1.1" = Layer 3, etc.
             string[] parentParts = parentLevelId.Split('.');
             int layerDepth = parentParts.Length + 1; // Adding one more level of nesting
             int actualLayerForConfig = layerDepth - 1; // Convert to layer number
@@ -1141,7 +1073,6 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Calculates the actual layer depth from a level ID 
-        /// "1.1" = depth 1, "1.1.1" = depth 2, "1.1.1.1" = depth 3, etc.
         /// </summary>
         private int GetDepthFromLevelId(string levelId)
         {
@@ -1149,7 +1080,7 @@ namespace FxWorth.Hierarchy
                 return 0;
             
             string[] parts = levelId.Split('.');
-            return parts.Length - 1; // "1.1" has 2 parts = depth 1, "1.1.1" has 3 parts = depth 2
+            return parts.Length - 1; // "1.1" has 2 parts = depth 1, "1.1.1" has 3 parts = depth 2. Depth = parts.Length - 1
         }
 
         /// <summary>
@@ -1270,8 +1201,7 @@ namespace FxWorth.Hierarchy
         }
 
         /// <summary>
-        /// Simplified MoveToNextLevel that automatically determines the next level
-        /// and uses the unified navigation system
+        ///  Checks completion status from TradingParameters events, to move to next level if completed
         /// </summary>
         public bool MoveToNextLevel(AuthClient client)
         {
@@ -1288,7 +1218,7 @@ namespace FxWorth.Hierarchy
                 return false;
             }
 
-            // Track the profit from this completed level
+            // Track the profit from this completed level (external profit tracking)
             if (currentLevel.IsCompleted && client.TradingParameters != null)
             {
                 decimal levelProfit = client.TradingParameters.TotalProfit;
@@ -1296,25 +1226,11 @@ namespace FxWorth.Hierarchy
                 logger.Info($"Tracked profit for completed level {currentLevelId}: {levelProfit:F2}");
             }
 
-            // Check if level is completed
+            // Check if level is completed - status should already be set by TakeProfitReached event
             if (!currentLevel.IsCompleted)
             {
-                // Check completion status based on recovery results
-                if (currentLevel.RecoveryResults.Any())
-                {
-                    decimal profitAmount = currentLevel.GetTotalProfit();
-                    if (profitAmount >= currentLevel.AmountToRecover)
-                    {
-                        logger.Info($"Level {currentLevelId} completed: ${profitAmount:F2} >= ${currentLevel.AmountToRecover:F2}");
-                        currentLevel.IsCompleted = true;
-                    }
-                }
-
-                if (!currentLevel.IsCompleted)
-                {
-                    logger.Info($"Cannot move from level {currentLevelId}: Level not completed");
-                    return false;
-                }
+                logger.Info($"Cannot move from level {currentLevelId}: Level not completed yet");
+                return false;
             }
 
             // Determine the next level based on hierarchy rules
@@ -1372,7 +1288,8 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Determines the next level ID based on current level and hierarchy rules
-        /// Handles proper upward navigation when max depth is reached
+        /// Handles proper upward navigation when max depth is reached`.
+        /// Its intended to be used by MoveToNextLevel method to find the next level after completion being aware of completed levels and skip them to the appropriate next level.
         /// </summary>
         private string DetermineNextLevel(string currentLevelId)
         {

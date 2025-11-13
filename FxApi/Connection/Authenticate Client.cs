@@ -595,14 +595,15 @@ namespace FxApi
         }
 
         // Event handler for when the take profit target is reached.
-        private void OnTakeProfitReached(object sender, decimal totalProfit)
+        // REFACTORED: Updated to use new TakeProfitReachedEventArgs structure.
+        private void OnTakeProfitReached(object sender, TakeProfitReachedEventArgs e)
         {
             // Stop trading by clearing the model and waiting IDs
             model = null;
             waitingClosedIds.Clear();
             waitingContradctIds.Clear();
             
-            logger.Info($"<=> Take profit target reached! Total Profit: {totalProfit:C}");
+            logger.Info($"<=> Take profit target reached! Total Profit: {e.TotalProfit:C}, Target: {e.TargetProfit:C}");
             
             StateChanged?.Raise(this, new StateChangedArgs(IsOnline, Credentials));
         }

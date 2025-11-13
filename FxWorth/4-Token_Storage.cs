@@ -840,14 +840,14 @@ namespace FxWorth
                 client.SetPersistentMode(false);
                 client.Stop();
                 
-                // Reset trading parameters
+                // Reset trading parameters to initial state
                 if (client.TradingParameters != null)
                 {
                     client.TradingParameters.IsRecoveryMode = false;
                     client.TradingParameters.DynamicStake = client.TradingParameters.Stake;
                     client.TradingParameters.TempBarrier = 0;
-                    client.TradingParameters.RecoveryResults.Clear();
                     client.TradingParameters.AmountToBeRecoverd = 0;
+                    client.TradingParameters.RecoveryResults.Clear();
                 }
                 
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
@@ -930,6 +930,7 @@ namespace FxWorth
           
         /// Sets the trading parameters for each managed `AuthClient` instance based on the provided base parameters.
         /// In hierarchy mode, configures parameters for the current hierarchy level.
+        /// REFACTORED: Subscribes to TradingParameters events for event-driven coordination.
         public void SetTradingParameters(TradingParameters baseParameters)
         {
             foreach (var clientPair in clients)
@@ -937,10 +938,13 @@ namespace FxWorth
                 var credentials = clientPair.Key;
                 var client = clientPair.Value;
 
-                // Unsubscribe from the old TradingParameters event if we are replacing it
+                // Unsubscribe from old TradingParameters events if we are replacing it
                 if (client.TradingParameters != null)
                 {
                     client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
+                    client.TradingParameters.MaxDrawdownExceeded -= OnMaxDrawdownExceeded;
+                    client.TradingParameters.RecoveryStateChanged -= OnRecoveryStateChanged;
+                    client.TradingParameters.TradeProcessed -= OnTradeProcessed;
                 }
 
                 var clientParameters = (TradingParameters)baseParameters.Clone();
@@ -956,7 +960,11 @@ namespace FxWorth
                     clientParameters.TakeProfit = credentials.ProfitTarget;
                 }
                 
+                // Subscribe to all TradingParameters events
                 clientParameters.TakeProfitReached += OnTakeProfitReached;
+                clientParameters.MaxDrawdownExceeded += OnMaxDrawdownExceeded;
+                clientParameters.RecoveryStateChanged += OnRecoveryStateChanged;
+                clientParameters.TradeProcessed += OnTradeProcessed;
 
                 client.TradingParameters = clientParameters;
 
@@ -1048,7 +1056,8 @@ namespace FxWorth
         }
         
         /// Event handler triggered when the take profit target is reached for a managed `AuthClient` instance.
-        private void OnTakeProfitReached(object sender, decimal totalProfit)
+        /// REFACTORED: Uses event-driven architecture with proper event args.
+        private void OnTakeProfitReached(object sender, TakeProfitReachedEventArgs e)
         {
             var tradingParameters = (TradingParameters)sender;
             
@@ -1063,28 +1072,21 @@ namespace FxWorth
             {
                 return;
             }            
-            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");
+            logger.Info($"<=> Take profit target reached for client: {credentials.Token}! Total Profit: {e.TotalProfit:C}, Target: {e.TargetProfit:C}");
             
             // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
             if (IsHierarchyMode && client == hierarchyClient)
             {
                 logger.Info("Take profit reached in hierarchy mode - attempting level transition");
                 
-                // First, get the current level and log its state
+                // Get the current level and mark it as completed
                 var currentLevel = hierarchyNavigator?.GetCurrentLevel();
 
                 if (currentLevel != null)
                 {
-                    // Log comprehensive level state for debugging
-                    logger.Info($"Level state before transition: Level={currentLevel.LevelId}, " +
-                               $"IsCompleted={currentLevel.IsCompleted}, " +
-                               $"RecoveryResults.Count={currentLevel.RecoveryResults.Count}, " +
-                               $"TotalProfit={currentLevel.GetTotalProfit():F2}, " +
-                               $"AmountToRecover={currentLevel.AmountToRecover:F2}");
-                    
                     // Mark the level as completed when take profit is reached
                     currentLevel.IsCompleted = true;
-                    logger.Info($"Level {currentLevel.LevelId} marked as completed due to take profit target reached");
+                    logger.Info($"Level {currentLevel.LevelId} marked as completed (TotalProfit: {e.TotalProfit:F2} >= Target: {e.TargetProfit:F2})");
                 }
                 
                 // Try to move to the next level in the hierarchy
@@ -1119,6 +1121,110 @@ namespace FxWorth
             }
             
             ClientsStateChanged?.Raise(client, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Event handler triggered when max drawdown is exceeded - enters hierarchy mode for advanced recovery.
+        /// REFACTORED: Event-driven approach - TradingParameters emits this event, TokenStorage coordinates hierarchy escalation.
+        /// </summary>
+        private void OnMaxDrawdownExceeded(object sender, MaxDrawdownExceededEventArgs e)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            
+            if (client == null)
+            {
+                logger.Warn("MaxDrawdown exceeded event received but client not found");
+                return;
+            }
+
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials != null)
+            {
+                logger.Warn($"Max drawdown exceeded for client {credentials.Token}: " +
+                           $"Current={e.CurrentDrawdown:F2}, Limit={e.MaxDrawdownLimit:F2}, " +
+                           $"AmountToRecover={e.AmountToBeRecovered:F2}");
+            }
+
+            // Enter hierarchy mode if not already in it
+            if (!IsHierarchyMode)
+            {
+                logger.Info("Entering hierarchy mode due to max drawdown exceeded");
+                EnterHierarchyMode(client);
+            }
+            else if (client == hierarchyClient && hierarchyNavigator != null)
+            {
+                // Already in hierarchy mode - this level exceeded its max drawdown
+                // Create a deeper nested level
+                var currentLevel = hierarchyNavigator.GetCurrentLevel();
+                if (currentLevel != null)
+                {
+                    logger.Info($"Level {currentLevel.LevelId} exceeded max drawdown - attempting to create nested level");
+                    
+                    if (hierarchyNavigator.CanCreateNestedLevel(currentLevel.LevelId))
+                    {
+                        CreateNewLayer(currentLevel, client);
+                        SetHierarchyLevelTradingParameters(client);
+                    }
+                    else
+                    {
+                        logger.Warn($"Cannot create nested level from {currentLevel.LevelId} - max hierarchy depth reached");
+                        // Let the level continue trading with higher risk
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Event handler for recovery state changes (enter/exit recovery mode).
+        /// REFACTORED: Event-driven approach for monitoring recovery state.
+        /// </summary>
+        private void OnRecoveryStateChanged(object sender, RecoveryStateChangedEventArgs e)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            
+            if (client == null)
+                return;
+
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials != null)
+            {
+                if (e.EnteredRecovery)
+                {
+                    logger.Info($"Client {credentials.Token} entered recovery mode: " +
+                               $"AmountToRecover={e.AmountToRecover:F2}, AttemptsLeft={e.RecoveryAttemptsLeft}");
+                }
+                else if (e.ExitedRecovery)
+                {
+                    logger.Info($"Client {credentials.Token} exited recovery mode successfully");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Event handler for each processed trade - used for centralized profit tracking.
+        /// REFACTORED: Single source of truth for profit tracking across all levels.
+        /// </summary>
+        private void OnTradeProcessed(object sender, TradeProfitEventArgs e)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            
+            if (client == null)
+                return;
+
+            // Centralized profit tracking for hierarchy mode
+            if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
+            {
+                var currentLevel = hierarchyNavigator.GetCurrentLevel();
+                if (currentLevel != null)
+                {
+                    logger.Debug($"Tracked trade for level {currentLevel.LevelId}: " +
+                                $"P/L={e.ProfitLoss:F2}, TotalProfit={e.TotalProfit:F2}, " +
+                                $"IsRecovery={e.IsInRecoveryMode}, DynamicStake={e.DynamicStake:F2}");
+                }
+            }
         }
 
         /// Event handler triggered when a trade update is received from a managed `AuthClient` instance.
@@ -1183,6 +1289,7 @@ namespace FxWorth
         }        
         
         // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
+        /// REFACTORED: Simplified to rely on TradingParameters events for coordination.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
             // Avoid processing the same trade multiple times
@@ -1190,71 +1297,15 @@ namespace FxWorth
             {
                 decimal maxPayout = model.Payouts.Max();
                 
-                if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
-                {
-                    var currentLevel = hierarchyNavigator.GetCurrentLevel();
-                    if (currentLevel != null)
-                    {
-                        // Sync hierarchy level state with trading parameters
-                        currentLevel.UpdateFromTradingParameters(client.TradingParameters);
-                        
-                        if (model.Profit != 0) 
-                        {
-                            // Make sure we're not duplicating the result
-                            if (!currentLevel.RecoveryResults.Contains(model.Profit))
-                            {
-                                // Add this result to the level's tracking
-                                currentLevel.RecoveryResults.Add(model.Profit);
-                                
-                                // Also update the trading parameters with this result to keep them in sync
-                                if (!client.TradingParameters.RecoveryResults.Contains(model.Profit))
-                                {
-                                    client.TradingParameters.RecoveryResults.Add(model.Profit);
-                                }
-
-                                // NEW: Add to comprehensive hierarchy profit tracker
-                                if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
-                                {
-                                    tracker.AddTradeResult(currentLevel.LevelId, model.Profit);
-                                    logger.Info($"Added profit {model.Profit:F2} to hierarchy tracker. " +
-                                               $"Total hierarchy profit: ${tracker.TotalHierarchyProfit:F2}, " +
-                                               $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}, " +
-                                               $"Net result: ${tracker.NetHierarchyResult:F2}");
-                                }
-
-                                logger.Info($"Added profit {model.Profit:F2} to level {currentLevel.LevelId} recovery results");
-                                client.TradingParameters.RecalculateTotalProfit();
-                            }
-                            
-                            // Check if level has reached its recovery target
-                            decimal profitAmount = currentLevel.GetTotalProfit();
-                            if (profitAmount >= currentLevel.AmountToRecover)
-                            {
-                                currentLevel.IsCompleted = true;
-                                logger.Info($"Level {currentLevel.LevelId} marked as completed - recovered ${profitAmount:F2} of required ${currentLevel.AmountToRecover:F2}");
-                                
-                                // Attempt to move to next level immediately after a profitable trade
-                                // that meets the target - don't wait for next RSI signal
-                                if (hierarchyNavigator.MoveToNextLevel(client))
-                                {
-                                    logger.Info($"Immediately transitioned to next level after reaching target");
-                                }
-                            }
-                            
-                            logger.Info($"Updated hierarchy level {hierarchyNavigator.currentLevelId} with trade result: Profit={model.Profit:F2}, TotalProfit={profitAmount:F2}, IsCompleted={currentLevel.IsCompleted}, TotalRecoveryItems={currentLevel.RecoveryResults.Count}");
-                        }
-                        else
-                        {
-                            logger.Debug($"Ignoring invalid trade with ID {model.Id} - possible test or placeholder trade");
-                        }
-                    }
-                }                
+                // The TradingParameters.Process() method will emit events that we'll handle:
+                // - TradeProcessed: for profit tracking
+                // - MaxDrawdownExceeded: to trigger hierarchy escalation
+                // - TakeProfitReached: to trigger level transitions
                 
-                // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown
-                if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
-                {
-                    EnterHierarchyMode(client);
-                }
+                // No need to manually sync with HierarchyLevel - it's just metadata now
+                // All profit calculations happen in TradingParameters
+                
+                logger.Debug($"Trade closed: ID={model.Id}, Profit={model.Profit:F2}");
             }
         }
         
@@ -1360,11 +1411,13 @@ namespace FxWorth
             
             // Reset recovery mode related properties for fresh root level trading
             restoredParams.IsRecoveryMode = false;
-            restoredParams.RecoveryResults.Clear();
             restoredParams.AmountToBeRecoverd = 0;
             
-            // Subscribe to take profit events
+            // Subscribe to all trading parameter events
             restoredParams.TakeProfitReached += OnTakeProfitReached;
+            restoredParams.MaxDrawdownExceeded += OnMaxDrawdownExceeded;
+            restoredParams.RecoveryStateChanged += OnRecoveryStateChanged;
+            restoredParams.TradeProcessed += OnTradeProcessed;
             
             client.TradingParameters = restoredParams;
             
