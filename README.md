@@ -7,7 +7,7 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
 ## Current Status
 
 *   **Core Functionality:**
-    *   **Automated Trading:**  Executes pair trades (simultaneous "Higher" and "Lower" contracts) based on user-defined parameters and the Relative Strength Index (RSI) indicator.
+    *   **Automated Trading:**  Executes pair trades (simultaneous "Higher" and "Lower" contracts) (Straddle technique) based on user-defined parameters and the ATR Dual ROC indicator.
     *   **Real-time Data:**  Connects to the Deriv API via WebSockets to receive real-time market data (ticks and candles).
     *   **Multiple Account Management:**  Supports managing multiple Deriv accounts simultaneously, each with independent trading parameters.
     *   **Configurable Trading Parameters:**  Allows users to configure various trading parameters, including:
@@ -17,7 +17,7 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
         *   Max Drawdown (triggers the Hierarchy System)
         *   Barrier Offset
         *   Duration and Duration Unit
-        *   RSI parameters (period, overbought/oversold levels)
+        *   ATR Dual ROC parameters (period, compression/expansion thresholds, lookback periods)
     *   **Hierarchy Recovery System:**  Implements a sophisticated, multi-layered recovery system to mitigate losses.  This system divides large losses into smaller, manageable recovery targets across a hierarchy of levels and layers.  Each level can have custom parameters (Martingale level, Max Drawdown, Barrier Offset, Initial Stake).
     *   **Custom Layer Configuration:**  Provides a user interface for configuring custom parameters for individual layers within the hierarchy.
     *   **Logging:**  Uses NLog for detailed logging of trading activity, errors, and system events.
@@ -32,7 +32,7 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
     *   Deriv API (via WebSockets):  Real-time market data and trade execution.
     *   NLog: Logging framework.
     *   Newtonsoft.Json: JSON serialization/deserialization.
-    *   TA-Lib: Technical analysis library (for RSI calculation).
+    *   TA-Lib: Technical analysis library (for ATR calculation).
     *   SuperSocket.ClientEngine, WebSocket4Net: WebSocket communication.
 
 ## Key Features
@@ -43,9 +43,9 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
     *   **Seamless Integration:**  Integrates seamlessly with the existing Martingale recovery logic.
     *   **Granular Risk Control:**  Provides fine-grained control over risk exposure during recovery.
 
-*   **Pair Trading:**  Employs a pair trading strategy to hedge trades and reduce risk.
+*   **Pair Trading:**  Employs the straddle pair trading strategy to hedge trades and reduce risk.
 
-*   **RSI-Based Trading Signals:**  Uses the Relative Strength Index (RSI) indicator to generate trading signals based on overbought and oversold market conditions.
+*   **ATR Dual ROC "Sniper Model" Signals:**  Uses the Average True Range with dual Rate of Change calculations to generate trading signals based on volatility compression followed by expansion patterns.
 
 *   **Configurable Trading Parameters:**  Offers extensive customization options for trading parameters, allowing users to tailor the trading strategy to their risk tolerance and market conditions.
 
@@ -64,8 +64,8 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
 *	User clicks "Start" in FxWorthMainUI.
 *	TokenStorage.StartAll() starts the AuthClient instances, connecting them directly to Deriv.
 *	TokenStorage subscribes to market data via MarketDataClient.
-*	MarketDataClient feeds data to the Rsi indicator.
-*	Rsi.Crossover event triggers TokenStorage.OnCrossover.
+*	MarketDataClient feeds data to the ATR_Dual_ROC indicator.
+*	ATR_Dual_ROC.Crossover event triggers TokenStorage.OnCrossover.
 *	TokenStorage.OnCrossover iterates through active AuthClient instances and calls their Buy/Sell methods if conditions are met.
 *	AuthClient sends trade requests directly to Deriv.
 *	AuthClient receives transaction/balance updates directly from Deriv and updates its internal Balance and Pnl properties.

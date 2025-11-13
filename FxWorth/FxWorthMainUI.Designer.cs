@@ -33,11 +33,13 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
+            this.TriggerLookback = new System.Windows.Forms.NumericUpDown();
+            this.ContextLookback = new System.Windows.Forms.NumericUpDown();
             this.panel6 = new System.Windows.Forms.Panel();
             this.Close_Interval0_CMBX = new System.Windows.Forms.ComboBox();
-            this.Oversold_TXT = new System.Windows.Forms.NumericUpDown();
+            this.ROC2 = new System.Windows.Forms.NumericUpDown();
             this.Close_Interval0_LBL = new System.Windows.Forms.Label();
-            this.Overbought0_TXT = new System.Windows.Forms.NumericUpDown();
+            this.ROC1 = new System.Windows.Forms.NumericUpDown();
             this.Period0_TXT = new System.Windows.Forms.NumericUpDown();
             this.Close_Interval0_TXT = new System.Windows.Forms.NumericUpDown();
             this.Oversold_LBL = new System.Windows.Forms.Label();
@@ -115,9 +117,11 @@
             this.Cut_TSMI = new System.Windows.Forms.ToolStripMenuItem();
             this.Setup_GRBX.SuspendLayout();
             this.RSI_Indicator_Settings_GRBX.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.TriggerLookback)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ContextLookback)).BeginInit();
             this.panel6.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.Oversold_TXT)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.Overbought0_TXT)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ROC2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ROC1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.Period0_TXT)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.Close_Interval0_TXT)).BeginInit();
             this.Money_Management_GRBX.SuspendLayout();
@@ -169,10 +173,12 @@
             // 
             // RSI_Indicator_Settings_GRBX
             // 
+            this.RSI_Indicator_Settings_GRBX.Controls.Add(this.TriggerLookback);
+            this.RSI_Indicator_Settings_GRBX.Controls.Add(this.ContextLookback);
             this.RSI_Indicator_Settings_GRBX.Controls.Add(this.panel6);
-            this.RSI_Indicator_Settings_GRBX.Controls.Add(this.Oversold_TXT);
+            this.RSI_Indicator_Settings_GRBX.Controls.Add(this.ROC2);
             this.RSI_Indicator_Settings_GRBX.Controls.Add(this.Close_Interval0_LBL);
-            this.RSI_Indicator_Settings_GRBX.Controls.Add(this.Overbought0_TXT);
+            this.RSI_Indicator_Settings_GRBX.Controls.Add(this.ROC1);
             this.RSI_Indicator_Settings_GRBX.Controls.Add(this.Period0_TXT);
             this.RSI_Indicator_Settings_GRBX.Controls.Add(this.Close_Interval0_TXT);
             this.RSI_Indicator_Settings_GRBX.Controls.Add(this.Oversold_LBL);
@@ -186,7 +192,57 @@
             this.RSI_Indicator_Settings_GRBX.Size = new System.Drawing.Size(435, 274);
             this.RSI_Indicator_Settings_GRBX.TabIndex = 5;
             this.RSI_Indicator_Settings_GRBX.TabStop = false;
-            this.RSI_Indicator_Settings_GRBX.Text = "RSI Indicator Settings";
+            this.RSI_Indicator_Settings_GRBX.Text = "ATR Indicator Settings";
+            // 
+            // TriggerLookback
+            // 
+            this.TriggerLookback.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TriggerLookback.Location = new System.Drawing.Point(301, 220);
+            this.TriggerLookback.Margin = new System.Windows.Forms.Padding(4);
+            this.TriggerLookback.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
+            this.TriggerLookback.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.TriggerLookback.Name = "TriggerLookback";
+            this.TriggerLookback.Size = new System.Drawing.Size(112, 34);
+            this.TriggerLookback.TabIndex = 26;
+            this.TriggerLookback.ThousandsSeparator = true;
+            this.TriggerLookback.Value = new decimal(new int[] {
+            2,
+            0,
+            0,
+            0});
+            // 
+            // ContextLookback
+            // 
+            this.ContextLookback.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ContextLookback.Location = new System.Drawing.Point(301, 160);
+            this.ContextLookback.Margin = new System.Windows.Forms.Padding(4);
+            this.ContextLookback.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
+            this.ContextLookback.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.ContextLookback.Name = "ContextLookback";
+            this.ContextLookback.Size = new System.Drawing.Size(112, 34);
+            this.ContextLookback.TabIndex = 25;
+            this.ContextLookback.ThousandsSeparator = true;
+            this.ContextLookback.Value = new decimal(new int[] {
+            3,
+            0,
+            0,
+            0});
             // 
             // panel6
             // 
@@ -216,36 +272,30 @@
             this.Close_Interval0_CMBX.Size = new System.Drawing.Size(126, 33);
             this.Close_Interval0_CMBX.TabIndex = 21;
             // 
-            // Oversold_TXT
+            // ROC2
             // 
-            this.Oversold_TXT.DecimalPlaces = 2;
-            this.Oversold_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Oversold_TXT.Increment = new decimal(new int[] {
-            2,
+            this.ROC2.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ROC2.Location = new System.Drawing.Point(162, 220);
+            this.ROC2.Margin = new System.Windows.Forms.Padding(4);
+            this.ROC2.Maximum = new decimal(new int[] {
+            1000,
             0,
             0,
             0});
-            this.Oversold_TXT.Location = new System.Drawing.Point(162, 220);
-            this.Oversold_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Oversold_TXT.Maximum = new decimal(new int[] {
-            99,
+            this.ROC2.Minimum = new decimal(new int[] {
+            1000,
             0,
             0,
-            0});
-            this.Oversold_TXT.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.Oversold_TXT.Name = "Oversold_TXT";
-            this.Oversold_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Oversold_TXT.TabIndex = 24;
-            this.Oversold_TXT.ThousandsSeparator = true;
-            this.Oversold_TXT.Value = new decimal(new int[] {
+            -2147483648});
+            this.ROC2.Name = "ROC2";
+            this.ROC2.Size = new System.Drawing.Size(112, 34);
+            this.ROC2.TabIndex = 24;
+            this.ROC2.ThousandsSeparator = true;
+            this.ROC2.Value = new decimal(new int[] {
             15,
             0,
             0,
-            0});
+            -2147483648});
             // 
             // Close_Interval0_LBL
             // 
@@ -254,40 +304,34 @@
             this.Close_Interval0_LBL.Location = new System.Drawing.Point(9, 45);
             this.Close_Interval0_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Close_Interval0_LBL.Name = "Close_Interval0_LBL";
-            this.Close_Interval0_LBL.Size = new System.Drawing.Size(118, 25);
+            this.Close_Interval0_LBL.Size = new System.Drawing.Size(124, 25);
             this.Close_Interval0_LBL.TabIndex = 17;
-            this.Close_Interval0_LBL.Text = "Close Interval";
+            this.Close_Interval0_LBL.Text = "Epoch Interval";
             // 
-            // Overbought0_TXT
+            // ROC1
             // 
-            this.Overbought0_TXT.DecimalPlaces = 2;
-            this.Overbought0_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Overbought0_TXT.Increment = new decimal(new int[] {
-            2,
+            this.ROC1.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ROC1.Location = new System.Drawing.Point(162, 160);
+            this.ROC1.Margin = new System.Windows.Forms.Padding(4);
+            this.ROC1.Maximum = new decimal(new int[] {
+            1000,
             0,
             0,
             0});
-            this.Overbought0_TXT.Location = new System.Drawing.Point(162, 160);
-            this.Overbought0_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Overbought0_TXT.Maximum = new decimal(new int[] {
-            99,
+            this.ROC1.Minimum = new decimal(new int[] {
+            1000,
             0,
             0,
-            0});
-            this.Overbought0_TXT.Minimum = new decimal(new int[] {
-            1,
+            -2147483648});
+            this.ROC1.Name = "ROC1";
+            this.ROC1.Size = new System.Drawing.Size(112, 34);
+            this.ROC1.TabIndex = 23;
+            this.ROC1.ThousandsSeparator = true;
+            this.ROC1.Value = new decimal(new int[] {
+            25,
             0,
             0,
-            0});
-            this.Overbought0_TXT.Name = "Overbought0_TXT";
-            this.Overbought0_TXT.Size = new System.Drawing.Size(112, 34);
-            this.Overbought0_TXT.TabIndex = 23;
-            this.Overbought0_TXT.ThousandsSeparator = true;
-            this.Overbought0_TXT.Value = new decimal(new int[] {
-            85,
-            0,
-            0,
-            0});
+            -2147483648});
             // 
             // Period0_TXT
             // 
@@ -330,7 +374,7 @@
             this.Close_Interval0_TXT.TabIndex = 20;
             this.Close_Interval0_TXT.ThousandsSeparator = true;
             this.Close_Interval0_TXT.Value = new decimal(new int[] {
-            1,
+            4,
             0,
             0,
             0});
@@ -342,9 +386,9 @@
             this.Oversold_LBL.Location = new System.Drawing.Point(9, 225);
             this.Oversold_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Oversold_LBL.Name = "Oversold_LBL";
-            this.Oversold_LBL.Size = new System.Drawing.Size(84, 25);
+            this.Oversold_LBL.Size = new System.Drawing.Size(92, 25);
             this.Oversold_LBL.TabIndex = 2;
-            this.Oversold_LBL.Text = "Oversold";
+            this.Oversold_LBL.Text = "Expansion";
             // 
             // Overbought0_LBL
             // 
@@ -353,9 +397,9 @@
             this.Overbought0_LBL.Location = new System.Drawing.Point(9, 165);
             this.Overbought0_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Overbought0_LBL.Name = "Overbought0_LBL";
-            this.Overbought0_LBL.Size = new System.Drawing.Size(109, 25);
+            this.Overbought0_LBL.Size = new System.Drawing.Size(117, 25);
             this.Overbought0_LBL.TabIndex = 1;
-            this.Overbought0_LBL.Text = "Overbought";
+            this.Overbought0_LBL.Text = "Compression";
             // 
             // Period0_LBL
             // 
@@ -417,6 +461,11 @@
             0,
             0,
             0});
+            this.Stake_TXT2.Minimum = new decimal(new int[] {
+            35,
+            0,
+            0,
+            131072});
             this.Stake_TXT2.Name = "Stake_TXT2";
             this.Stake_TXT2.Size = new System.Drawing.Size(128, 34);
             this.Stake_TXT2.TabIndex = 28;
@@ -503,9 +552,9 @@
             this.Martingale_Level_LBL2.Location = new System.Drawing.Point(15, 49);
             this.Martingale_Level_LBL2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Martingale_Level_LBL2.Name = "Martingale_Level_LBL2";
-            this.Martingale_Level_LBL2.Size = new System.Drawing.Size(140, 25);
+            this.Martingale_Level_LBL2.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL2.TabIndex = 0;
-            this.Martingale_Level_LBL2.Text = "Martingale Level";
+            this.Martingale_Level_LBL2.Text = "Martingale Levels";
             // 
             // Max_Drawdown_TXT2
             // 
@@ -515,7 +564,7 @@
             1,
             0,
             0,
-            131072});
+            65536});
             this.Max_Drawdown_TXT2.Location = new System.Drawing.Point(214, 99);
             this.Max_Drawdown_TXT2.Margin = new System.Windows.Forms.Padding(4);
             this.Max_Drawdown_TXT2.Maximum = new decimal(new int[] {
@@ -533,7 +582,7 @@
             this.Max_Drawdown_TXT2.TabIndex = 26;
             this.Max_Drawdown_TXT2.ThousandsSeparator = true;
             this.Max_Drawdown_TXT2.Value = new decimal(new int[] {
-            2000,
+            50,
             0,
             0,
             0});
@@ -559,10 +608,20 @@
             0,
             0,
             0});
+            this.Martingale_Level_TXT2.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             this.Martingale_Level_TXT2.Name = "Martingale_Level_TXT2";
             this.Martingale_Level_TXT2.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT2.TabIndex = 25;
             this.Martingale_Level_TXT2.ThousandsSeparator = true;
+            this.Martingale_Level_TXT2.Value = new decimal(new int[] {
+            175,
+            0,
+            0,
+            131072});
             // 
             // Phase_1_GRBX
             // 
@@ -587,8 +646,8 @@
             this.Hierarchy_Levels_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Hierarchy_Levels_TXT.Location = new System.Drawing.Point(214, 145);
             this.Hierarchy_Levels_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Hierarchy_Levels_TXT.Maximum = new decimal(new int[] {
-            10,
+            this.Hierarchy_Levels_TXT.Minimum = new decimal(new int[] {
+            1,
             0,
             0,
             0});
@@ -608,17 +667,12 @@
             this.Max_Depth_TXT.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Max_Depth_TXT.Location = new System.Drawing.Point(214, 200);
             this.Max_Depth_TXT.Margin = new System.Windows.Forms.Padding(4);
-            this.Max_Depth_TXT.Maximum = new decimal(new int[] {
-            12,
-            0,
-            0,
-            0});
             this.Max_Depth_TXT.Name = "Max_Depth_TXT";
             this.Max_Depth_TXT.Size = new System.Drawing.Size(128, 34);
             this.Max_Depth_TXT.TabIndex = 19;
             this.Max_Depth_TXT.ThousandsSeparator = true;
             this.Max_Depth_TXT.Value = new decimal(new int[] {
-            5,
+            1,
             0,
             0,
             0});
@@ -654,14 +708,19 @@
             this.Martingale_Level_LBL.Location = new System.Drawing.Point(15, 40);
             this.Martingale_Level_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Martingale_Level_LBL.Name = "Martingale_Level_LBL";
-            this.Martingale_Level_LBL.Size = new System.Drawing.Size(140, 25);
+            this.Martingale_Level_LBL.Size = new System.Drawing.Size(148, 25);
             this.Martingale_Level_LBL.TabIndex = 0;
-            this.Martingale_Level_LBL.Text = "Martingale Level";
+            this.Martingale_Level_LBL.Text = "Martingale Levels";
             // 
             // Max_Drawdown_TXT1
             // 
-            this.Max_Drawdown_TXT1.DecimalPlaces = 1;
+            this.Max_Drawdown_TXT1.DecimalPlaces = 2;
             this.Max_Drawdown_TXT1.Font = new System.Drawing.Font("Ebrima", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Max_Drawdown_TXT1.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            131072});
             this.Max_Drawdown_TXT1.Location = new System.Drawing.Point(214, 90);
             this.Max_Drawdown_TXT1.Margin = new System.Windows.Forms.Padding(4);
             this.Max_Drawdown_TXT1.Maximum = new decimal(new int[] {
@@ -679,7 +738,7 @@
             this.Max_Drawdown_TXT1.TabIndex = 17;
             this.Max_Drawdown_TXT1.ThousandsSeparator = true;
             this.Max_Drawdown_TXT1.Value = new decimal(new int[] {
-            100,
+            20,
             0,
             0,
             0});
@@ -705,10 +764,20 @@
             0,
             0,
             0});
+            this.Martingale_Level_TXT.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
             this.Martingale_Level_TXT.Name = "Martingale_Level_TXT";
             this.Martingale_Level_TXT.Size = new System.Drawing.Size(128, 34);
             this.Martingale_Level_TXT.TabIndex = 16;
             this.Martingale_Level_TXT.ThousandsSeparator = true;
+            this.Martingale_Level_TXT.Value = new decimal(new int[] {
+            3,
+            0,
+            0,
+            0});
             // 
             // API_Token_GRBX
             // 
@@ -952,7 +1021,7 @@
             this.Duration0_CMBX.Items.AddRange(new object[] {
             "Ticks",
             "Seconds",
-            "Minutes",
+            "Minute(s)",
             "Hour(s)"});
             this.Duration0_CMBX.Location = new System.Drawing.Point(0, 0);
             this.Duration0_CMBX.Margin = new System.Windows.Forms.Padding(4);
@@ -972,7 +1041,7 @@
             this.Stake_TXT.Location = new System.Drawing.Point(162, 218);
             this.Stake_TXT.Margin = new System.Windows.Forms.Padding(4);
             this.Stake_TXT.Maximum = new decimal(new int[] {
-            10000,
+            15,
             0,
             0,
             0});
@@ -986,10 +1055,10 @@
             this.Stake_TXT.TabIndex = 15;
             this.Stake_TXT.ThousandsSeparator = true;
             this.Stake_TXT.Value = new decimal(new int[] {
-            65,
+            8,
             0,
             0,
-            131072});
+            65536});
             // 
             // Choose_Asset_Panel
             // 
@@ -1190,7 +1259,7 @@
             this.Internet_conection_LBL.AutoSize = true;
             this.Internet_conection_LBL.BackColor = System.Drawing.Color.Transparent;
             this.Internet_conection_LBL.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F);
-            this.Internet_conection_LBL.Location = new System.Drawing.Point(296, 18);
+            this.Internet_conection_LBL.Location = new System.Drawing.Point(296, 20);
             this.Internet_conection_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Internet_conection_LBL.Name = "Internet_conection_LBL";
             this.Internet_conection_LBL.Size = new System.Drawing.Size(124, 20);
@@ -1416,9 +1485,11 @@
             this.Setup_GRBX.ResumeLayout(false);
             this.RSI_Indicator_Settings_GRBX.ResumeLayout(false);
             this.RSI_Indicator_Settings_GRBX.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.TriggerLookback)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ContextLookback)).EndInit();
             this.panel6.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.Oversold_TXT)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.Overbought0_TXT)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ROC2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ROC1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.Period0_TXT)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.Close_Interval0_TXT)).EndInit();
             this.Money_Management_GRBX.ResumeLayout(false);
@@ -1463,9 +1534,9 @@
         private System.Windows.Forms.Button Start_BTN;
         private System.Windows.Forms.GroupBox RSI_Indicator_Settings_GRBX;
         private System.Windows.Forms.ComboBox Close_Interval0_CMBX;
-        private System.Windows.Forms.NumericUpDown Oversold_TXT;
+        private System.Windows.Forms.NumericUpDown ROC2;
         private System.Windows.Forms.Label Close_Interval0_LBL;
-        private System.Windows.Forms.NumericUpDown Overbought0_TXT;
+        private System.Windows.Forms.NumericUpDown ROC1;
         private System.Windows.Forms.NumericUpDown Period0_TXT;
         private System.Windows.Forms.NumericUpDown Close_Interval0_TXT;
         private System.Windows.Forms.Label Oversold_LBL;
@@ -1539,6 +1610,8 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Current_Profit;
         private System.Windows.Forms.DataGridViewTextBoxColumn Status;
         public System.Windows.Forms.DataGridView Main_Token_Table;
+        private System.Windows.Forms.NumericUpDown TriggerLookback;
+        private System.Windows.Forms.NumericUpDown ContextLookback;
     }
 }
 

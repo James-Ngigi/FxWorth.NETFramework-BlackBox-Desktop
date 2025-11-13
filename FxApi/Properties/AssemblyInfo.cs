@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("FxWorth")]
 [assembly: AssemblyProduct("FinTech")]
 [assembly: AssemblyCopyright("Copyright ©  2020-2025")]
-[assembly: AssemblyTrademark("FXWorth™")]
+[assembly: AssemblyTrademark("FxWorth™")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("DEADBEAF-2025-C8DE-BADD-CAFE00000001")]
+[assembly: Guid("DEADBEAF-2025-C8DE-BADD-CAFE00000002")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("5.0.0.0")]
+[assembly: AssemblyVersion("5.0.5.0")]
 [assembly: AssemblyFileVersion("0.0.0.0")]

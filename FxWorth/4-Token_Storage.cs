@@ -12,7 +12,8 @@ using static FxWorth.Hierarchy.HierarchyNavigator;
 using System.Timers;
 
 namespace FxWorth
-{    /// <summary>
+{    
+    /// <summary>
     /// The `TokenStorage` class is the core component of the FxWorth application. 
     /// It manages multiple trading accounts (represented by API tokens and App IDs(Masked as Acc ID/Client ID)), handles connections to 
     /// the Deriv API, subscribes to market data, implements trading logic based on the RSI technical indicator, 
@@ -42,16 +43,17 @@ namespace FxWorth
         public EventHandler<EventArgs> InternetSpeedChanged;
         public EventHandler<AuthFailedArgs> AuthFailed;
         public EventHandler<TradeEventArgs> TradeUpdated;
+        public EventHandler<EventArgs> ForceStatusRefresh;
 
         private bool isTradePending = false;
-        public Rsi rsi;
+        public ATR_Dual_ROC atrDualRoc;
         private AuthClient eventingClinet;
 
-        // RSI monitoring and recovery fields
-        private DateTime lastRsiRecoveryAttempt = DateTime.MinValue;
-        private const int RSI_RECOVERY_INTERVAL_MS = 1000;
-        private int rsiNanCount = 0;
-        private const int MAX_RSI_NAN_COUNT = 10;
+        // ATR_Dual_ROC monitoring and recovery fields
+        private DateTime lastAtrRecoveryAttempt = DateTime.MinValue;
+        private const int ATR_RECOVERY_INTERVAL_MS = 1000;
+        private int atrNanCount = 0;
+        private const int MAX_ATR_NAN_COUNT = 10;
 
         public bool IsHierarchyMode => hierarchyNavigator != null && hierarchyNavigator.IsInHierarchyMode;
         private readonly object tradeUpdateLock = new object();
@@ -65,6 +67,18 @@ namespace FxWorth
         public int MaxHierarchyDepth => hierarchyNavigator?.maxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
+        
+        // NEW: Persistent connection management
+        private Timer persistentConnectionTimer;
+        private Dictionary<Credentials, ConnectionState> connectionStates = new Dictionary<Credentials, ConnectionState>();
+        private Dictionary<Credentials, DateTime> lastConnectionAttempt = new Dictionary<Credentials, DateTime>();
+        private readonly TimeSpan CONNECTION_RETRY_INTERVAL = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan CONNECTION_HEALTH_CHECK_INTERVAL = TimeSpan.FromSeconds(3);
+        private readonly TimeSpan AUTH_RETRY_INTERVAL = TimeSpan.FromSeconds(10);
+        private readonly int MAX_AUTH_RETRIES = 15;
+        //private readonly int MAX_CONNECTION_RETRIES = int.MaxValue; // Keep trying until manually stopped
+        private bool isPersistentConnectionEnabled = false;
+        private readonly object connectionManagementLock = new object();
 
         public decimal InitialStakeLayer1 { get; set; }
 
@@ -130,9 +144,12 @@ namespace FxWorth
             pinger.PingChanged += PingChanged;
 
             this.path = path;
-            clientStateCheckTimer = new Timer(12000);
+            clientStateCheckTimer = new Timer(300); // 300ms for frequent status updates
             clientStateCheckTimer.Elapsed += ClientStateCheckTimer_Elapsed;
             clientStateCheckTimer.Start();
+
+            // Initialize persistent connection management
+            InitializePersistentConnectionManagement();
 
             if (File.Exists(path))
             {
@@ -151,6 +168,11 @@ namespace FxWorth
                     }
                 }
             }
+
+            // Start the persistent connection manager
+            persistentConnectionTimer = new Timer(5000); // Check every 5 seconds
+            persistentConnectionTimer.Elapsed += PersistentConnectionTimer_Elapsed;
+            persistentConnectionTimer.Start();
         }
 
         private void ClientStateCheckTimer_Elapsed(object sender, ElapsedEventArgs e)
@@ -173,6 +195,9 @@ namespace FxWorth
                     previousClientStates[pair.Key] = currentState;
                 }
             }
+            
+            // Force refresh the UI status column every timer tick
+            ForceStatusRefresh?.Raise(this, EventArgs.Empty);
         }
 
         /// Event handler triggered when the ping latency changes.
@@ -200,6 +225,9 @@ namespace FxWorth
 
             clientStateCheckTimer.Stop();
             clientStateCheckTimer.Dispose();
+
+            persistentConnectionTimer.Stop();
+            persistentConnectionTimer.Dispose();
         }
 
         /// Adds a new trading account to the list of managed lucky clients.
@@ -255,79 +283,262 @@ namespace FxWorth
         // Starts all managed `AuthClient` instances, initiating connections to Deriv accounts.
         public void StartAll()
         {
-            // Iterate through each AuthClient in the clients dictionary.
+            logger.Info("Starting all managed AuthClient instances with persistent connection management");
+            
+            // Start persistent connection management
+            StartPersistentConnectionManagement();
+            
+            // Initialize all clients
             foreach (var client in clients.Values)
             {
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
-                client.Start();
+                
+                // Initialize connection state
+                var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+                if (credentials != null)
+                {
+                    connectionStates[credentials] = ConnectionState.Connecting;
+                    lastConnectionAttempt[credentials] = DateTime.Now;
+                }
+                
+                try
+                {
+                    // Enable persistent mode for this client
+                    client.SetPersistentMode(true);
+                    
+                    client.Start();
+                    logger.Info($"Started client {credentials?.AppId} with persistent connection mode");
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, $"Failed to start client {credentials?.AppId}");
+                    if (credentials != null)
+                    {
+                        connectionStates[credentials] = ConnectionState.ConnectionFailed;
+                    }
+                }
+            }
+            
+            logger.Info($"Started {clients.Count} AuthClient instances with persistent connection monitoring");
+        }
+
+        /// <summary>
+        /// Starts persistent connection monitoring for all clients
+        /// </summary>
+        private void StartPersistentConnectionManagement()
+        {
+            lock (connectionManagementLock)
+            {
+                if (isPersistentConnectionEnabled) return;
+                isPersistentConnectionEnabled = true;
+                
+                foreach (var client in clients)
+                {
+                    if (!connectionStates.ContainsKey(client.Key))
+                    {
+                        connectionStates[client.Key] = ConnectionState.Disconnected;
+                    }
+                }
+                persistentConnectionTimer.Start();
+                logger.Info("Persistent connection management started for all clients");
             }
         }
 
-        /// Subscribes to market data for a specific symbol and configures technical indicators (RSI)
+        /// <summary>
+        /// Timer event handler for persistent connection monitoring
+        /// </summary>
+        private void PersistentConnectionTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            if (!isPersistentConnectionEnabled) return;
+            
+            lock (connectionManagementLock)
+            {
+                foreach (var clientPair in clients.ToList())
+                {
+                    var credentials = clientPair.Key;
+                    var client = clientPair.Value;
+                    
+                    if (!credentials.IsChecked) continue;
+                    
+                    if (ShouldAttemptReconnection(credentials, client))
+                    {
+                        AttemptClientReconnection(credentials, client);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determines if a client should attempt reconnection
+        /// </summary>
+        private bool ShouldAttemptReconnection(Credentials credentials, AuthClient client)
+        {
+            if (!connectionStates.ContainsKey(credentials))
+            {
+                connectionStates[credentials] = ConnectionState.Disconnected;
+                return true;
+            }
+
+            var currentState = connectionStates[credentials];
+            
+            if (currentState == ConnectionState.Connected && !client.IsOnline)
+            {
+                connectionStates[credentials] = ConnectionState.Disconnected;
+                logger.Warn($"Client {credentials.AppId} marked as connected but is offline. Updating state.");
+                return true;
+            }
+
+            if (currentState == ConnectionState.Disconnected || 
+                currentState == ConnectionState.ConnectionFailed || 
+                currentState == ConnectionState.AuthenticationFailed)
+            {
+                if (!lastConnectionAttempt.ContainsKey(credentials))
+                {
+                    return true;
+                }
+
+                var timeSinceLastAttempt = DateTime.Now - lastConnectionAttempt[credentials];
+                return timeSinceLastAttempt > CONNECTION_RETRY_INTERVAL;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Attempts to reconnect a specific client with enhanced error handling
+        /// </summary>
+        private void AttemptClientReconnection(Credentials credentials, AuthClient client)
+        {
+            try
+            {
+                lastConnectionAttempt[credentials] = DateTime.Now;
+                connectionStates[credentials] = ConnectionState.Connecting;
+
+                logger.Info($"Attempting reconnection for client {credentials.AppId}");
+
+                client.Stop();
+                
+                Task.Delay(1000).ContinueWith(_ =>
+                {
+                    try
+                    {
+                        client.Start();
+                        MonitorAuthenticationSuccess(credentials, client);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, $"Failed to restart client {credentials.AppId}");
+                        connectionStates[credentials] = ConnectionState.ConnectionFailed;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, $"Error during reconnection attempt for client {credentials.AppId}");
+                connectionStates[credentials] = ConnectionState.ConnectionFailed;
+            }
+        }
+
+        /// <summary>
+        /// Monitors authentication success for a client
+        /// </summary>
+        private void MonitorAuthenticationSuccess(Credentials credentials, AuthClient client)
+        {
+            var authCheckTimer = new Timer(AUTH_RETRY_INTERVAL.TotalMilliseconds);
+            var authCheckCount = 0;
+            
+            authCheckTimer.Elapsed += (sender, e) =>
+            {
+                authCheckCount++;
+                
+                if (client.IsOnline)
+                {
+                    connectionStates[credentials] = ConnectionState.Authenticated;
+                    logger.Info($"Client {credentials.AppId} successfully authenticated");
+                    authCheckTimer.Stop();
+                    authCheckTimer.Dispose();
+                }
+                else if (authCheckCount >= MAX_AUTH_RETRIES)
+                {
+                    connectionStates[credentials] = ConnectionState.AuthenticationFailed;
+                    logger.Warn($"Authentication failed for client {credentials.AppId} after {MAX_AUTH_RETRIES} attempts");
+                    authCheckTimer.Stop();
+                    authCheckTimer.Dispose();
+                }
+            };
+            
+            authCheckTimer.Start();
+        }
+
+        /// Subscribes to market data for a specific symbol and configures the ATR Dual ROC indicator
         public MarketDataParameters SubscribeMarketData(
-            int rsiPeriod,
-            double rsiOverbought,
-            double rsiOversold,
-            int rsiTimeframe,
+            int atrPeriod,
+            double compressionThreshold,
+            int longRocPeriod,
+            double expansionThreshold,
+            int shortRocPeriod,
+            int atrTimeframe,
             string symbol)
         {
             MarketDataClient.UnsubscribeAll();
 
-            if (rsi != null)
+            if (atrDualRoc != null)
             {
-                rsi.Crossover -= OnCrossover;
+                atrDualRoc.Crossover -= OnCrossover;
             }
 
-            rsi = new Rsi
+            atrDualRoc = new ATR_Dual_ROC
             {
-                Period = rsiPeriod,
-                Overbought = rsiOverbought,
-                Oversold = rsiOversold,
-                TimeFrame = rsiTimeframe
+                Period = atrPeriod,
+                CompressionThreshold = compressionThreshold,
+                LongRocPeriod = longRocPeriod,
+                ExpansionThreshold = expansionThreshold,
+                ShortRocPeriod = shortRocPeriod,
+                TimeFrame = atrTimeframe
             };
 
-            rsi.Crossover += OnCrossover;
-            MarketDataClient.Subscribe(symbol, rsiTimeframe, rsi);
+            atrDualRoc.Crossover += OnCrossover;
+            MarketDataClient.Subscribe(symbol, atrTimeframe, atrDualRoc);
 
-            // Reset RSI monitoring
-            lastRsiRecoveryAttempt = DateTime.MinValue;
-            rsiNanCount = 0;
-            return new MarketDataParameters { Rsi = rsi, Symbol = symbol };
+            // Reset ATR monitoring
+            lastAtrRecoveryAttempt = DateTime.MinValue;
+            atrNanCount = 0;
+            return new MarketDataParameters { AtrDualRoc = atrDualRoc, Symbol = symbol };
         }
 
         /// <summary>
-        /// NEW: Attempts to recover RSI from persistent NaN state
+        /// NEW: Attempts to recover ATR from persistent NaN state
         /// </summary>
-        public void AttemptRsiRecovery()
+        public void AttemptAtrRecovery()
         {
             try
             {
-                if (rsi == null)
+                if (atrDualRoc == null)
                     return;
 
                 var now = DateTime.Now;
                 
-                // Check if RSI is NaN
-                if (double.IsNaN(rsi.Value))
+                // Check if ATR is NaN
+                if (double.IsNaN(atrDualRoc.Value))
                 {
-                    rsiNanCount++;
+                    atrNanCount++;
                     
                     // Only attempt recovery if enough time has passed
-                    if ((now - lastRsiRecoveryAttempt).TotalMilliseconds < RSI_RECOVERY_INTERVAL_MS)
+                    if ((now - lastAtrRecoveryAttempt).TotalMilliseconds < ATR_RECOVERY_INTERVAL_MS)
                         return;
                     
-                    lastRsiRecoveryAttempt = now;
+                    lastAtrRecoveryAttempt = now;
 
                     // Progressive recovery steps
-                    if (rsiNanCount <= 3)
+                    if (atrNanCount <= 3)
                     {
                         // Step 1-3: Try basic reset and recalculation
-                        rsi.Reset();
+                        atrDualRoc.Reset();
                     }
-                    else if (rsiNanCount <= 5)
+                    else if (atrNanCount <= 5)
                     {
                         // Step 4-5: Reset and attempt to get fresh data
-                        rsi.Reset();
+                        atrDualRoc.Reset();
                         
                         // Request fresh market data
                         Task.Delay(1000).ContinueWith(_ =>
@@ -339,20 +550,20 @@ namespace FxWorth
                                 {
                                     MarketDataClient.Subscribe(
                                         MarketDataClient.GetInstrument("1HZ100V")?.display_name ?? "1HZ100V", 
-                                        rsi.TimeFrame, 
-                                        rsi);
+                                        atrDualRoc.TimeFrame, 
+                                        atrDualRoc);
                                 });
                             }
                             catch (Exception ex)
                             {
-                                logger.Error(ex, "Error during RSI recovery resubscription");
+                                logger.Error(ex, "Error during ATR recovery resubscription");
                             }
                         });
                     }
-                    else if (rsiNanCount >= MAX_RSI_NAN_COUNT)
+                    else if (atrNanCount >= MAX_ATR_NAN_COUNT)
                     {
                         // Step 6+: Full restart of market data connection
-                        logger.Error("RSI Recovery: Maximum recovery attempts reached, restarting market data connection");
+                        logger.Error("ATR Recovery: Maximum recovery attempts reached, restarting market data connection");
                         
                         Task.Run(() =>
                         {
@@ -366,37 +577,35 @@ namespace FxWorth
                                     {
                                         // Re-subscribe with current parameters
                                         var currentSymbol = MarketDataClient.GetInstrument("1HZ100V")?.display_name ?? "1HZ100V";
-                                        MarketDataClient.Subscribe(currentSymbol, rsi.TimeFrame, rsi);
+                                        MarketDataClient.Subscribe(currentSymbol, atrDualRoc.TimeFrame, atrDualRoc);
                                     });
                                 });
                             }
                             catch (Exception ex)
                             {
-                                logger.Error(ex, "Error during RSI recovery connection restart");
+                                logger.Error(ex, "Error during ATR recovery connection restart");
                             }
                         });
                         
                         // Reset counter after drastic action
-                        rsiNanCount = 0;
+                        atrNanCount = 0;
                     }
                 }
                 else
                 {
-                    // RSI is working, reset counter
-                    if (rsiNanCount > 0)
+                    // ATR is working, reset counter
+                    if (atrNanCount > 0)
                     {
-                        logger.Info($"RSI Recovery: RSI value restored to {rsi.Value:F2} after {rsiNanCount} recovery attempts");
-                        rsiNanCount = 0;
+                        logger.Info($"ATR Recovery: ATR value restored to {atrDualRoc.Value:F6} after {atrNanCount} recovery attempts");
+                        atrNanCount = 0;
                     }
                 }
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Error in AttemptRsiRecovery");
+                logger.Error(ex, "Error in AttemptAtrRecovery");
             }
         }
-
-        /* -----------------------------------------SENSITIVE AREA----------------------------------------------------- */
 
         /// <summary>
         /// Event handler triggered when the RSI indicator crosses overbought or oversold thresholds.
@@ -608,31 +817,45 @@ namespace FxWorth
 
             logger.Info("<=> All active accounts have met Take-Profit/Stop-Loss condition. Trading attempts halted.");
 
-            if (rsi != null)
+            if (atrDualRoc != null)
             {
-                rsi.Crossover -= OnCrossover;
+                atrDualRoc.Crossover -= OnCrossover;
             }
         }
 
         /// Stops all managed `AuthClient` instances, disconnecting from Deriv accounts and halting trading activity.
         public void StopAll()
         {
+            // Stop persistent connection management first
+            lock (connectionManagementLock)
+            {
+                isPersistentConnectionEnabled = false;
+                persistentConnectionTimer?.Stop();
+                logger.Info("Persistent connection management stopped");
+            }
+            
             foreach (var client in clients.Values)
             {
+                // Disable persistent mode before stopping
+                client.SetPersistentMode(false);
                 client.Stop();
                 
-                // Reset trading parameters
+                // Reset trading parameters to initial state
                 if (client.TradingParameters != null)
                 {
                     client.TradingParameters.IsRecoveryMode = false;
                     client.TradingParameters.DynamicStake = client.TradingParameters.Stake;
                     client.TradingParameters.TempBarrier = 0;
-                    client.TradingParameters.RecoveryResults.Clear();
                     client.TradingParameters.AmountToBeRecoverd = 0;
+                    client.TradingParameters.RecoveryResults.Clear();
                 }
                 
                 ClientsStateChanged?.Raise(client, EventArgs.Empty);
             }            
+            
+            // Reset connection states
+            connectionStates.Clear();
+            lastConnectionAttempt.Clear();
             
             // Reset hierarchy state
             hierarchyNavigator = null;
@@ -707,6 +930,7 @@ namespace FxWorth
           
         /// Sets the trading parameters for each managed `AuthClient` instance based on the provided base parameters.
         /// In hierarchy mode, configures parameters for the current hierarchy level.
+        /// REFACTORED: Subscribes to TradingParameters events for event-driven coordination.
         public void SetTradingParameters(TradingParameters baseParameters)
         {
             foreach (var clientPair in clients)
@@ -714,10 +938,13 @@ namespace FxWorth
                 var credentials = clientPair.Key;
                 var client = clientPair.Value;
 
-                // Unsubscribe from the old TradingParameters event if we are replacing it
+                // Unsubscribe from old TradingParameters events if we are replacing it
                 if (client.TradingParameters != null)
                 {
                     client.TradingParameters.TakeProfitReached -= OnTakeProfitReached;
+                    client.TradingParameters.MaxDrawdownExceeded -= OnMaxDrawdownExceeded;
+                    client.TradingParameters.RecoveryStateChanged -= OnRecoveryStateChanged;
+                    client.TradingParameters.TradeProcessed -= OnTradeProcessed;
                 }
 
                 var clientParameters = (TradingParameters)baseParameters.Clone();
@@ -733,7 +960,11 @@ namespace FxWorth
                     clientParameters.TakeProfit = credentials.ProfitTarget;
                 }
                 
+                // Subscribe to all TradingParameters events
                 clientParameters.TakeProfitReached += OnTakeProfitReached;
+                clientParameters.MaxDrawdownExceeded += OnMaxDrawdownExceeded;
+                clientParameters.RecoveryStateChanged += OnRecoveryStateChanged;
+                clientParameters.TradeProcessed += OnTradeProcessed;
 
                 client.TradingParameters = clientParameters;
 
@@ -825,7 +1056,8 @@ namespace FxWorth
         }
         
         /// Event handler triggered when the take profit target is reached for a managed `AuthClient` instance.
-        private void OnTakeProfitReached(object sender, decimal totalProfit)
+        /// REFACTORED: Uses event-driven architecture with proper event args.
+        private void OnTakeProfitReached(object sender, TakeProfitReachedEventArgs e)
         {
             var tradingParameters = (TradingParameters)sender;
             
@@ -840,28 +1072,21 @@ namespace FxWorth
             {
                 return;
             }            
-            logger.Info($"<=> Take profit target reached for client : {credentials.Token}! Total Profit: {totalProfit:C}");
+            logger.Info($"<=> Take profit target reached for client: {credentials.Token}! Total Profit: {e.TotalProfit:C}, Target: {e.TargetProfit:C}");
             
             // In hierarchy mode, don't clear trading parameters - let the hierarchy system handle transitions
             if (IsHierarchyMode && client == hierarchyClient)
             {
                 logger.Info("Take profit reached in hierarchy mode - attempting level transition");
                 
-                // First, get the current level and log its state
+                // Get the current level and mark it as completed
                 var currentLevel = hierarchyNavigator?.GetCurrentLevel();
 
                 if (currentLevel != null)
                 {
-                    // Log comprehensive level state for debugging
-                    logger.Info($"Level state before transition: Level={currentLevel.LevelId}, " +
-                               $"IsCompleted={currentLevel.IsCompleted}, " +
-                               $"RecoveryResults.Count={currentLevel.RecoveryResults.Count}, " +
-                               $"TotalProfit={currentLevel.GetTotalProfit():F2}, " +
-                               $"AmountToRecover={currentLevel.AmountToRecover:F2}");
-                    
                     // Mark the level as completed when take profit is reached
                     currentLevel.IsCompleted = true;
-                    logger.Info($"Level {currentLevel.LevelId} marked as completed due to take profit target reached");
+                    logger.Info($"Level {currentLevel.LevelId} marked as completed (TotalProfit: {e.TotalProfit:F2} >= Target: {e.TargetProfit:F2})");
                 }
                 
                 // Try to move to the next level in the hierarchy
@@ -898,6 +1123,110 @@ namespace FxWorth
             ClientsStateChanged?.Raise(client, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// Event handler triggered when max drawdown is exceeded - enters hierarchy mode for advanced recovery.
+        /// REFACTORED: Event-driven approach - TradingParameters emits this event, TokenStorage coordinates hierarchy escalation.
+        /// </summary>
+        private void OnMaxDrawdownExceeded(object sender, MaxDrawdownExceededEventArgs e)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            
+            if (client == null)
+            {
+                logger.Warn("MaxDrawdown exceeded event received but client not found");
+                return;
+            }
+
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials != null)
+            {
+                logger.Warn($"Max drawdown exceeded for client {credentials.Token}: " +
+                           $"Current={e.CurrentDrawdown:F2}, Limit={e.MaxDrawdownLimit:F2}, " +
+                           $"AmountToRecover={e.AmountToBeRecovered:F2}");
+            }
+
+            // Enter hierarchy mode if not already in it
+            if (!IsHierarchyMode)
+            {
+                logger.Info("Entering hierarchy mode due to max drawdown exceeded");
+                EnterHierarchyMode(client);
+            }
+            else if (client == hierarchyClient && hierarchyNavigator != null)
+            {
+                // Already in hierarchy mode - this level exceeded its max drawdown
+                // Create a deeper nested level
+                var currentLevel = hierarchyNavigator.GetCurrentLevel();
+                if (currentLevel != null)
+                {
+                    logger.Info($"Level {currentLevel.LevelId} exceeded max drawdown - attempting to create nested level");
+                    
+                    if (hierarchyNavigator.CanCreateNestedLevel(currentLevel.LevelId))
+                    {
+                        CreateNewLayer(currentLevel, client);
+                        SetHierarchyLevelTradingParameters(client);
+                    }
+                    else
+                    {
+                        logger.Warn($"Cannot create nested level from {currentLevel.LevelId} - max hierarchy depth reached");
+                        // Let the level continue trading with higher risk
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Event handler for recovery state changes (enter/exit recovery mode).
+        /// REFACTORED: Event-driven approach for monitoring recovery state.
+        /// </summary>
+        private void OnRecoveryStateChanged(object sender, RecoveryStateChangedEventArgs e)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            
+            if (client == null)
+                return;
+
+            var credentials = clients.FirstOrDefault(x => x.Value == client).Key;
+            if (credentials != null)
+            {
+                if (e.EnteredRecovery)
+                {
+                    logger.Info($"Client {credentials.Token} entered recovery mode: " +
+                               $"AmountToRecover={e.AmountToRecover:F2}, AttemptsLeft={e.RecoveryAttemptsLeft}");
+                }
+                else if (e.ExitedRecovery)
+                {
+                    logger.Info($"Client {credentials.Token} exited recovery mode successfully");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Event handler for each processed trade - used for centralized profit tracking.
+        /// REFACTORED: Single source of truth for profit tracking across all levels.
+        /// </summary>
+        private void OnTradeProcessed(object sender, TradeProfitEventArgs e)
+        {
+            var tradingParameters = (TradingParameters)sender;
+            var client = clients.Values.FirstOrDefault(c => c.TradingParameters == tradingParameters);
+            
+            if (client == null)
+                return;
+
+            // Centralized profit tracking for hierarchy mode
+            if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
+            {
+                var currentLevel = hierarchyNavigator.GetCurrentLevel();
+                if (currentLevel != null)
+                {
+                    logger.Debug($"Tracked trade for level {currentLevel.LevelId}: " +
+                                $"P/L={e.ProfitLoss:F2}, TotalProfit={e.TotalProfit:F2}, " +
+                                $"IsRecovery={e.IsInRecoveryMode}, DynamicStake={e.DynamicStake:F2}");
+                }
+            }
+        }
+
         /// Event handler triggered when a trade update is received from a managed `AuthClient` instance.
         private void OnTradeUpdate(object sender, TradeEventArgs e)
         {
@@ -929,6 +1258,13 @@ namespace FxWorth
         {
             int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
 
+            // Check if creating the next layer would exceed max hierarchy depth
+            if (hierarchyNavigator != null && nextLayer > hierarchyNavigator.maxHierarchyDepth)
+            {
+                logger.Warn($"Cannot create layer {nextLayer}: Would exceed maximum hierarchy depth {hierarchyNavigator.maxHierarchyDepth}. Current level {currentLevel.LevelId} will continue trading with higher risk.");
+                return;
+            }
+
             decimal initialStakeForNextLayer;
             if (nextLayer == 2)
             {
@@ -943,7 +1279,8 @@ namespace FxWorth
                     currentLevel.InitialStake;
             }
 
-            hierarchyNavigator.CreateLayer(nextLayer, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            // Use the new CreateNestedLevel method instead of CreateLayer for proper nested level creation
+            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
             hierarchyNavigator.currentLevelId = nextLevelId;
@@ -952,6 +1289,7 @@ namespace FxWorth
         }        
         
         // Handles trade updates in normal mode, processing the trade model and updating the trading parameters.
+        /// REFACTORED: Simplified to rely on TradingParameters events for coordination.
         private void HandleNormalTradeUpdate(TradeModel model, AuthClient client)
         {
             // Avoid processing the same trade multiple times
@@ -959,71 +1297,15 @@ namespace FxWorth
             {
                 decimal maxPayout = model.Payouts.Max();
                 
-                if (IsHierarchyMode && client == hierarchyClient && hierarchyNavigator != null)
-                {
-                    var currentLevel = hierarchyNavigator.GetCurrentLevel();
-                    if (currentLevel != null)
-                    {
-                        // Sync hierarchy level state with trading parameters
-                        currentLevel.UpdateFromTradingParameters(client.TradingParameters);
-                        
-                        if (model.Profit != 0) 
-                        {
-                            // Make sure we're not duplicating the result
-                            if (!currentLevel.RecoveryResults.Contains(model.Profit))
-                            {
-                                // Add this result to the level's tracking
-                                currentLevel.RecoveryResults.Add(model.Profit);
-                                
-                                // Also update the trading parameters with this result to keep them in sync
-                                if (!client.TradingParameters.RecoveryResults.Contains(model.Profit))
-                                {
-                                    client.TradingParameters.RecoveryResults.Add(model.Profit);
-                                }
-
-                                // NEW: Add to comprehensive hierarchy profit tracker
-                                if (hierarchyProfitTrackers.TryGetValue(client, out var tracker))
-                                {
-                                    tracker.AddTradeResult(currentLevel.LevelId, model.Profit);
-                                    logger.Info($"Added profit {model.Profit:F2} to hierarchy tracker. " +
-                                               $"Total hierarchy profit: ${tracker.TotalHierarchyProfit:F2}, " +
-                                               $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}, " +
-                                               $"Net result: ${tracker.NetHierarchyResult:F2}");
-                                }
-
-                                logger.Info($"Added profit {model.Profit:F2} to level {currentLevel.LevelId} recovery results");
-                                client.TradingParameters.RecalculateTotalProfit();
-                            }
-                            
-                            // Check if level has reached its recovery target
-                            decimal profitAmount = currentLevel.GetTotalProfit();
-                            if (profitAmount >= currentLevel.AmountToRecover)
-                            {
-                                currentLevel.IsCompleted = true;
-                                logger.Info($"Level {currentLevel.LevelId} marked as completed - recovered ${profitAmount:F2} of required ${currentLevel.AmountToRecover:F2}");
-                                
-                                // Attempt to move to next level immediately after a profitable trade
-                                // that meets the target - don't wait for next RSI signal
-                                if (hierarchyNavigator.MoveToNextLevel(client))
-                                {
-                                    logger.Info($"Immediately transitioned to next level after reaching target");
-                                }
-                            }
-                            
-                            logger.Info($"Updated hierarchy level {hierarchyNavigator.currentLevelId} with trade result: Profit={model.Profit:F2}, TotalProfit={profitAmount:F2}, IsCompleted={currentLevel.IsCompleted}, TotalRecoveryItems={currentLevel.RecoveryResults.Count}");
-                        }
-                        else
-                        {
-                            logger.Debug($"Ignoring invalid trade with ID {model.Id} - possible test or placeholder trade");
-                        }
-                    }
-                }                
+                // The TradingParameters.Process() method will emit events that we'll handle:
+                // - TradeProcessed: for profit tracking
+                // - MaxDrawdownExceeded: to trigger hierarchy escalation
+                // - TakeProfitReached: to trigger level transitions
                 
-                // Enter hierarchy mode when AmountToBeRecovered exceeds MaxDrawdown
-                if (client.TradingParameters.AmountToBeRecoverd > client.TradingParameters.MaxDrawdown && !IsHierarchyMode)
-                {
-                    EnterHierarchyMode(client);
-                }
+                // No need to manually sync with HierarchyLevel - it's just metadata now
+                // All profit calculations happen in TradingParameters
+                
+                logger.Debug($"Trade closed: ID={model.Id}, Profit={model.Profit:F2}");
             }
         }
         
@@ -1067,7 +1349,7 @@ namespace FxWorth
         /// Restores the root level trading parameters when exiting hierarchy mode
         /// Updates the take profit to reflect the remaining amount needed to reach the original target
         /// </summary>
-        private void RestoreRootLevelTradingParameters(AuthClient client)
+        public void RestoreRootLevelTradingParameters(AuthClient client)
         {
             if (!rootLevelProfitStates.TryGetValue(client, out RootLevelProfitState rootState))
             {
@@ -1129,11 +1411,13 @@ namespace FxWorth
             
             // Reset recovery mode related properties for fresh root level trading
             restoredParams.IsRecoveryMode = false;
-            restoredParams.RecoveryResults.Clear();
             restoredParams.AmountToBeRecoverd = 0;
             
-            // Subscribe to take profit events
+            // Subscribe to all trading parameter events
             restoredParams.TakeProfitReached += OnTakeProfitReached;
+            restoredParams.MaxDrawdownExceeded += OnMaxDrawdownExceeded;
+            restoredParams.RecoveryStateChanged += OnRecoveryStateChanged;
+            restoredParams.TradeProcessed += OnTradeProcessed;
             
             client.TradingParameters = restoredParams;
             
@@ -1180,6 +1464,125 @@ namespace FxWorth
             hierarchyNavigator.AssignClientToLevel(currentLevelId, client);
             logger.Info("Entered hierarchy mode");
         }
+
+        /// <summary>
+        /// Initializes the persistent connection management system
+        /// </summary>
+        private void InitializePersistentConnectionManagement()
+        {
+            persistentConnectionTimer = new Timer(CONNECTION_HEALTH_CHECK_INTERVAL.TotalMilliseconds);
+            persistentConnectionTimer.Elapsed += PersistentConnectionTimer_Elapsed;
+            logger.Info("Persistent connection management system initialized");
+        }
+
+        /// <summary>
+        /// Updates the connection state for a given credential
+        /// </summary>
+        private void UpdateConnectionState(Credentials creds, ConnectionState state)
+        {
+            if (!connectionStates.ContainsKey(creds))
+            {
+                connectionStates[creds] = state;
+            }
+            else
+            {
+                connectionStates[creds] = state;
+            }
+
+            // Optionally, raise an event or log the state change
+            logger.Info($"Connection state for {creds.AppId} updated to {state}");
+        }
+
+        /// <summary>
+        /// Attempts to reconnect a client
+        /// </summary>
+        private void AttemptReconnection(Credentials creds)
+        {
+            var client = Clients[creds];
+
+            // Limit the number of authentication retries
+            int authRetryCount = 0;
+
+            while (authRetryCount < MAX_AUTH_RETRIES)
+            {
+                try
+                {
+                    client.Start();
+                    logger.Info($"Reconnection successful for {creds.AppId}");
+                    UpdateConnectionState(creds, ConnectionState.Connected);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    authRetryCount++;
+                    logger.Warn($"Reconnection attempt {authRetryCount} failed for {creds.AppId}: {ex.Message}");
+
+                    // Wait before retrying
+                    Task.Delay(AUTH_RETRY_INTERVAL).Wait();
+                }
+            }
+
+            logger.Error($"Max reconnection attempts reached for {creds.AppId}. Manual intervention required.");
+        }
+
+        /// <summary>
+        /// Gets the current connection status for all clients
+        /// </summary>
+        public Dictionary<string, string> GetConnectionStatus()
+        {
+            var status = new Dictionary<string, string>();
+            
+            foreach (var clientPair in clients)
+            {
+                var credentials = clientPair.Key;
+                var client = clientPair.Value;
+                
+                var connectionState = connectionStates.ContainsKey(credentials) ? 
+                    connectionStates[credentials].ToString() : "Unknown";
+                
+                var lastAttempt = lastConnectionAttempt.ContainsKey(credentials) ? 
+                    lastConnectionAttempt[credentials].ToString("HH:mm:ss") : "Never";
+                
+                status[$"{credentials.AppId}"] = $"State: {connectionState}, Online: {client.IsOnline}, Last Attempt: {lastAttempt}";
+            }
+            
+            return status;
+        }
+
+        /// <summary>
+        /// Forces reconnection for a specific client
+        /// </summary>
+        public void ForceReconnection(string appId)
+        {
+            var credentials = Credentials.FirstOrDefault(c => c.AppId == appId);
+            if (credentials != null && clients.ContainsKey(credentials))
+            {
+                var client = clients[credentials];
+                logger.Info($"Forcing reconnection for client {appId}");
+                
+                connectionStates[credentials] = ConnectionState.Connecting;
+                lastConnectionAttempt[credentials] = DateTime.Now;
+                
+                client.Stop();
+                Task.Delay(1000).ContinueWith(_ => client.Start());
+            }
+        }
+
+        /// <summary>
+        /// Gets count of connected clients
+        /// </summary>
+        public int GetConnectedClientCount()
+        {
+            return clients.Count(c => c.Value.IsOnline);
+        }
+
+        /// <summary>
+        /// Gets count of total clients
+        /// </summary>
+        public int GetTotalClientCount()
+        {
+            return clients.Count;
+        }
     }
 
     /// Event arguments for the AuthFailed event. Contains the credentials that failed authentication.
@@ -1197,7 +1600,7 @@ namespace FxWorth
     public class MarketDataParameters
     {
         public string Symbol { get; set; }
-        public Rsi Rsi { get; set; }
+        public ATR_Dual_ROC AtrDualRoc { get; set; }
 
     }    /// Data structure to hold both market data parameters and trading parameters used to store and load application settings and configurations.
     public class Layout
@@ -1247,6 +1650,39 @@ namespace FxWorth
             OriginalTradingParameters = (TradingParameters)originalParameters.Clone();
             EntryTimestamp = DateTime.Now;
         }
+    }
+
+    /// <summary>
+    /// Represents the connection state of a client for persistent connection management
+    /// </summary>
+    public enum ConnectionState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+        Authenticated,
+        AuthenticationFailed,
+        ConnectionFailed,
+        Retrying
+    }
+
+    /// <summary>
+    /// Tracks connection attempts and authentication state for persistent connection management
+    /// </summary>
+    public class ClientConnectionTracker
+    {
+        public ConnectionState State { get; set; } = ConnectionState.Disconnected;
+        public int ConnectionAttempts { get; set; } = 0;
+        public int AuthAttempts { get; set; } = 0;
+        public DateTime LastConnectionAttempt { get; set; } = DateTime.MinValue;
+        public DateTime LastAuthAttempt { get; set; } = DateTime.MinValue;
+        public bool IsEnabled { get; set; } = true;
+        public string LastError { get; set; } = string.Empty;
+        public bool ShouldRetry => IsEnabled && 
+                                  (State == ConnectionState.Disconnected || 
+                                   State == ConnectionState.ConnectionFailed || 
+                                   State == ConnectionState.AuthenticationFailed) &&
+                                  DateTime.Now - LastConnectionAttempt > TimeSpan.FromSeconds(5);
     }
 
     /// <summary>
