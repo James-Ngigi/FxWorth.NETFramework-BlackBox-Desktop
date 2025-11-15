@@ -117,9 +117,12 @@ namespace FxWorth.Hierarchy
         /// <summary>
         /// Restores the saved trading state for a level and calculates remaining profit target
         /// based on children's accumulated profits
+        /// Returns false if excess profit scenario detected (children recovered more than needed)
         /// </summary>
-        public bool RestoreLevelState(string levelId, AuthClient client)
+        public bool RestoreLevelState(string levelId, AuthClient client, out bool hasExcessProfit)
         {
+            hasExcessProfit = false;
+            
             if (!savedStates.TryGetValue(levelId, out TradingParameters savedState))
             {
                 logger.Debug($"No saved state found for level {levelId}");
@@ -134,8 +137,27 @@ namespace FxWorth.Hierarchy
                 // Calculate accumulated profit from children
                 decimal childrenProfit = GetChildrenAccumulatedProfit(levelId);
                 
-                // Calculate remaining profit needed for this level
+                // Calculate what the parent level needed to recover
+                // Parent's need = MaxDrawdown amount (what triggered children) + Parent's original target profit
+                decimal parentMaxDrawdown = savedState.AmountToBeRecoverd; // Amount that triggered nesting
                 decimal originalTakeProfit = savedState.TakeProfit;
+                decimal totalParentNeed = parentMaxDrawdown + originalTakeProfit;
+                
+                logger.Info($"Parent level {levelId} restoration: ChildrenProfit={childrenProfit:F2}, " +
+                           $"ParentMaxDrawdown={parentMaxDrawdown:F2}, ParentTargetProfit={originalTakeProfit:F2}, " +
+                           $"TotalNeed={totalParentNeed:F2}");
+                
+                // Check for excess profit scenario
+                if (childrenProfit >= totalParentNeed)
+                {
+                    hasExcessProfit = true;
+                    logger.Info($"EXCESS PROFIT DETECTED: Children recovered {childrenProfit:F2} >= " +
+                               $"Parent's total need {totalParentNeed:F2}. Parent level {levelId} is fully satisfied.");
+                    return true; // State exists but excess profit detected
+                }
+                
+                // Calculate remaining profit needed for this level
+                // Children only recovered the max drawdown, parent still needs to reach its target profit
                 decimal remainingProfitNeeded = Math.Max(0, originalTakeProfit - childrenProfit);
                 
                 // Update the take profit to reflect remaining amount needed
@@ -302,8 +324,15 @@ namespace FxWorth.Hierarchy
                 levelClients[levelId] = client;
                 
                 // Check if we're returning to a parent level with saved state
-                if (RestoreParentLevelState(levelId, client))
+                bool hasExcessProfit;
+                if (RestoreParentLevelState(levelId, client, out hasExcessProfit))
                 {
+                    if (hasExcessProfit)
+                    {
+                        logger.Info($"Parent level {levelId} has excess profit from children - marking as completed");
+                        hierarchyLevels[levelId].IsCompleted = true;
+                        return;
+                    }
                     logger.Info($"Successfully restored saved state for parent level {levelId} with children profit adjustments");
                     return; // State restored with proper profit adjustments - don't interfere further
                 }
@@ -711,16 +740,46 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Navigates to a parent level (moving up in hierarchy)
+        /// Handles excess profit scenario where children recovered more than parent's total need
         /// </summary>
         private bool NavigateToParentLevel(AuthClient client, string parentLevelId)
         {
             logger.Info($"Navigating to parent level: {currentLevelId} -> {parentLevelId}");
             
             // Try to restore saved state for the parent level
-            if (stateManager.RestoreLevelState(parentLevelId, client))
+            bool hasExcessProfit;
+            if (stateManager.RestoreLevelState(parentLevelId, client, out hasExcessProfit))
             {
                 currentLevelId = parentLevelId;
                 levelClients[parentLevelId] = client;
+                
+                if (hasExcessProfit)
+                {
+                    // EXCESS PROFIT SCENARIO: Children recovered more than parent's max drawdown + target profit
+                    // Skip this parent level and move to parent's next sibling
+                    logger.Info($"Parent level {parentLevelId} has excess profit - skipping to parent's next sibling");
+                    
+                    var levelInfo = hierarchyLevels[parentLevelId];
+                    levelInfo.IsCompleted = true;
+                    
+                    string nextLevelId = DetermineNextLevel(parentLevelId);
+                    if (!string.IsNullOrEmpty(nextLevelId) && nextLevelId != parentLevelId)
+                    {
+                        logger.Info($"Parent level {parentLevelId} completed with excess profit - transitioning to {nextLevelId}");
+                        return NavigateToLevel(client, nextLevelId, "Parent level completed with excess profit from children");
+                    }
+                    else if (nextLevelId == "0")
+                    {
+                        logger.Info($"All hierarchy levels completed with excess profit - returning to root level");
+                        return NavigateToRootLevel(client);
+                    }
+                    else
+                    {
+                        logger.Info($"Parent level {parentLevelId} completed with excess profit - no more levels to process");
+                        return true;
+                    }
+                }
+                
                 logger.Info($"Successfully restored parent level {parentLevelId} from saved state");
                 
                 // CRITICAL CHECK: If the restored parent level has remaining profit needed = 0,
@@ -1195,9 +1254,9 @@ namespace FxWorth.Hierarchy
         /// <summary>
         /// Restores the saved trading parameters state when returning to a parent level
         /// </summary>
-        private bool RestoreParentLevelState(string levelId, AuthClient client)
+        private bool RestoreParentLevelState(string levelId, AuthClient client, out bool hasExcessProfit)
         {
-            return stateManager.RestoreLevelState(levelId, client);
+            return stateManager.RestoreLevelState(levelId, client, out hasExcessProfit);
         }
 
         /// <summary>
