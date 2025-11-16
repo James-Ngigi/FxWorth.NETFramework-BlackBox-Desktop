@@ -1279,8 +1279,14 @@ namespace FxWorth
                     currentLevel.InitialStake;
             }
 
+            // CRITICAL FIX: Use the ACTUAL MaxDrawdown amount from TradingParameters, not the parent's TakeProfit
+            // The children need to recover the max drawdown amount that was exceeded
+            decimal maxDrawdownAmount = client.TradingParameters.AmountToBeRecoverd;
+            
+            logger.Info($"Creating nested level under {currentLevel.LevelId}: MaxDrawdown amount to recover = {maxDrawdownAmount:F2}");
+
             // Use the new CreateNestedLevel method instead of CreateLayer for proper nested level creation
-            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, maxDrawdownAmount, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
             hierarchyNavigator.currentLevelId = nextLevelId;
