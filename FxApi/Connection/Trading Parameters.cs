@@ -16,6 +16,12 @@ namespace FxApi.Connection
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         public decimal Barrier { get; set; }
+        public decimal DesiredReturnPercent { get; set; }
+        public decimal LastCalibratedReturnPercent { get; private set; }
+        public decimal BarrierSearchMin { get; set; } = 1m;
+        public decimal BarrierSearchMax { get; set; } = 120m;
+        public decimal BarrierSearchStep { get; set; } = 1m;
+        public DateTime? LastBarrierCalibrationUtc { get; private set; }
         public string BuyBarrier => string.Format(CultureInfo.InvariantCulture, "{0:+#0.0#;-#0.0#;0}", TempBarrier != 0 ? TempBarrier : Barrier);
         public string SellBarrier => string.Format(CultureInfo.InvariantCulture, "{0:+#0.0#;-#0.0#;0}", TempBarrier != 0 ? -TempBarrier : -Barrier);
         public ActiveSymbol Symbol { get; set; }
@@ -39,11 +45,20 @@ namespace FxApi.Connection
         public decimal InitialStake4Layer1 { get; set; }
         public decimal TotalProfit { get; private set; }
         public decimal LevelInitialStake { get; set; }
+        public bool RequiresReturnCalibration => DesiredReturnPercent > 0 && Stake > 0;
 
         public int CurrentMartingaleLevel
         {
             get => currentMartingaleLevel;
             private set => currentMartingaleLevel = value;
+        }
+
+        public void UpdateBarrierCalibration(decimal calibratedBarrier, decimal actualReturnPercent)
+        {
+            Barrier = calibratedBarrier;
+            TempBarrier = calibratedBarrier;
+            LastCalibratedReturnPercent = actualReturnPercent;
+            LastBarrierCalibrationUtc = DateTime.UtcNow;
         }
 
         // ===== EVENT-DRIVEN ARCHITECTURE =====
@@ -250,7 +265,7 @@ namespace FxApi.Connection
         /// Returns a string representation of the trading parameters, including all relevant values.
         public override string ToString()
         {
-            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
+            return $"{nameof(BuyBarrier)}: {BuyBarrier}, {nameof(SellBarrier)}: {SellBarrier}, {nameof(Symbol)}: {Symbol}, {nameof(Duration)}: {Duration}, {nameof(Stake)}: {Stake}, {nameof(DurationType)}: {DurationType}, {nameof(MaxDrawdown)}: {MaxDrawdown}, {nameof(MartingaleLevel)}: {MartingaleLevel}, {nameof(DesiredReturnPercent)}: {DesiredReturnPercent}, {nameof(LastCalibratedReturnPercent)}: {LastCalibratedReturnPercent}, {nameof(TakeProfit)}: {TakeProfit}, {nameof(IsRecoveryMode)}: {IsRecoveryMode}, {nameof(AmountToBeRecoverd)}: {AmountToBeRecoverd}, {nameof(DynamicStake)}: {DynamicStake}, {nameof(PreviousProfit)}: {PreviousProfit}, {nameof(RecoveryAttemptsLeft)}: {RecoveryAttemptsLeft}, {nameof(TotalProfit)}: {TotalProfit}";
         }
 
         /// <summary>

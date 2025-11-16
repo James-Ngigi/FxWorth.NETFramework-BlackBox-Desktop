@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Globalization;
+using System.Resources.Extensions;
 
 namespace FxWorth
 {

@@ -462,7 +462,7 @@ namespace FxWorth.Hierarchy
 
             logger.Info($"Created Level {levelId}: AmountToRecover={amountPerLevel:F2}, " +
                        $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
-                       $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
+                       $"MaxDrawdown={maxDrawdown:F2}, TargetROI={barrierOffset:F2}%");
 
             // Check if this level's amount exceeds its MaxDrawdown and needs to create a new layer
             if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && !LayerExceedsMaxDepth(layerNumber + 1))
@@ -578,7 +578,7 @@ namespace FxWorth.Hierarchy
             
             logger.Info($"Created next Level {nextLevelId}: AmountToRecover={newLevel.AmountToRecover:F2}, " +
                        $"InitialStake={newLevel.InitialStake:F2}, MartingaleLevel={newLevel.MartingaleLevel}, " +
-                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, BarrierOffset={newLevel.BarrierOffset:F2}");
+                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, TargetROI={newLevel.BarrierOffset:F2}%");
                        
             return nextLevelId;
         }
@@ -647,7 +647,7 @@ namespace FxWorth.Hierarchy
             
             logger.Info($"Created next nested Level {nextLevelId}: AmountToRecover={newLevel.AmountToRecover:F2}, " +
                        $"InitialStake={newLevel.InitialStake:F2}, MartingaleLevel={newLevel.MartingaleLevel}, " +
-                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, BarrierOffset={newLevel.BarrierOffset:F2}");
+                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, TargetROI={newLevel.BarrierOffset:F2}%");
                        
             return nextLevelId;
         }
@@ -931,12 +931,14 @@ namespace FxWorth.Hierarchy
             {
                 // Copy base trading configuration from existing parameters
                 Barrier = baseTradingParameters.Barrier,
+                DesiredReturnPercent = baseTradingParameters.DesiredReturnPercent,
                 Symbol = baseTradingParameters.Symbol,
                 Duration = baseTradingParameters.Duration,
                 DurationType = baseTradingParameters.DurationType,
                 Stake = baseTradingParameters.Stake,
                 HierarchyLevels = baseTradingParameters.HierarchyLevels,
                 MaxHierarchyDepth = baseTradingParameters.MaxHierarchyDepth,
+                TempBarrier = 0,
                 
                 // Set level-specific recovery configuration
                 TakeProfit = level.AmountToRecover,
@@ -967,27 +969,30 @@ namespace FxWorth.Hierarchy
                 // Layer 1 - use phase 2 parameters (hierarchy recovery parameters)
                 freshParameters.MartingaleLevel = customConfig?.MartingaleLevel ?? level.MartingaleLevel ?? phase2Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = customConfig?.MaxDrawdown ?? level.MaxDrawdown ?? phase2Params.MaxDrawdown;
-                freshParameters.TempBarrier = customConfig?.BarrierOffset ?? level.BarrierOffset ?? phase2Params.Barrier;
+                freshParameters.DesiredReturnPercent = customConfig?.BarrierOffset ?? level.BarrierOffset ?? phase2Params.Barrier;
+                freshParameters.TempBarrier = 0;
                 
-                logger.Info($"Applied Layer 1 config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+                logger.Info($"Applied Layer 1 config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, TargetROI={freshParameters.DesiredReturnPercent}%");
             }
             else if (customConfig != null)
             {
                 // Layer 2+ with custom configuration - prioritize custom config
                 freshParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
-                freshParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.DesiredReturnPercent = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.TempBarrier = 0;
                 
-                logger.Info($"Applied Layer {actualLayerForConfig} custom config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+                logger.Info($"Applied Layer {actualLayerForConfig} custom config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, TargetROI={freshParameters.DesiredReturnPercent}%");
             }
             else
             {
                 // Layer 2+ without custom configuration - use phase 1 parameters as default
                 freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = level.MaxDrawdown ?? phase1Params.MaxDrawdown;
-                freshParameters.TempBarrier = level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.DesiredReturnPercent = level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.TempBarrier = 0;
                 
-                logger.Info($"Applied Layer {actualLayerForConfig} default config (Phase 1): MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+                logger.Info($"Applied Layer {actualLayerForConfig} default config (Phase 1): MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, TargetROI={freshParameters.DesiredReturnPercent}%");
             }
 
             // Use TokenStorage.SetTradingParameters to apply the fresh parameters following the established pattern
@@ -1121,7 +1126,7 @@ namespace FxWorth.Hierarchy
 
             logger.Info($"Created nested Level {nestedLevelId}: AmountToRecover={amountPerLevel:F2}, " +
                        $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
-                       $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
+                       $"MaxDrawdown={maxDrawdown:F2}, TargetROI={barrierOffset:F2}%");
 
             // Check if this nested level's amount exceeds its MaxDrawdown and needs further nesting
             if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue))

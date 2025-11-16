@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using FxApi.Connection;
@@ -7,6 +8,8 @@ using Newtonsoft.Json.Linq;
 using NLog;
 using SuperSocket.ClientEngine;
 using WebSocket4Net;
+using System.Threading;
+using System.Threading.Tasks;
 using DateTime = System.DateTime;
 
 namespace FxApi
@@ -23,6 +26,9 @@ namespace FxApi
         public EventHandler<EventArgs> BalanceChanged;
         public EventHandler<EventArgs> AuthFailed;
         public EventHandler<TradeEventArgs> TradeChanged;
+        private readonly ProposalService proposalService;
+        private readonly ConcurrentDictionary<int, TaskCompletionSource<ProposalResponse>> pendingProposalRequests = new ConcurrentDictionary<int, TaskCompletionSource<ProposalResponse>>();
+        private int proposalRequestCounter = Environment.TickCount;
 
         public string GetToken()
         {
@@ -34,6 +40,8 @@ namespace FxApi
             return this.Credentials.AppId;
         }
 
+        internal string AccountCurrency => authInfo?.currency ?? "USD";
+
         /// <summary>
         /// Constructor for the `AuthClient` class.
         /// <param name="credentials">The API credentials (token and App ID) used for authentication.</param>
@@ -43,6 +51,7 @@ namespace FxApi
         {
             // Initialize the trade ID counter with the provided initial value.
             tradeIdCounter = initialCounter;
+            proposalService = new ProposalService(this);
         }
 
         public virtual TradingParameters TradingParameters { get; set; }
@@ -94,6 +103,105 @@ namespace FxApi
         {
             // Call the `SendPriceProposal` method to send a "Sell" (PUT) price proposal to the server.
             SendPriceProposal(symbol, duration, durationUnit, stake, "PUT");
+        }
+
+        public bool EnsureReturnTargetBarrier()
+        {
+            var parameters = TradingParameters;
+            if (parameters == null)
+            {
+                logger.Warn("Trading parameters are missing. Unable to calibrate barrier.");
+                return false;
+            }
+
+            if (!parameters.RequiresReturnCalibration)
+            {
+                if (parameters.TempBarrier == 0 && parameters.Barrier > 0)
+                {
+                    parameters.TempBarrier = parameters.Barrier;
+                }
+                return true;
+            }
+
+            if (authInfo == null)
+            {
+                logger.Warn("Authorization not completed. Skipping barrier calibration.");
+                return false;
+            }
+
+            try
+            {
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                {
+                    var result = proposalService.ResolveBarrierAsync(parameters, cts.Token).GetAwaiter().GetResult();
+                    if (!result.Success || result.Barrier <= 0)
+                    {
+                        logger.Warn($"Unable to match ROI target {parameters.DesiredReturnPercent}%: {result.Error ?? "No proposal matched."}");
+                        return false;
+                    }
+
+                    parameters.UpdateBarrierCalibration(result.Barrier, result.ActualReturnPercent);
+                    logger.Info($"Calibrated barrier {result.Barrier:F2} for ROI target {parameters.DesiredReturnPercent}% (actual {result.ActualReturnPercent:F2}%).");
+                    return true;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                logger.Warn($"Barrier calibration timed out for ROI target {parameters.DesiredReturnPercent}%.");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Barrier calibration failed due to an unexpected error.");
+                return false;
+            }
+        }
+
+        internal Task<ProposalResponse> RequestProposalAsync(ProposalRequest request, CancellationToken cancellationToken)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            var reqId = Interlocked.Increment(ref proposalRequestCounter);
+            request.req_id = reqId;
+
+            var tcs = new TaskCompletionSource<ProposalResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!pendingProposalRequests.TryAdd(reqId, tcs))
+            {
+                throw new InvalidOperationException($"Unable to register proposal request {reqId}.");
+            }
+
+            CancellationTokenRegistration registration = default;
+
+            if (cancellationToken.CanBeCanceled)
+            {
+                registration = cancellationToken.Register(() =>
+                {
+                    if (pendingProposalRequests.TryRemove(reqId, out var pending))
+                    {
+                        pending.TrySetCanceled();
+                    }
+                });
+            }
+
+            try
+            {
+                Send(request);
+            }
+            catch
+            {
+                pendingProposalRequests.TryRemove(reqId, out _);
+                registration.Dispose();
+                throw;
+            }
+
+            return tcs.Task.ContinueWith(task =>
+            {
+                registration.Dispose();
+                return task.GetAwaiter().GetResult();
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -177,8 +285,13 @@ namespace FxApi
         /// <param name="durationUnit">The unit of time for the trade duration (e.g., "Ticks", "Seconds", "Minutes").</param>
         /// <returns>The single-letter barrier unit (e.g., "t", "s", "m").</returns>
         /// </summary>
-        private static string GetBarrierUnit(string durationUnit)
+        internal static string GetBarrierUnit(string durationUnit)
         {
+            if (string.IsNullOrWhiteSpace(durationUnit))
+            {
+                return "t"; // Default to ticks if unspecified
+            }
+
             // Convert the duration unit to lowercase, get the first character, and convert it back to a string.
             var unit = durationUnit.ToLower()[0].ToString();
             return unit;
@@ -471,6 +584,9 @@ namespace FxApi
                     currentContractId = trans.transaction.contract_id;
                     currentTransactionTime = trans.transaction.transaction_time;
                     break;
+                case "proposal":
+                    HandleProposalResponse(jMessage);
+                    break;
                 default:
                     // Ignore any other message types.
                     break;
@@ -493,6 +609,39 @@ namespace FxApi
         /// This method is called for both historical transactions from the profit table and real-time transactions received via the WebSocket.
         /// <param name="payout">The payout amount for the transaction (positive for profit, negative for loss).</param>
         /// <param name="isSell">A flag indicating whether the transaction is a "sell" transaction (closing a trade).</param>
+        private void HandleProposalResponse(JObject jMessage)
+        {
+            int reqId = jMessage["echo_req"]?["req_id"]?.Value<int>() ?? jMessage["req_id"]?.Value<int>() ?? 0;
+
+            if (reqId == 0)
+            {
+                return;
+            }
+
+            if (!pendingProposalRequests.TryRemove(reqId, out var pendingRequest))
+            {
+                return;
+            }
+
+            if (jMessage.ContainsKey("error"))
+            {
+                var code = jMessage["error"]["code"]?.Value<string>() ?? "proposal_error";
+                var message = jMessage["error"]["message"]?.Value<string>() ?? "Unknown proposal error";
+                pendingRequest.TrySetException(new InvalidOperationException($"{code}: {message}"));
+                return;
+            }
+
+            try
+            {
+                var response = jMessage.ToObject<ProposalResponse>();
+                pendingRequest.TrySetResult(response);
+            }
+            catch (Exception ex)
+            {
+                pendingRequest.TrySetException(ex);
+            }
+        }
+
         /// <param name="contractId">The ID of the contract associated with the transaction.</param>
         /// </summary>
         private void ProcessTransaction(decimal payout, bool isSell, long contractId)

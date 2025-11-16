@@ -540,9 +540,9 @@
             this.Barrier_Offset_LBL2.Location = new System.Drawing.Point(15, 159);
             this.Barrier_Offset_LBL2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Barrier_Offset_LBL2.Name = "Barrier_Offset_LBL2";
-            this.Barrier_Offset_LBL2.Size = new System.Drawing.Size(116, 25);
+            this.Barrier_Offset_LBL2.Size = new System.Drawing.Size(127, 25);
             this.Barrier_Offset_LBL2.TabIndex = 11;
-            this.Barrier_Offset_LBL2.Text = "Barrier Offset";
+            this.Barrier_Offset_LBL2.Text = "Target ROI (%)";
             // 
             // Martingale_Level_LBL2
             // 
@@ -1136,12 +1136,13 @@
             // 
             this.Barrier_Offset_LBL.AutoSize = true;
             this.Barrier_Offset_LBL.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.Barrier_Offset_LBL.Location = new System.Drawing.Point(10, 165);
+            this.Barrier_Offset_LBL.ForeColor = System.Drawing.Color.Black;
+            this.Barrier_Offset_LBL.Location = new System.Drawing.Point(22, 156);
             this.Barrier_Offset_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Barrier_Offset_LBL.Name = "Barrier_Offset_LBL";
-            this.Barrier_Offset_LBL.Size = new System.Drawing.Size(116, 25);
-            this.Barrier_Offset_LBL.TabIndex = 10;
-            this.Barrier_Offset_LBL.Text = "Barrier Offset";
+            this.Barrier_Offset_LBL.Size = new System.Drawing.Size(127, 25);
+            this.Barrier_Offset_LBL.TabIndex = 11;
+            this.Barrier_Offset_LBL.Text = "Target ROI (%)";
             // 
             // Duration_TXT
             // 
