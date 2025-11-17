@@ -264,9 +264,11 @@ namespace FxApi.Connection
             public bool Advance(decimal actualReturn)
             {
                 var shouldIncrease = actualReturn < targetRoi;
+                var difference = Math.Abs(actualReturn - targetRoi);
 
                 AdjustForDirectionChange(shouldIncrease);
                 AdjustStepMagnitude(shouldIncrease);
+                ApplyPrecisionCap(difference);
 
                 var direction = shouldIncrease ? 1m : -1m;
                 var nextOffset = Clamp(CurrentOffset + (direction * StepSize));
@@ -339,6 +341,37 @@ namespace FxApi.Connection
                 else
                 {
                     StepSize = ClampStep(StepSize / 2m);
+                }
+            }
+
+            private void ApplyPrecisionCap(decimal difference)
+            {
+                var minStep = GetMinimumStep();
+
+                if (difference <= tolerance)
+                {
+                    StepSize = minStep;
+                    return;
+                }
+
+                if (difference <= tolerance * 2m)
+                {
+                    StepSize = ClampStep(Math.Max(minStep, StepSize / 4m));
+                    return;
+                }
+
+                if (difference <= tolerance * 5m)
+                {
+                    StepSize = ClampStep(Math.Max(minStep, StepSize / 2m));
+                    return;
+                }
+
+                if (difference <= targetRoi)
+                {
+                    var ratio = Math.Max(difference / targetRoi, 0.01m);
+                    var scaled = Math.Max(CurrentOffset * ratio, minStep);
+                    var cap = Math.Round(scaled, DecimalPlaces);
+                    StepSize = ClampStep(Math.Min(StepSize, cap));
                 }
             }
 

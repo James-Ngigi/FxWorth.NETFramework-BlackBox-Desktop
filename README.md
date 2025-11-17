@@ -12,10 +12,10 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
     *   **Multiple Account Management:**  Supports managing multiple Deriv accounts simultaneously, each with independent trading parameters.
     *   **Configurable Trading Parameters:**  Allows users to configure various trading parameters, including:
         *   Stake amount
-        *   Martingale level
+        *   Maximum Martingale levels
         *   Take Profit
         *   Max Drawdown (triggers the Hierarchy System)
-        *   Barrier Offset
+        *   Barrier Offset Return
         *   Duration and Duration Unit
         *   ATR Dual ROC parameters (period, compression/expansion thresholds, lookback periods)
     *   **Hierarchy Recovery System:**  Implements a sophisticated, multi-layered recovery system to mitigate losses.  This system divides large losses into smaller, manageable recovery targets across a hierarchy of levels and layers.  Each level can have custom parameters (Martingale level, Max Drawdown, Barrier Offset, Initial Stake).
@@ -101,18 +101,9 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
 4.  **Running the Application:**
     *   Run the `FxWorth.exe` executable.
 
-## Testing ROI Calibration & Polling
-
-1. **Configure a target ROI:** Repurpose the barrier offset fields in the UI to capture the desired return percentage (e.g., 250%). Ensure `DesiredReturnPercent` and the base stake are both greater than zero.
-2. **Start a trading session:** When `TokenStorage` invokes `EnsureReturnTargetBarrier`, the adaptive search will begin. Watch the log for entries such as `Calibration sample ... ROI ...` followed by `Calibrated barrier ...`.
-3. **Validate proposal feedback:** Each proposal response now logs the barrier, ask, payout, and computed ROI. Confirm that the ROI stabilizes within the ±2% tolerance window around the target.
-4. **Observe polling refreshes:** After the initial calibration succeeds, a background poller re-validates the barrier roughly every five seconds. Successful refreshes appear as `Polling recalibrated barrier ...` messages; skipped iterations occur when the last calibration is still fresh.
-5. **Stress-test different markets:** Switch symbols/durations to ensure the decimal precision fallback (0.001 → 0.01) kicks in only when the broker rejects fine offsets. The log will note `Broker rejected barrier precision` when the fallback engages.
-6. **Failure handling:** If the adaptive search exhausts its bounds without finding a match, the log will emit `Adaptive barrier search hit bounds`. Adjust `BarrierSearchMin/Max` or the desired ROI and retry.
-
 ## Disclaimer
 
-Binary options trading involves significant risk.  FxWorth is a tool to assist with trading, but it does not guarantee profits.  Users are responsible for understanding the risks involved and for managing their own trading strategies.  Use this software responsibly and at your own risk.
+Binary options trading involves significant risk.  FxWorth is a tool to assist with trading, but it does not guarantee profits. Users are responsible for understanding the risks involved and for managing their own trading strategies. Use this software responsibly and at your own risk.
 
 ## Contributing
 
