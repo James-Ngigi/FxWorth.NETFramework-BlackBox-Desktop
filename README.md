@@ -12,10 +12,10 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
     *   **Multiple Account Management:**  Supports managing multiple Deriv accounts simultaneously, each with independent trading parameters.
     *   **Configurable Trading Parameters:**  Allows users to configure various trading parameters, including:
         *   Stake amount
-        *   Martingale level
+        *   Maximum Martingale levels
         *   Take Profit
         *   Max Drawdown (triggers the Hierarchy System)
-        *   Barrier Offset
+        *   Barrier Offset Return
         *   Duration and Duration Unit
         *   ATR Dual ROC parameters (period, compression/expansion thresholds, lookback periods)
     *   **Hierarchy Recovery System:**  Implements a sophisticated, multi-layered recovery system to mitigate losses.  This system divides large losses into smaller, manageable recovery targets across a hierarchy of levels and layers.  Each level can have custom parameters (Martingale level, Max Drawdown, Barrier Offset, Initial Stake).
@@ -103,7 +103,7 @@ FxWorth is a high-performance desktop application built with C# and Windows Form
 
 ## Disclaimer
 
-Binary options trading involves significant risk.  FxWorth is a tool to assist with trading, but it does not guarantee profits.  Users are responsible for understanding the risks involved and for managing their own trading strategies.  Use this software responsibly and at your own risk.
+Binary options trading involves significant risk.  FxWorth is a tool to assist with trading, but it does not guarantee profits. Users are responsible for understanding the risks involved and for managing their own trading strategies. Use this software responsibly and at your own risk.
 
 ## Contributing
 

@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using System.Globalization;
 using static System.Net.WebRequestMethods;
 using File = System.IO.File;
+using System.Resources.Extensions;
 
 namespace FxWorth
 {
@@ -694,7 +695,10 @@ namespace FxWorth
                 if (layout.TradingParameters != null)
                 {
                     // Trading Parameters - Phase 1
-                    Barrier_Offset_TXT.Value = Math.Max(Barrier_Offset_TXT.Minimum, Math.Min(Barrier_Offset_TXT.Maximum, layout.TradingParameters.Barrier));
+                    var storedRoi = layout.TradingParameters.DesiredReturnPercent > 0
+                        ? layout.TradingParameters.DesiredReturnPercent
+                        : layout.TradingParameters.Barrier;
+                    Barrier_Offset_TXT.Value = Math.Max(Barrier_Offset_TXT.Minimum, Math.Min(Barrier_Offset_TXT.Maximum, storedRoi));
                     Duration_TXT.Value = Math.Max(Duration_TXT.Minimum, Math.Min(Duration_TXT.Maximum, layout.TradingParameters.Duration));
                     
                     if (!string.IsNullOrEmpty(layout.TradingParameters.DurationType))
@@ -1150,7 +1154,7 @@ namespace FxWorth
 
             var parameters = new TradingParameters()
             {
-                Barrier = Barrier_Offset_TXT.Value,
+                DesiredReturnPercent = Barrier_Offset_TXT.Value,
                 Symbol = storage.MarketDataClient.GetInstrument(Choose_Asset_CMBX.Text),
                 Duration = (int)Duration_TXT.Value,
                 DurationType = Duration0_CMBX.Text,

@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using NLog;
 using static FxWorth.Hierarchy.HierarchyNavigator;
 using System.Timers;
+using System.Resources.Extensions;
 
 namespace FxWorth
 {    
@@ -671,6 +672,12 @@ namespace FxWorth
                         continue;
                     }
 
+                    if (!value.EnsureReturnTargetBarrier())
+                    {
+                        logger.Warn($"Skipping trade for client {credentials.AppId} - unable to resolve target ROI barrier.");
+                        continue;
+                    }
+
                     if (clientParams.AmountToBeRecoverd > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
@@ -693,7 +700,7 @@ namespace FxWorth
                             HierarchyLevel currentLevel = hierarchyNavigator.GetCurrentLevel();
                             if (currentLevel != null)
                             {
-                                logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToRecover}, Stake: {clientParams.DynamicStake}, Barrier: {clientParams.TempBarrier}");
+                                logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentLevel.LevelId}, AmountToRecover: {currentLevel.AmountToRecover}, Stake: {clientParams.DynamicStake}, TargetROI: {clientParams.DesiredReturnPercent}%, Barrier: {clientParams.TempBarrier}");
                             }
                         }
 
@@ -999,23 +1006,23 @@ namespace FxWorth
             if (currentLevel.LevelId.StartsWith("1."))
             {
                 // Phase 2 parameters (level 1.x)
-                clientParameters.Barrier = currentLevel.BarrierOffset ?? phase2Parameters.Barrier;
+                clientParameters.DesiredReturnPercent = currentLevel.BarrierOffset ?? phase2Parameters.Barrier;
                 clientParameters.MaxDrawdown = currentLevel.MaxDrawdown ?? phase2Parameters.MaxDrawdown;
                 clientParameters.MartingaleLevel = currentLevel.MartingaleLevel ?? phase2Parameters.MartingaleLevel;
             }
             else
             {
                 // Phase 1 parameters (level 2.x, 3.x, etc.)
-                clientParameters.Barrier = currentLevel.BarrierOffset ?? phase1Parameters.Barrier;
+                clientParameters.DesiredReturnPercent = currentLevel.BarrierOffset ?? phase1Parameters.Barrier;
                 clientParameters.MaxDrawdown = currentLevel.MaxDrawdown ?? phase1Parameters.MaxDrawdown;
                 clientParameters.MartingaleLevel = currentLevel.MartingaleLevel ?? phase1Parameters.MartingaleLevel;
             }
 
-            // Set temp barrier for the level (used by Process method to know we're in hierarchy)
-            clientParameters.TempBarrier = clientParameters.Barrier;
+            // Force recalibration for the new level so the proposal service reruns with the new ROI target
+            clientParameters.TempBarrier = 0;
             
             logger.Info($"Configured hierarchy level {currentLevel.LevelId} - TakeProfit: ${clientParameters.TakeProfit:F2}, " +
-                       $"Stake: ${clientParameters.Stake:F2}, Barrier: {clientParameters.Barrier}, " +
+                       $"Stake: ${clientParameters.Stake:F2}, TargetROI: {clientParameters.DesiredReturnPercent}%, " +
                        $"MartingaleLevel: {clientParameters.MartingaleLevel}, MaxDrawdown: {clientParameters.MaxDrawdown}");
         }
         
@@ -1279,8 +1286,14 @@ namespace FxWorth
                     currentLevel.InitialStake;
             }
 
+            // CRITICAL FIX: Use the ACTUAL MaxDrawdown amount from TradingParameters, not the parent's TakeProfit
+            // The children need to recover the max drawdown amount that was exceeded
+            decimal maxDrawdownAmount = client.TradingParameters.AmountToBeRecoverd;
+            
+            logger.Info($"Creating nested level under {currentLevel.LevelId}: MaxDrawdown amount to recover = {maxDrawdownAmount:F2}");
+
             // Use the new CreateNestedLevel method instead of CreateLayer for proper nested level creation
-            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, currentLevel.AmountToRecover, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, maxDrawdownAmount, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
             hierarchyNavigator.currentLevelId = nextLevelId;

@@ -11,6 +11,9 @@
         public decimal? InitialStake { get; set; }
         public int? MartingaleLevel { get; set; }
         public decimal? MaxDrawdown { get; set; }
+        /// <summary>
+        /// Desired ROI percentage for this layer (legacy barrier offset input).
+        /// </summary>
         public decimal? BarrierOffset { get; set; } 
     }
 }

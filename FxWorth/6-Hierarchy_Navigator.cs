@@ -16,6 +16,9 @@ namespace FxWorth.Hierarchy
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private readonly Dictionary<string, TradingParameters> savedStates = new Dictionary<string, TradingParameters>();
         private readonly Dictionary<string, HierarchyLevelProfitTracker> levelProfitTrackers = new Dictionary<string, HierarchyLevelProfitTracker>();
+        
+        // NEW: Track TotalProfit at time of nesting so we can properly restore parent
+        private readonly Dictionary<string, decimal> savedTotalProfits = new Dictionary<string, decimal>();
 
         /// <summary>
         /// Tracks profit for a hierarchy level without interfering with trading object calculations
@@ -76,7 +79,7 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Saves the current trading state for a level (captures the state at max drawdown)
-        /// REFACTORED: Removed profit tracking references - state is for restoration only.
+        /// CRITICAL: Also saves TotalProfit at nesting time for proper parent restoration.
         /// </summary>
         public void SaveLevelState(string levelId, AuthClient client)
         {
@@ -91,7 +94,11 @@ namespace FxWorth.Hierarchy
                 var stateBackup = (TradingParameters)client.TradingParameters.Clone();
                 savedStates[levelId] = stateBackup;
                 
+                // CRITICAL: Save TotalProfit at time of nesting
+                savedTotalProfits[levelId] = client.TradingParameters.TotalProfit;
+                
                 logger.Info($"Saved state for level {levelId}: " +
+                           $"TotalProfit=${client.TradingParameters.TotalProfit:F2}, " +
                            $"DynamicStake=${stateBackup.DynamicStake:F2}, " +
                            $"AmountToBeRecovered=${stateBackup.AmountToBeRecoverd:F2}, " +
                            $"TakeProfit=${stateBackup.TakeProfit:F2}, " +
@@ -116,10 +123,13 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Restores the saved trading state for a level and calculates remaining profit target
-        /// based on children's accumulated profits
+        /// based on parent's TotalProfit at nesting + children's accumulated profits
+        /// Returns false if excess profit scenario detected (children recovered more than needed)
         /// </summary>
-        public bool RestoreLevelState(string levelId, AuthClient client)
+        public bool RestoreLevelState(string levelId, AuthClient client, out bool hasExcessProfit)
         {
+            hasExcessProfit = false;
+            
             if (!savedStates.TryGetValue(levelId, out TradingParameters savedState))
             {
                 logger.Debug($"No saved state found for level {levelId}");
@@ -131,24 +141,64 @@ namespace FxWorth.Hierarchy
                 // Clone the saved state to restore
                 var restoredState = (TradingParameters)savedState.Clone();
                 
+                // Get the TotalProfit value at time of nesting
+                decimal parentTotalProfitAtNesting = savedTotalProfits.TryGetValue(levelId, out decimal savedTotalProfit) 
+                    ? savedTotalProfit 
+                    : 0m;
+                
                 // Calculate accumulated profit from children
                 decimal childrenProfit = GetChildrenAccumulatedProfit(levelId);
                 
-                // Calculate remaining profit needed for this level
-                decimal originalTakeProfit = savedState.TakeProfit;
-                decimal remainingProfitNeeded = Math.Max(0, originalTakeProfit - childrenProfit);
+                // Calculate parent's new TotalProfit after children recovered
+                // This is the ACTUAL current profit state of this level
+                decimal newTotalProfit = parentTotalProfitAtNesting + childrenProfit;
                 
-                // Update the take profit to reflect remaining amount needed
+                // Parent's original target
+                decimal originalTakeProfit = savedState.TakeProfit;
+                
+                logger.Info($"Parent level {levelId} restoration: " +
+                           $"TotalProfitAtNesting={parentTotalProfitAtNesting:F2}, " +
+                           $"ChildrenProfit={childrenProfit:F2}, " +
+                           $"NewTotalProfit={newTotalProfit:F2}, " +
+                           $"OriginalTakeProfit={originalTakeProfit:F2}");
+                
+                // Check for excess profit scenario - children recovered so much that parent reached target
+                if (newTotalProfit >= originalTakeProfit)
+                {
+                    hasExcessProfit = true;
+                    logger.Info($"EXCESS PROFIT DETECTED: NewTotalProfit {newTotalProfit:F2} >= " +
+                               $"OriginalTakeProfit {originalTakeProfit:F2}. Parent level {levelId} is fully satisfied.");
+                    return true; // State exists but excess profit detected
+                }
+                
+                // Calculate remaining profit needed to reach original target
+                decimal remainingProfitNeeded = originalTakeProfit - newTotalProfit;
+                
+                // Restore the state with updated values
                 restoredState.TakeProfit = remainingProfitNeeded;
+                restoredState.IsRecoveryMode = false; // Children did the recovery
+                restoredState.RecoveryResults.Clear(); // Clear recovery list
+                restoredState.DynamicStake = restoredState.Stake; // Reset to base stake
+                restoredState.AmountToBeRecoverd = 0; // No pending recovery
+                
+                // CRITICAL: Set TotalProfit to 0 because we've adjusted TakeProfit to remaining amount
+                // TradingParameters will continue from 0 and work towards remainingProfitNeeded
+                // This way the trading logic stays clean and unaware of hierarchy complexity
                 
                 client.TradingParameters = restoredState;
-                savedStates.Remove(levelId); // Clean up after restoration
+                
+                // Clean up saved data
+                savedStates.Remove(levelId);
+                savedTotalProfits.Remove(levelId);
                 
                 logger.Info($"Restored state for level {levelId}: " +
                            $"OriginalTakeProfit=${originalTakeProfit:F2}, " +
+                           $"TotalProfitAtNesting=${parentTotalProfitAtNesting:F2}, " +
                            $"ChildrenProfit=${childrenProfit:F2}, " +
+                           $"NewEffectiveTotalProfit=${newTotalProfit:F2}, " +
                            $"RemainingNeeded=${remainingProfitNeeded:F2}, " +
-                           $"DynamicStake=${restoredState.DynamicStake:F2}");
+                           $"DynamicStake=${restoredState.DynamicStake:F2}, " +
+                           $"IsRecoveryMode={restoredState.IsRecoveryMode}");
                 
                 return true;
             }
@@ -172,8 +222,9 @@ namespace FxWorth.Hierarchy
         /// </summary>
         public void ClearAllStates()
         {
-            logger.Info($"Clearing {savedStates.Count} saved level states");
+            logger.Info($"Clearing {savedStates.Count} saved level states and {savedTotalProfits.Count} saved TotalProfit values");
             savedStates.Clear();
+            savedTotalProfits.Clear();
         }
     }
 
@@ -302,8 +353,15 @@ namespace FxWorth.Hierarchy
                 levelClients[levelId] = client;
                 
                 // Check if we're returning to a parent level with saved state
-                if (RestoreParentLevelState(levelId, client))
+                bool hasExcessProfit;
+                if (RestoreParentLevelState(levelId, client, out hasExcessProfit))
                 {
+                    if (hasExcessProfit)
+                    {
+                        logger.Info($"Parent level {levelId} has excess profit from children - marking as completed");
+                        hierarchyLevels[levelId].IsCompleted = true;
+                        return;
+                    }
                     logger.Info($"Successfully restored saved state for parent level {levelId} with children profit adjustments");
                     return; // State restored with proper profit adjustments - don't interfere further
                 }
@@ -404,7 +462,7 @@ namespace FxWorth.Hierarchy
 
             logger.Info($"Created Level {levelId}: AmountToRecover={amountPerLevel:F2}, " +
                        $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
-                       $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
+                       $"MaxDrawdown={maxDrawdown:F2}, TargetROI={barrierOffset:F2}%");
 
             // Check if this level's amount exceeds its MaxDrawdown and needs to create a new layer
             if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue) && !LayerExceedsMaxDepth(layerNumber + 1))
@@ -520,7 +578,7 @@ namespace FxWorth.Hierarchy
             
             logger.Info($"Created next Level {nextLevelId}: AmountToRecover={newLevel.AmountToRecover:F2}, " +
                        $"InitialStake={newLevel.InitialStake:F2}, MartingaleLevel={newLevel.MartingaleLevel}, " +
-                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, BarrierOffset={newLevel.BarrierOffset:F2}");
+                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, TargetROI={newLevel.BarrierOffset:F2}%");
                        
             return nextLevelId;
         }
@@ -589,7 +647,7 @@ namespace FxWorth.Hierarchy
             
             logger.Info($"Created next nested Level {nextLevelId}: AmountToRecover={newLevel.AmountToRecover:F2}, " +
                        $"InitialStake={newLevel.InitialStake:F2}, MartingaleLevel={newLevel.MartingaleLevel}, " +
-                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, BarrierOffset={newLevel.BarrierOffset:F2}");
+                       $"MaxDrawdown={newLevel.MaxDrawdown:F2}, TargetROI={newLevel.BarrierOffset:F2}%");
                        
             return nextLevelId;
         }
@@ -711,16 +769,46 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Navigates to a parent level (moving up in hierarchy)
+        /// Handles excess profit scenario where children recovered more than parent's total need
         /// </summary>
         private bool NavigateToParentLevel(AuthClient client, string parentLevelId)
         {
             logger.Info($"Navigating to parent level: {currentLevelId} -> {parentLevelId}");
             
             // Try to restore saved state for the parent level
-            if (stateManager.RestoreLevelState(parentLevelId, client))
+            bool hasExcessProfit;
+            if (stateManager.RestoreLevelState(parentLevelId, client, out hasExcessProfit))
             {
                 currentLevelId = parentLevelId;
                 levelClients[parentLevelId] = client;
+                
+                if (hasExcessProfit)
+                {
+                    // EXCESS PROFIT SCENARIO: Children recovered more than parent's max drawdown + target profit
+                    // Skip this parent level and move to parent's next sibling
+                    logger.Info($"Parent level {parentLevelId} has excess profit - skipping to parent's next sibling");
+                    
+                    var levelInfo = hierarchyLevels[parentLevelId];
+                    levelInfo.IsCompleted = true;
+                    
+                    string nextLevelId = DetermineNextLevel(parentLevelId);
+                    if (!string.IsNullOrEmpty(nextLevelId) && nextLevelId != parentLevelId)
+                    {
+                        logger.Info($"Parent level {parentLevelId} completed with excess profit - transitioning to {nextLevelId}");
+                        return NavigateToLevel(client, nextLevelId, "Parent level completed with excess profit from children");
+                    }
+                    else if (nextLevelId == "0")
+                    {
+                        logger.Info($"All hierarchy levels completed with excess profit - returning to root level");
+                        return NavigateToRootLevel(client);
+                    }
+                    else
+                    {
+                        logger.Info($"Parent level {parentLevelId} completed with excess profit - no more levels to process");
+                        return true;
+                    }
+                }
+                
                 logger.Info($"Successfully restored parent level {parentLevelId} from saved state");
                 
                 // CRITICAL CHECK: If the restored parent level has remaining profit needed = 0,
@@ -843,12 +931,14 @@ namespace FxWorth.Hierarchy
             {
                 // Copy base trading configuration from existing parameters
                 Barrier = baseTradingParameters.Barrier,
+                DesiredReturnPercent = baseTradingParameters.DesiredReturnPercent,
                 Symbol = baseTradingParameters.Symbol,
                 Duration = baseTradingParameters.Duration,
                 DurationType = baseTradingParameters.DurationType,
                 Stake = baseTradingParameters.Stake,
                 HierarchyLevels = baseTradingParameters.HierarchyLevels,
                 MaxHierarchyDepth = baseTradingParameters.MaxHierarchyDepth,
+                TempBarrier = 0,
                 
                 // Set level-specific recovery configuration
                 TakeProfit = level.AmountToRecover,
@@ -879,27 +969,30 @@ namespace FxWorth.Hierarchy
                 // Layer 1 - use phase 2 parameters (hierarchy recovery parameters)
                 freshParameters.MartingaleLevel = customConfig?.MartingaleLevel ?? level.MartingaleLevel ?? phase2Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = customConfig?.MaxDrawdown ?? level.MaxDrawdown ?? phase2Params.MaxDrawdown;
-                freshParameters.TempBarrier = customConfig?.BarrierOffset ?? level.BarrierOffset ?? phase2Params.Barrier;
+                freshParameters.DesiredReturnPercent = customConfig?.BarrierOffset ?? level.BarrierOffset ?? phase2Params.Barrier;
+                freshParameters.TempBarrier = 0;
                 
-                logger.Info($"Applied Layer 1 config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+                logger.Info($"Applied Layer 1 config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, TargetROI={freshParameters.DesiredReturnPercent}%");
             }
             else if (customConfig != null)
             {
                 // Layer 2+ with custom configuration - prioritize custom config
                 freshParameters.MartingaleLevel = customConfig.MartingaleLevel ?? level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = customConfig.MaxDrawdown ?? level.MaxDrawdown ?? phase1Params.MaxDrawdown;
-                freshParameters.TempBarrier = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.DesiredReturnPercent = customConfig.BarrierOffset ?? level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.TempBarrier = 0;
                 
-                logger.Info($"Applied Layer {actualLayerForConfig} custom config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+                logger.Info($"Applied Layer {actualLayerForConfig} custom config: MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, TargetROI={freshParameters.DesiredReturnPercent}%");
             }
             else
             {
                 // Layer 2+ without custom configuration - use phase 1 parameters as default
                 freshParameters.MartingaleLevel = level.MartingaleLevel ?? phase1Params.MartingaleLevel;
                 freshParameters.MaxDrawdown = level.MaxDrawdown ?? phase1Params.MaxDrawdown;
-                freshParameters.TempBarrier = level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.DesiredReturnPercent = level.BarrierOffset ?? phase1Params.Barrier;
+                freshParameters.TempBarrier = 0;
                 
-                logger.Info($"Applied Layer {actualLayerForConfig} default config (Phase 1): MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, BarrierOffset={freshParameters.TempBarrier}");
+                logger.Info($"Applied Layer {actualLayerForConfig} default config (Phase 1): MartingaleLevel={freshParameters.MartingaleLevel}, MaxDrawdown={freshParameters.MaxDrawdown}, TargetROI={freshParameters.DesiredReturnPercent}%");
             }
 
             // Use TokenStorage.SetTradingParameters to apply the fresh parameters following the established pattern
@@ -1033,7 +1126,7 @@ namespace FxWorth.Hierarchy
 
             logger.Info($"Created nested Level {nestedLevelId}: AmountToRecover={amountPerLevel:F2}, " +
                        $"InitialStake={levelInitialStake:F2}, MartingaleLevel={martingaleLevel}, " +
-                       $"MaxDrawdown={maxDrawdown:F2}, BarrierOffset={barrierOffset:F2}");
+                       $"MaxDrawdown={maxDrawdown:F2}, TargetROI={barrierOffset:F2}%");
 
             // Check if this nested level's amount exceeds its MaxDrawdown and needs further nesting
             if (amountPerLevel > (maxDrawdown ?? decimal.MaxValue))
@@ -1073,7 +1166,7 @@ namespace FxWorth.Hierarchy
 
         /// <summary>
         /// Calculates the actual layer depth from a level ID 
-        /// </summary>
+        /// </summary>f
         private int GetDepthFromLevelId(string levelId)
         {
             if (string.IsNullOrEmpty(levelId))
@@ -1195,9 +1288,9 @@ namespace FxWorth.Hierarchy
         /// <summary>
         /// Restores the saved trading parameters state when returning to a parent level
         /// </summary>
-        private bool RestoreParentLevelState(string levelId, AuthClient client)
+        private bool RestoreParentLevelState(string levelId, AuthClient client, out bool hasExcessProfit)
         {
-            return stateManager.RestoreLevelState(levelId, client);
+            return stateManager.RestoreLevelState(levelId, client, out hasExcessProfit);
         }
 
         /// <summary>
