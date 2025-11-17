@@ -28,6 +28,7 @@ namespace FxApi
         public EventHandler<TradeEventArgs> TradeChanged;
         private readonly ProposalService proposalService;
         private readonly ConcurrentDictionary<int, TaskCompletionSource<ProposalResponse>> pendingProposalRequests = new ConcurrentDictionary<int, TaskCompletionSource<ProposalResponse>>();
+        private readonly ConcurrentDictionary<int, string> proposalBarrierLookup = new ConcurrentDictionary<int, string>();
         private int proposalRequestCounter = Environment.TickCount;
 
         public string GetToken()
@@ -131,24 +132,16 @@ namespace FxApi
 
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                var result = proposalService.ResolveBarrierAsync(parameters, CancellationToken.None).GetAwaiter().GetResult();
+                if (!result.Success || result.Barrier <= 0)
                 {
-                    var result = proposalService.ResolveBarrierAsync(parameters, cts.Token).GetAwaiter().GetResult();
-                    if (!result.Success || result.Barrier <= 0)
-                    {
-                        logger.Warn($"Unable to match ROI target {parameters.DesiredReturnPercent}%: {result.Error ?? "No proposal matched."}");
-                        return false;
-                    }
-
-                    parameters.UpdateBarrierCalibration(result.Barrier, result.ActualReturnPercent);
-                    logger.Info($"Calibrated barrier {result.Barrier:F2} for ROI target {parameters.DesiredReturnPercent}% (actual {result.ActualReturnPercent:F2}%).");
-                    return true;
+                    logger.Warn($"Unable to match ROI target {parameters.DesiredReturnPercent}%: {result.Error ?? "No proposal matched."}");
+                    return false;
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                logger.Warn($"Barrier calibration timed out for ROI target {parameters.DesiredReturnPercent}%.");
-                return false;
+
+                parameters.UpdateBarrierCalibration(result.Barrier, result.ActualReturnPercent);
+                logger.Info($"Calibrated barrier {result.Barrier:F2} for ROI target {parameters.DesiredReturnPercent}% (actual {result.ActualReturnPercent:F2}%).");
+                return true;
             }
             catch (Exception ex)
             {
@@ -166,6 +159,7 @@ namespace FxApi
 
             var reqId = Interlocked.Increment(ref proposalRequestCounter);
             request.req_id = reqId;
+            proposalBarrierLookup[reqId] = request.barrier;
 
             var tcs = new TaskCompletionSource<ProposalResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
             if (!pendingProposalRequests.TryAdd(reqId, tcs))
@@ -183,6 +177,7 @@ namespace FxApi
                     {
                         pending.TrySetCanceled(cancellationToken);
                     }
+                    proposalBarrierLookup.TryRemove(reqId, out _);
                 });
             }
 
@@ -195,6 +190,7 @@ namespace FxApi
             catch
             {
                 pendingProposalRequests.TryRemove(reqId, out _);
+                proposalBarrierLookup.TryRemove(reqId, out _);
                 throw;
             }
             finally
@@ -622,6 +618,8 @@ namespace FxApi
                 return;
             }
 
+            proposalBarrierLookup.TryRemove(reqId, out var requestedBarrier);
+
             if (jMessage.ContainsKey("error"))
             {
                 var code = jMessage["error"]["code"]?.Value<string>() ?? "proposal_error";
@@ -637,7 +635,7 @@ namespace FxApi
                 {
                     var ask = response.proposal.ask_price;
                     var payout = response.proposal.payout;
-                    var barrierStr = jMessage["proposal"]?["barrier"]?.Value<string>() ?? "?";
+                    var barrierStr = requestedBarrier ?? jMessage["proposal"]?["barrier"]?.Value<string>() ?? "?";
                     var roi = ask > 0 ? ((payout - ask) / ask) * 100m : 0m;
                     logger.Info($"Proposal response received (req_id {reqId}) - Barrier: {barrierStr}, Ask: {ask:F2}, Payout: {payout:F2}, ROI%: {roi:F2}, Return tag: {response.proposal.contract_return?.ToString() ?? "N/A"}");
                 }
