@@ -100,11 +100,11 @@
             // Barrier_Offset_LBL3
             // 
             this.Barrier_Offset_LBL3.AutoSize = true;
-            this.Barrier_Offset_LBL3.Location = new System.Drawing.Point(141, 287);
+            this.Barrier_Offset_LBL3.Location = new System.Drawing.Point(111, 287);
             this.Barrier_Offset_LBL3.Name = "Barrier_Offset_LBL3";
-            this.Barrier_Offset_LBL3.Size = new System.Drawing.Size(132, 25);
+            this.Barrier_Offset_LBL3.Size = new System.Drawing.Size(146, 25);
             this.Barrier_Offset_LBL3.TabIndex = 4;
-            this.Barrier_Offset_LBL3.Text = "Target ROI (%)";
+            this.Barrier_Offset_LBL3.Text = "Barrier Offset (%)";
             // 
             // Martingale_Level_LBL3
             // 
