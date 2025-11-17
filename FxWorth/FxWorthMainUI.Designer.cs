@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FxWorth));
             this.Setup_GRBX = new System.Windows.Forms.GroupBox();
             this.RSI_Indicator_Settings_GRBX = new System.Windows.Forms.GroupBox();
@@ -540,9 +540,9 @@
             this.Barrier_Offset_LBL2.Location = new System.Drawing.Point(15, 159);
             this.Barrier_Offset_LBL2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Barrier_Offset_LBL2.Name = "Barrier_Offset_LBL2";
-            this.Barrier_Offset_LBL2.Size = new System.Drawing.Size(127, 25);
+            this.Barrier_Offset_LBL2.Size = new System.Drawing.Size(146, 25);
             this.Barrier_Offset_LBL2.TabIndex = 11;
-            this.Barrier_Offset_LBL2.Text = "Target ROI (%)";
+            this.Barrier_Offset_LBL2.Text = "Barrier Offset (%)";
             // 
             // Martingale_Level_LBL2
             // 
@@ -849,14 +849,14 @@
             this.Main_Token_Table.BackgroundColor = System.Drawing.SystemColors.Window;
             this.Main_Token_Table.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.Main_Token_Table.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.Raised;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("Ebrima", 9.5F, System.Drawing.FontStyle.Bold);
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.Main_Token_Table.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.Main_Token_Table.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.Main_Token_Table.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.Column1,
@@ -1137,12 +1137,12 @@
             this.Barrier_Offset_LBL.AutoSize = true;
             this.Barrier_Offset_LBL.Font = new System.Drawing.Font("Ebrima", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Barrier_Offset_LBL.ForeColor = System.Drawing.Color.Black;
-            this.Barrier_Offset_LBL.Location = new System.Drawing.Point(22, 156);
+            this.Barrier_Offset_LBL.Location = new System.Drawing.Point(10, 163);
             this.Barrier_Offset_LBL.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Barrier_Offset_LBL.Name = "Barrier_Offset_LBL";
-            this.Barrier_Offset_LBL.Size = new System.Drawing.Size(127, 25);
+            this.Barrier_Offset_LBL.Size = new System.Drawing.Size(146, 25);
             this.Barrier_Offset_LBL.TabIndex = 11;
-            this.Barrier_Offset_LBL.Text = "Target ROI (%)";
+            this.Barrier_Offset_LBL.Text = "Barrier Offset (%)";
             // 
             // Duration_TXT
             // 

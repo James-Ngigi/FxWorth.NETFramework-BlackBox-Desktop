@@ -157,7 +157,7 @@ namespace FxApi
             }
         }
 
-        internal Task<ProposalResponse> RequestProposalAsync(ProposalRequest request, CancellationToken cancellationToken)
+        internal async Task<ProposalResponse> RequestProposalAsync(ProposalRequest request, CancellationToken cancellationToken)
         {
             if (request == null)
             {
@@ -181,7 +181,7 @@ namespace FxApi
                 {
                     if (pendingProposalRequests.TryRemove(reqId, out var pending))
                     {
-                        pending.TrySetCanceled();
+                        pending.TrySetCanceled(cancellationToken);
                     }
                 });
             }
@@ -189,19 +189,18 @@ namespace FxApi
             try
             {
                 Send(request);
+                var response = await tcs.Task.ConfigureAwait(false);
+                return response;
             }
             catch
             {
                 pendingProposalRequests.TryRemove(reqId, out _);
-                registration.Dispose();
                 throw;
             }
-
-            return tcs.Task.ContinueWith(task =>
+            finally
             {
                 registration.Dispose();
-                return task.GetAwaiter().GetResult();
-            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
         }
 
         /// <summary>
@@ -634,6 +633,14 @@ namespace FxApi
             try
             {
                 var response = jMessage.ToObject<ProposalResponse>();
+                if (response?.proposal != null)
+                {
+                    var ask = response.proposal.ask_price;
+                    var payout = response.proposal.payout;
+                    var barrierStr = jMessage["proposal"]?["barrier"]?.Value<string>() ?? "?";
+                    var roi = ask > 0 ? ((payout - ask) / ask) * 100m : 0m;
+                    logger.Info($"Proposal response received (req_id {reqId}) - Barrier: {barrierStr}, Ask: {ask:F2}, Payout: {payout:F2}, ROI%: {roi:F2}, Return tag: {response.proposal.contract_return?.ToString() ?? "N/A"}");
+                }
                 pendingRequest.TrySetResult(response);
             }
             catch (Exception ex)
