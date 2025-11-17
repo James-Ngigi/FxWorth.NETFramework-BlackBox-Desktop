@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NLog;
@@ -15,6 +13,12 @@ namespace FxApi.Connection
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
         private const decimal DefaultTolerancePercent = 2m;
+        private const decimal FinePrecisionStep = 0.001m;
+        private const decimal CoarsePrecisionStep = 0.01m;
+        private const decimal RoiUpperLimitPercent = 3900m;
+        private const decimal AbsoluteMinOffset = FinePrecisionStep;
+        private const decimal AbsoluteMaxOffset = 5000m;
+        private const int MaxIterations = 60;
 
         private readonly AuthClient authClient;
 
@@ -40,6 +44,11 @@ namespace FxApi.Connection
                 return BarrierResolutionResult.Failed("Symbol is not configured.");
             }
 
+            if (parameters.DesiredReturnPercent <= 0)
+            {
+                return BarrierResolutionResult.Failed("Desired return must be greater than zero.");
+            }
+
             decimal stake = parameters.DynamicStake > 0 ? parameters.DynamicStake : parameters.Stake;
             if (stake <= 0)
             {
@@ -48,15 +57,22 @@ namespace FxApi.Connection
 
             var durationUnit = AuthClient.GetBarrierUnit(parameters.DurationType);
             var currency = authClient.AccountCurrency;
-            var targetRoi = parameters.DesiredReturnPercent;
+            var targetRoi = Math.Min(parameters.DesiredReturnPercent, RoiUpperLimitPercent);
+            if (targetRoi < parameters.DesiredReturnPercent)
+            {
+                logger.Warn($"Desired ROI {parameters.DesiredReturnPercent}% exceeds broker limit {RoiUpperLimitPercent}%. Clamped target to {targetRoi}%.");
+            }
 
-            BarrierResolutionResult bestResult = null;
+            var initialOffset = DetermineInitialOffset(parameters);
+            var searchState = new AdaptiveSearchState(parameters, targetRoi, DefaultTolerancePercent, initialOffset);
+            BarrierResolutionResult finalResult = null;
 
-            foreach (var candidate in GenerateCandidates(parameters))
+            for (int attempt = 1; attempt <= MaxIterations; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var formattedBarrier = candidate.ToString("+#0.0#;-#0.0#;0", CultureInfo.InvariantCulture);
+                var candidate = searchState.GetNextCandidate();
+                var formattedBarrier = FormatBarrier(candidate, searchState.DecimalPlaces);
 
                 var request = new ProposalRequest
                 {
@@ -74,6 +90,11 @@ namespace FxApi.Connection
                 try
                 {
                     response = await authClient.RequestProposalAsync(request, cancellationToken).ConfigureAwait(false);
+                }
+                catch (InvalidOperationException ex) when (IsPrecisionError(ex) && searchState.TryPromoteCoarserPrecision())
+                {
+                    logger.Warn($"Broker rejected barrier precision {formattedBarrier}. Retrying with {searchState.DecimalPlaces}-decimal offsets.");
+                    continue;
                 }
                 catch (OperationCanceledException)
                 {
@@ -95,60 +116,24 @@ namespace FxApi.Connection
                 }
 
                 decimal actualReturn = CalculateReturnPercent(stake, response.proposal.payout);
-                var currentResult = BarrierResolutionResult.CreateSuccess(candidate, actualReturn);
+                logger.Debug($"Calibration sample {attempt}: barrier {formattedBarrier} => ROI {actualReturn:F2}% (target {targetRoi:F2}%, step {searchState.StepSize:F3}).");
 
-                if (bestResult == null || currentResult.GetDifference(targetRoi) < bestResult.GetDifference(targetRoi))
+                searchState.RecordSample(candidate, actualReturn);
+
+                if (searchState.IsWithinTolerance(actualReturn))
                 {
-                    bestResult = currentResult;
+                    finalResult = BarrierResolutionResult.CreateSuccess(candidate, actualReturn);
+                    break;
                 }
 
-                if (currentResult.IsWithinTolerance(targetRoi, DefaultTolerancePercent))
+                if (!searchState.Advance(actualReturn))
                 {
+                    logger.Warn("Adaptive barrier search hit bounds or minimal step. Returning closest observed value.");
                     break;
                 }
             }
 
-            return bestResult ?? BarrierResolutionResult.Failed("No barrier candidate matched the desired ROI target.");
-        }
-
-        private IEnumerable<decimal> GenerateCandidates(TradingParameters parameters)
-        {
-            decimal min = Math.Max(0.1m, parameters.BarrierSearchMin);
-            decimal max = Math.Max(min, parameters.BarrierSearchMax);
-            decimal step = parameters.BarrierSearchStep > 0 ? parameters.BarrierSearchStep : 1m;
-
-            decimal seed = parameters.Barrier > 0 ? parameters.Barrier : parameters.TempBarrier;
-            if (seed <= 0)
-            {
-                seed = Math.Min(Math.Max(10m, min), max);
-            }
-            else
-            {
-                seed = Math.Min(Math.Max(seed, min), max);
-            }
-
-            yield return decimal.Round(seed, 2);
-
-            decimal span = max - min;
-            if (span == 0)
-            {
-                yield break;
-            }
-
-            for (decimal offset = step; offset <= span; offset += step)
-            {
-                var higher = seed + offset;
-                if (higher <= max)
-                {
-                    yield return decimal.Round(higher, 2);
-                }
-
-                var lower = seed - offset;
-                if (lower >= min)
-                {
-                    yield return decimal.Round(lower, 2);
-                }
-            }
+            return finalResult ?? searchState.GetBestResult() ?? BarrierResolutionResult.Failed("No barrier candidate matched the desired ROI target.");
         }
 
         private static decimal CalculateReturnPercent(decimal stake, decimal payout)
@@ -160,6 +145,269 @@ namespace FxApi.Connection
 
             var profit = payout - stake;
             return profit / stake * 100m;
+        }
+
+        private static decimal DetermineInitialOffset(TradingParameters parameters)
+        {
+            var minCandidate = parameters.BarrierSearchMin > 0 ? parameters.BarrierSearchMin : FinePrecisionStep;
+            minCandidate = Math.Max(minCandidate, FinePrecisionStep);
+
+            var maxCandidate = parameters.BarrierSearchMax > 0 ? parameters.BarrierSearchMax : Math.Max(minCandidate, 120m);
+            maxCandidate = Math.Max(maxCandidate, minCandidate);
+
+            decimal seed = parameters.TempBarrier != 0
+                ? Math.Abs(parameters.TempBarrier)
+                : (parameters.Barrier > 0 ? Math.Abs(parameters.Barrier) : minCandidate);
+
+            if (seed <= 0)
+            {
+                seed = minCandidate;
+            }
+
+            if (seed < minCandidate)
+            {
+                seed = minCandidate;
+            }
+            else if (seed > maxCandidate)
+            {
+                seed = maxCandidate;
+            }
+
+            return seed;
+        }
+
+        private static string FormatBarrier(decimal offset, int decimals)
+        {
+            offset = Math.Abs(Math.Round(offset, decimals));
+            var pattern = "+#0." + new string('0', decimals) + ";-#0." + new string('0', decimals) + ";0";
+            return offset.ToString(pattern, CultureInfo.InvariantCulture);
+        }
+
+        private static bool IsPrecisionError(Exception ex)
+        {
+            var message = ex?.Message;
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return false;
+            }
+
+            message = message.ToLowerInvariant();
+            return message.Contains("decimal") || message.Contains("fraction") || message.Contains("precision") || message.Contains("places");
+        }
+
+        private sealed class AdaptiveSearchState
+        {
+            private readonly decimal targetRoi;
+            private readonly decimal tolerance;
+            private decimal minOffset;
+            private decimal maxOffset;
+            private readonly decimal fineStep;
+            private readonly decimal coarseStep;
+            private bool? lastDirectionIncrease;
+            private decimal? bestOffset;
+            private decimal? bestReturn;
+            private decimal bestDifference = decimal.MaxValue;
+
+            public AdaptiveSearchState(TradingParameters parameters, decimal targetRoi, decimal tolerance, decimal initialOffset)
+            {
+                this.targetRoi = targetRoi;
+                this.tolerance = tolerance;
+
+                fineStep = FinePrecisionStep;
+                coarseStep = CoarsePrecisionStep;
+
+                var configuredMin = Math.Max(parameters.BarrierSearchMin > 0 ? parameters.BarrierSearchMin : fineStep, fineStep);
+                var configuredMax = parameters.BarrierSearchMax > 0
+                    ? Math.Max(parameters.BarrierSearchMax, configuredMin + fineStep)
+                    : Math.Max(initialOffset * 4m, configuredMin + 50m);
+
+                minOffset = Math.Min(initialOffset, configuredMin);
+                minOffset = Math.Max(minOffset, AbsoluteMinOffset);
+                maxOffset = Math.Max(initialOffset, configuredMax);
+                maxOffset = Math.Min(maxOffset, AbsoluteMaxOffset);
+
+                CurrentOffset = Clamp(initialOffset);
+                DecimalPlaces = 3;
+
+                var configuredStep = parameters.BarrierSearchStep > 0
+                    ? parameters.BarrierSearchStep
+                    : Math.Max(CurrentOffset / 2m, fineStep);
+
+                StepSize = ClampStep(configuredStep);
+            }
+
+            public decimal CurrentOffset { get; private set; }
+            public decimal StepSize { get; private set; }
+            public int DecimalPlaces { get; private set; }
+
+            public decimal GetNextCandidate()
+            {
+                return Math.Round(CurrentOffset, DecimalPlaces);
+            }
+
+            public void RecordSample(decimal offset, decimal actualReturn)
+            {
+                var difference = Math.Abs(actualReturn - targetRoi);
+                if (difference < bestDifference)
+                {
+                    bestDifference = difference;
+                    bestOffset = Math.Abs(Math.Round(offset, DecimalPlaces));
+                    bestReturn = actualReturn;
+                }
+            }
+
+            public bool IsWithinTolerance(decimal actualReturn)
+            {
+                return Math.Abs(actualReturn - targetRoi) <= tolerance;
+            }
+
+            public bool Advance(decimal actualReturn)
+            {
+                var shouldIncrease = actualReturn < targetRoi;
+
+                AdjustForDirectionChange(shouldIncrease);
+                AdjustStepMagnitude(shouldIncrease);
+
+                var direction = shouldIncrease ? 1m : -1m;
+                var nextOffset = Clamp(CurrentOffset + (direction * StepSize));
+
+                if (nextOffset == CurrentOffset)
+                {
+                    if (TryExpandBounds(shouldIncrease))
+                    {
+                        nextOffset = Clamp(CurrentOffset + (direction * StepSize));
+                    }
+
+                    if (nextOffset == CurrentOffset)
+                    {
+                        if (!ReduceStepTowardMinimum())
+                        {
+                            return false;
+                        }
+
+                        nextOffset = Clamp(CurrentOffset + (direction * StepSize));
+                        if (nextOffset == CurrentOffset)
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                CurrentOffset = nextOffset;
+                return true;
+            }
+
+            public bool TryPromoteCoarserPrecision()
+            {
+                if (DecimalPlaces == 3)
+                {
+                    DecimalPlaces = 2;
+                    CurrentOffset = Math.Round(CurrentOffset, DecimalPlaces);
+                    StepSize = ClampStep(Math.Max(coarseStep, Math.Round(StepSize, DecimalPlaces)));
+                    return true;
+                }
+
+                return false;
+            }
+
+            public BarrierResolutionResult GetBestResult()
+            {
+                if (bestOffset.HasValue && bestReturn.HasValue)
+                {
+                    return BarrierResolutionResult.CreateSuccess(bestOffset.Value, bestReturn.Value);
+                }
+
+                return null;
+            }
+
+            private void AdjustForDirectionChange(bool shouldIncrease)
+            {
+                if (lastDirectionIncrease.HasValue && lastDirectionIncrease.Value != shouldIncrease)
+                {
+                    StepSize = ClampStep(StepSize / 2m);
+                }
+
+                lastDirectionIncrease = shouldIncrease;
+            }
+
+            private void AdjustStepMagnitude(bool shouldIncrease)
+            {
+                if (shouldIncrease)
+                {
+                    StepSize = ClampStep(StepSize * 1.5m);
+                }
+                else
+                {
+                    StepSize = ClampStep(StepSize / 2m);
+                }
+            }
+
+            private bool ReduceStepTowardMinimum()
+            {
+                var minimumStep = GetMinimumStep();
+                if (StepSize <= minimumStep)
+                {
+                    return false;
+                }
+
+                StepSize = ClampStep(StepSize / 2m);
+                return StepSize > 0;
+            }
+
+            private decimal Clamp(decimal value)
+            {
+                if (value < minOffset)
+                {
+                    return minOffset;
+                }
+
+                if (value > maxOffset)
+                {
+                    return maxOffset;
+                }
+
+                return value;
+            }
+
+            private decimal ClampStep(decimal value)
+            {
+                var minStep = GetMinimumStep();
+                var span = Math.Max(maxOffset - minOffset, minStep);
+                var maxStep = Math.Max(span / 2m, minStep);
+                var clamped = Math.Min(Math.Max(value, minStep), maxStep);
+                return Math.Round(clamped, DecimalPlaces);
+            }
+
+            private decimal GetMinimumStep()
+            {
+                return DecimalPlaces == 3 ? fineStep : coarseStep;
+            }
+
+            private bool TryExpandBounds(bool shouldIncrease)
+            {
+                if (!shouldIncrease)
+                {
+                    if (minOffset <= AbsoluteMinOffset)
+                    {
+                        return false;
+                    }
+
+                    var newMin = Math.Max(AbsoluteMinOffset, minOffset / 2m);
+                    minOffset = newMin;
+                    logger.Debug($"Expanded lower barrier search bound to {minOffset:F3}.");
+                    return true;
+                }
+
+                if (maxOffset >= AbsoluteMaxOffset)
+                {
+                    return false;
+                }
+
+                var expanded = Math.Min(AbsoluteMaxOffset, Math.Max(maxOffset * 2m, maxOffset + coarseStep));
+                maxOffset = expanded;
+                logger.Debug($"Expanded upper barrier search bound to {maxOffset:F3}.");
+                return true;
+            }
         }
     }
 

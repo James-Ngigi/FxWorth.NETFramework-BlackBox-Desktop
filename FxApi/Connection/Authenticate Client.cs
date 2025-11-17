@@ -30,6 +30,10 @@ namespace FxApi
         private readonly ConcurrentDictionary<int, TaskCompletionSource<ProposalResponse>> pendingProposalRequests = new ConcurrentDictionary<int, TaskCompletionSource<ProposalResponse>>();
         private readonly ConcurrentDictionary<int, string> proposalBarrierLookup = new ConcurrentDictionary<int, string>();
         private int proposalRequestCounter = Environment.TickCount;
+        private readonly SemaphoreSlim calibrationLock = new SemaphoreSlim(1, 1);
+        private CancellationTokenSource calibrationPollingCts;
+        private Task calibrationPollingTask;
+        private static readonly TimeSpan CalibrationPollInterval = TimeSpan.FromSeconds(5);
 
         public string GetToken()
         {
@@ -130,8 +134,12 @@ namespace FxApi
                 return false;
             }
 
+            bool lockTaken = false;
             try
             {
+                calibrationLock.Wait();
+                lockTaken = true;
+
                 var result = proposalService.ResolveBarrierAsync(parameters, CancellationToken.None).GetAwaiter().GetResult();
                 if (!result.Success || result.Barrier <= 0)
                 {
@@ -141,6 +149,7 @@ namespace FxApi
 
                 parameters.UpdateBarrierCalibration(result.Barrier, result.ActualReturnPercent);
                 logger.Info($"Calibrated barrier {result.Barrier:F2} for ROI target {parameters.DesiredReturnPercent}% (actual {result.ActualReturnPercent:F2}%).");
+                EnsureCalibrationPolling();
                 return true;
             }
             catch (Exception ex)
@@ -148,6 +157,137 @@ namespace FxApi
                 logger.Error(ex, "Barrier calibration failed due to an unexpected error.");
                 return false;
             }
+            finally
+            {
+                if (lockTaken)
+                {
+                    calibrationLock.Release();
+                }
+            }
+        }
+
+        public new void Stop()
+        {
+            StopCalibrationPolling();
+            base.Stop();
+        }
+
+        private void EnsureCalibrationPolling()
+        {
+            if (calibrationPollingTask != null && !calibrationPollingTask.IsCompleted)
+            {
+                return;
+            }
+
+            calibrationPollingCts?.Cancel();
+            calibrationPollingCts?.Dispose();
+
+            calibrationPollingCts = new CancellationTokenSource();
+            var token = calibrationPollingCts.Token;
+            calibrationPollingTask = Task.Run(() => CalibrationPollingLoop(token), CancellationToken.None);
+        }
+
+        private async Task CalibrationPollingLoop(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(CalibrationPollInterval, token).ConfigureAwait(false);
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+
+                var parameters = TradingParameters;
+                if (parameters == null || !parameters.RequiresReturnCalibration || authInfo == null)
+                {
+                    continue;
+                }
+
+                if (parameters.LastBarrierCalibrationUtc.HasValue &&
+                    DateTime.UtcNow - parameters.LastBarrierCalibrationUtc.Value < CalibrationPollInterval)
+                {
+                    continue;
+                }
+
+                bool lockTaken = false;
+                try
+                {
+                    await calibrationLock.WaitAsync(token).ConfigureAwait(false);
+                    lockTaken = true;
+
+                    var result = await proposalService.ResolveBarrierAsync(parameters, token).ConfigureAwait(false);
+                    if (result.Success && result.Barrier > 0)
+                    {
+                        parameters.UpdateBarrierCalibration(result.Barrier, result.ActualReturnPercent);
+                        logger.Debug($"Polling recalibrated barrier {result.Barrier:F2} (ROI {result.ActualReturnPercent:F2}%).");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Warn(ex, "Barrier polling iteration failed.");
+                }
+                finally
+                {
+                    if (lockTaken)
+                    {
+                        calibrationLock.Release();
+                    }
+                }
+            }
+        }
+
+        private void StopCalibrationPolling()
+        {
+            if (calibrationPollingCts == null)
+            {
+                return;
+            }
+
+            try
+            {
+                calibrationPollingCts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // already disposed
+            }
+
+            if (calibrationPollingTask != null)
+            {
+                try
+                {
+                    calibrationPollingTask.Wait(TimeSpan.FromSeconds(1));
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex.InnerExceptions.Any(inner => inner is TaskCanceledException || inner is OperationCanceledException))
+                    {
+                        // swallow expected cancellation exceptions
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    // ignore
+                }
+            }
+
+            calibrationPollingTask = null;
+            calibrationPollingCts.Dispose();
+            calibrationPollingCts = null;
         }
 
         internal async Task<ProposalResponse> RequestProposalAsync(ProposalRequest request, CancellationToken cancellationToken)
