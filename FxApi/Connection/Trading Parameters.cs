@@ -63,6 +63,15 @@ namespace FxApi.Connection
             LastBarrierCalibrationUtc = DateTime.UtcNow;
         }
 
+        public void ResetBarrierCalibration()
+        {
+            Barrier = 0m;
+            TempBarrier = 0m;
+            LastCalibratedBarrier = 0m;
+            LastCalibratedReturnPercent = 0m;
+            LastBarrierCalibrationUtc = null;
+        }
+
         // ===== EVENT-DRIVEN ARCHITECTURE =====
         // Events allow external coordinators (like HierarchyNavigator) to listen and respond
         // without TradingParameters knowing about hierarchy logic

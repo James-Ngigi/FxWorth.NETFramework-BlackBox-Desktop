@@ -1655,6 +1655,7 @@ namespace FxWorth
             return new TradingParameters()
             {
                 Barrier = Barrier_Offset_TXT.Value,
+                DesiredReturnPercent = Barrier_Offset_TXT.Value,
                 Symbol = storage.MarketDataClient.GetInstrument(Choose_Asset_CMBX.Text),
                 Duration = (int)Duration_TXT.Value,
                 DurationType = Duration0_CMBX.Text,

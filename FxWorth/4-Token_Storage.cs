@@ -609,9 +609,9 @@ namespace FxWorth
         }
 
         /// <summary>
-        /// Event handler triggered when the RSI indicator crosses overbought or oversold thresholds.
+        /// Event handler triggered when the ATR sniper trigger is fired.
         /// This method contains the core trading logic, evaluating various conditions before attempting to execute trades.
-        /// <param name="sender">The object that raised the event (the RSI instance).</param>
+        /// <param name="sender">The object that raised the event (the ATR instance).</param>
         /// <param name="e">Event arguments.</param>
         /// </summary>
         private void OnCrossover(object sender, EventArgs e)
@@ -620,7 +620,7 @@ namespace FxWorth
             {
                 if (isTradePending)
                 {
-                    logger.Debug("<=> Ignoring RSI crossover signal because a trade is already pending.");
+                    logger.Debug("<=> Ignoring ATR crossover signal because a trade is already pending.");
                     return;
                 }
 
@@ -796,6 +796,7 @@ namespace FxWorth
         private void UpdateGlobalTradingStatus()
         {
             // In hierarchy mode, keep trading until we exit hierarchy completely
+            // To be updated since take profit of a client may be reached inside hierarchy recovery mode
             if (IsHierarchyMode)
             {
                 isTradingGloballyAllowed = true;
@@ -1012,7 +1013,7 @@ namespace FxWorth
             }
             else
             {
-                // Phase 1 parameters (level 2.x, 3.x, etc.)
+                // Phase 1 parameters (level 1.x.x, 1.x.x.x, etc.)
                 clientParameters.DesiredReturnPercent = currentLevel.BarrierOffset ?? phase1Parameters.Barrier;
                 clientParameters.MaxDrawdown = currentLevel.MaxDrawdown ?? phase1Parameters.MaxDrawdown;
                 clientParameters.MartingaleLevel = currentLevel.MartingaleLevel ?? phase1Parameters.MartingaleLevel;
@@ -1377,8 +1378,15 @@ namespace FxWorth
                         if (credentials != null)
                         {
                             uiParams.TakeProfit = credentials.ProfitTarget;
+                            uiParams.TakeProfitReached += OnTakeProfitReached;
+                            uiParams.MaxDrawdownExceeded += OnMaxDrawdownExceeded;
+                            uiParams.RecoveryStateChanged += OnRecoveryStateChanged;
+                            uiParams.TradeProcessed += OnTradeProcessed;
+
                             client.TradingParameters = uiParams;
-                            logger.Info($"Restored trading parameters using UI fallback with TakeProfit=${uiParams.TakeProfit:F2}");
+                            TriggerRootBarrierRecalibration(client);
+
+                            logger.Info($"Restored trading parameters using UI fallback with TakeProfit=${uiParams.TakeProfit:F2}, TargetROI={uiParams.DesiredReturnPercent:F2}%");
                         }
                     }
                 }
@@ -1437,6 +1445,8 @@ namespace FxWorth
             logger.Info($"Restored root level trading parameters: TakeProfit=${restoredParams.TakeProfit:F2} " +
                        $"(Original=${rootState.OriginalTakeProfit:F2}, Effective Current=${currentEffectiveProfit:F2})");
             
+            TriggerRootBarrierRecalibration(client);
+
             // Clean up the stored states
             CleanupHierarchyTracking(client);
         }
@@ -1455,6 +1465,24 @@ namespace FxWorth
                            $"Total hierarchy loss: ${tracker.TotalHierarchyLoss:F2}");
             }
             hierarchyProfitTrackers.Remove(client);
+        }
+
+        private void TriggerRootBarrierRecalibration(AuthClient client)
+        {
+            if (client?.TradingParameters == null)
+            {
+                return;
+            }
+
+            client.TradingParameters.ResetBarrierCalibration();
+
+            Task.Run(() =>
+            {
+                if (!client.EnsureReturnTargetBarrier())
+                {
+                    logger.Warn("Root level barrier recalibration deferred - will retry on next trade signal.");
+                }
+            });
         }
 
         // Enters hierarchy mode for a specific client, initializing the hierarchy navigator and assigning the client to the first level.
