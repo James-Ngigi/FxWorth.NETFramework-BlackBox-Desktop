@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -55,17 +55,16 @@ namespace FxWorth
         private int atrNanCount = 0;
         private const int MAX_ATR_NAN_COUNT = 10;
 
-        public bool IsHierarchyMode => hierarchyNavigatorNew != null && hierarchyNavigatorNew.IsInHierarchyMode;
+        public bool IsHierarchyMode => hierarchyNavigator != null && hierarchyNavigator.IsInHierarchyMode;
         private readonly object tradeUpdateLock = new object();
 
-        public HierarchyNavigator hierarchyNavigator;
-        public HierarchyNavigator_Refactored hierarchyNavigatorNew; // NEW: Refactored navigator
+        public HierarchyNavigator_Refactored hierarchyNavigator;
         public Dictionary<string, HierarchyLevel> hierarchyLevels = new Dictionary<string, HierarchyLevel>();
         public string currentLevelId;
         public AuthClient hierarchyClient;
         public PhaseParameters phase1Parameters;
         public PhaseParameters phase2Parameters;        
-        public int MaxHierarchyDepth => hierarchyNavigatorNew?.MaxHierarchyDepth ?? 0;
+        public int MaxHierarchyDepth => hierarchyNavigator?.MaxHierarchyDepth ?? 0;
         private Timer clientStateCheckTimer;
         private Dictionary<Credentials, bool> previousClientStates = new Dictionary<Credentials, bool>();
         
@@ -678,13 +677,13 @@ namespace FxWorth
                         continue;
                     }
 
-                    if (clientParams.AmountToBeRecoverd > clientParams.MaxDrawdown && (hierarchyNavigatorNew == null || !hierarchyNavigatorNew.IsInHierarchyMode))
+                    if (clientParams.AmountToBeRecoverd > clientParams.MaxDrawdown && (hierarchyNavigator == null || !hierarchyNavigator.IsInHierarchyMode))
                     {
                         hierarchyClient = value;
                         decimal initialStakeForHierarchy = clientParams.InitialStake4Layer1 > 0 ? clientParams.InitialStake4Layer1 : clientParams.Stake;                        
                         
                         // Use refactored navigator
-                        hierarchyNavigatorNew = new HierarchyNavigator_Refactored(
+                        hierarchyNavigator = new HierarchyNavigator_Refactored(
                             clientParams.AmountToBeRecoverd, 
                             clientParams, 
                             phase1Parameters, 
@@ -694,18 +693,18 @@ namespace FxWorth
                             this);
                         
                         currentLevelId = "1.1";
-                        hierarchyNavigatorNew.AssignClientToLevel(currentLevelId, value);
+                        hierarchyNavigator.AssignClientToLevel(currentLevelId, value);
                         
-                        logger.Info($"Initialized hierarchy navigator in OnCrossover - Level: {hierarchyNavigatorNew.CurrentLevelId}");
+                        logger.Info($"Initialized hierarchy navigator in OnCrossover - Level: {hierarchyNavigator.CurrentLevelId}");
                         
-                        clientParams.DynamicStake = hierarchyNavigatorNew.CurrentLevel?.InitialStake ?? clientParams.Stake;
+                        clientParams.DynamicStake = hierarchyNavigator.CurrentLevel?.InitialStake ?? clientParams.Stake;
                     } 
                     
                     if (IsHierarchyMode)
                     {
                         if (hierarchyClient == value)
                         {
-                            var currentNode = hierarchyNavigatorNew?.CurrentLevel;
+                            var currentNode = hierarchyNavigator?.CurrentLevel;
                             if (currentNode != null)
                             {
                                 logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentNode.LevelId}, " +
@@ -876,9 +875,8 @@ namespace FxWorth
             connectionStates.Clear();
             lastConnectionAttempt.Clear();
             
-            // Reset hierarchy state - UPDATED for refactored navigator
+            // Reset hierarchy state
             hierarchyNavigator = null;
-            hierarchyNavigatorNew = null; // Clear refactored navigator
             hierarchyClient = null;
             currentLevelId = null;
             hierarchyLevels.Clear();
@@ -1103,7 +1101,7 @@ namespace FxWorth
                 logger.Info("Take profit reached in hierarchy mode - attempting level transition");
                 
                 // Get the current level node and mark it as completed
-                var currentNode = hierarchyNavigatorNew?.CurrentLevel;
+                var currentNode = hierarchyNavigator?.CurrentLevel;
 
                 if (currentNode != null)
                 {
@@ -1113,14 +1111,14 @@ namespace FxWorth
                 }
                 
                 // Try to move to the next level in the hierarchy
-                if (hierarchyNavigatorNew != null && hierarchyNavigatorNew.MoveToNextLevel(client))
+                if (hierarchyNavigator != null && hierarchyNavigator.MoveToNextLevel(client))
                 {                    
                     // Check if we've exited hierarchy mode (returned to root level)
-                    if (hierarchyNavigatorNew.CurrentLevelId == "0" || !hierarchyNavigatorNew.IsInHierarchyMode)
+                    if (hierarchyNavigator.CurrentLevelId == "0" || !hierarchyNavigator.IsInHierarchyMode)
                     {
                         logger.Info("Hierarchy recovery completed - returning to root level trading");
                         // Reset hierarchy state
-                        hierarchyNavigatorNew = null;
+                        hierarchyNavigator = null;
                         hierarchyClient = null;
                         currentLevelId = null;
                         // Restore root level trading parameters instead of stopping trading
@@ -1128,7 +1126,7 @@ namespace FxWorth
                     }
                     else
                     {
-                        logger.Info($"Successfully transitioned to next hierarchy level: {hierarchyNavigatorNew.CurrentLevelId}");
+                        logger.Info($"Successfully transitioned to next hierarchy level: {hierarchyNavigator.CurrentLevelId}");
                         // Navigator already assigned the new level's TradingParameters to the client
                     }
                 }
@@ -1175,20 +1173,20 @@ namespace FxWorth
                 logger.Info("Entering hierarchy mode due to max drawdown exceeded");
                 EnterHierarchyMode(client);
             }
-            else if (client == hierarchyClient && hierarchyNavigatorNew != null)
+            else if (client == hierarchyClient && hierarchyNavigator != null)
             {
                 // Already in hierarchy mode - this level exceeded its max drawdown
                 // Create a deeper nested level
-                var currentNode = hierarchyNavigatorNew.CurrentLevel;
+                var currentNode = hierarchyNavigator.CurrentLevel;
                 if (currentNode != null)
                 {
                     logger.Info($"Level {currentNode.LevelId} exceeded max drawdown - attempting to create nested level");
                     
-                    if (hierarchyNavigatorNew.CanCreateNestedLevel(currentNode.LevelId))
+                    if (hierarchyNavigator.CanCreateNestedLevel(currentNode.LevelId))
                     {
                         // Create nested level under current node
-                        hierarchyNavigatorNew.CreateNestedLevel(client, e.AmountToBeRecovered, client.TradingParameters);
-                        logger.Info($"Created nested level under {currentNode.LevelId}, now at {hierarchyNavigatorNew.CurrentLevelId}");
+                        hierarchyNavigator.CreateNestedLevel(client, e.AmountToBeRecovered, client.TradingParameters);
+                        logger.Info($"Created nested level under {currentNode.LevelId}, now at {hierarchyNavigator.CurrentLevelId}");
                     }
                     else
                     {
@@ -1283,9 +1281,9 @@ namespace FxWorth
             int nextLayer = currentLevel.LevelId.Split('.').Length + 1;
 
             // Check if creating the next layer would exceed max hierarchy depth
-            if (hierarchyNavigator != null && nextLayer > hierarchyNavigator.maxHierarchyDepth)
+            if (hierarchyNavigator != null && nextLayer > hierarchyNavigator.MaxHierarchyDepth)
             {
-                logger.Warn($"Cannot create layer {nextLayer}: Would exceed maximum hierarchy depth {hierarchyNavigator.maxHierarchyDepth}. Current level {currentLevel.LevelId} will continue trading with higher risk.");
+                logger.Warn($"Cannot create layer {nextLayer}: Would exceed maximum hierarchy depth {hierarchyNavigator.MaxHierarchyDepth}. Current level {currentLevel.LevelId} will continue trading with higher risk.");
                 return;
             }
 
@@ -1309,11 +1307,10 @@ namespace FxWorth
             
             logger.Info($"Creating nested level under {currentLevel.LevelId}: MaxDrawdown amount to recover = {maxDrawdownAmount:F2}");
 
-            // Use the new CreateNestedLevel method instead of CreateLayer for proper nested level creation
-            hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, maxDrawdownAmount, client.TradingParameters, customLayerConfigs, initialStakeForNextLayer);
+            // Use the new CreateNestedLevel method - it takes client, amount, and tradingParams
+            hierarchyNavigator.CreateNestedLevel(client, maxDrawdownAmount, client.TradingParameters);
 
             string nextLevelId = $"{currentLevel.LevelId}.1";
-            hierarchyNavigator.currentLevelId = nextLevelId;
             hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
             logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
         }        
@@ -1510,7 +1507,7 @@ namespace FxWorth
             hierarchyClient = client;
             
             // USE REFACTORED NAVIGATOR
-            hierarchyNavigatorNew = new HierarchyNavigator_Refactored(
+            hierarchyNavigator = new HierarchyNavigator_Refactored(
                 client.TradingParameters.AmountToBeRecoverd,
                 client.TradingParameters,
                 phase1Parameters,
@@ -1521,9 +1518,9 @@ namespace FxWorth
             );
             
             currentLevelId = "1.1";
-            hierarchyNavigatorNew.AssignClientToLevel(currentLevelId, client);
+            hierarchyNavigator.AssignClientToLevel(currentLevelId, client);
             
-            logger.Info($"Entered hierarchy mode using refactored navigator - Path: {hierarchyNavigatorNew.CurrentLevel.GetTreePosition()}");
+            logger.Info($"Entered hierarchy mode using refactored navigator - Path: {hierarchyNavigator.CurrentLevel.GetTreePosition()}");
         }
 
         /// <summary>
@@ -1650,9 +1647,9 @@ namespace FxWorth
         /// </summary>
         public void PrintHierarchyTree()
         {
-            if (hierarchyNavigatorNew != null)
+            if (hierarchyNavigator != null)
             {
-                hierarchyNavigatorNew.PrintHierarchyTree();
+                hierarchyNavigator.PrintHierarchyTree();
             }
             else
             {
@@ -1665,12 +1662,12 @@ namespace FxWorth
         /// </summary>
         public string GetHierarchyStatus()
         {
-            if (!IsHierarchyMode || hierarchyNavigatorNew == null)
+            if (!IsHierarchyMode || hierarchyNavigator == null)
             {
                 return "Not in hierarchy mode";
             }
             
-            var currentNode = hierarchyNavigatorNew.CurrentLevel;
+            var currentNode = hierarchyNavigator.CurrentLevel;
             if (currentNode == null)
             {
                 return "Hierarchy mode active but no current level";

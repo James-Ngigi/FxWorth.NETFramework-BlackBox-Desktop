@@ -639,36 +639,4 @@ namespace FxWorth.Hierarchy
             }
         }
     }
-    
-    /// <summary>
-    /// Legacy HierarchyLevel class for backward compatibility
-    /// This is now just a data transfer object
-    /// </summary>
-    public class HierarchyLevel
-    {
-        public string LevelId { get; set; }
-        public decimal AmountToRecover { get; set; }
-        public decimal InitialStake { get; set; }
-        public int? MartingaleLevel { get; set; }
-        public decimal? MaxDrawdown { get; set; }
-        public decimal? BarrierOffset { get; set; }
-        public bool IsCompleted { get; set; }
-
-        public HierarchyLevel(string levelId, decimal amountToBeRecovered, decimal initialStake, 
-                             int? martingaleLevel, decimal? maxDrawdown, decimal? barrierOffset)
-        {
-            LevelId = levelId;
-            AmountToRecover = amountToBeRecovered;
-            InitialStake = initialStake;
-            MartingaleLevel = martingaleLevel;
-            MaxDrawdown = maxDrawdown;
-            BarrierOffset = barrierOffset;
-            IsCompleted = false;
-        }
-
-        public void Reset()
-        {
-            IsCompleted = false;
-        }
-    }
 }
