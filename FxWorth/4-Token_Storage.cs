@@ -707,6 +707,13 @@ namespace FxWorth
                             var currentNode = hierarchyNavigator?.CurrentLevel;
                             if (currentNode != null)
                             {
+                                // Skip trading if current level is already completed (waiting for level transition)
+                                if (currentNode.IsCompleted)
+                                {
+                                    logger.Info($"Level {currentNode.LevelId} is marked as completed - skipping trade execution until level transition");
+                                    continue;
+                                }
+                                
                                 logger.Info($"Hierarchy Trade - Client: {credentials.AppId}, Level: {currentNode.LevelId}, " +
                                           $"AmountToRecover: {currentNode.AmountToRecover:F2}, Stake: {clientParams.DynamicStake:F2}, " +
                                           $"TargetROI: {clientParams.DesiredReturnPercent}%, Barrier: {clientParams.TempBarrier}, " +
@@ -1174,19 +1181,23 @@ namespace FxWorth
             {
                 logger.Warn($"Max drawdown exceeded for client {credentials.Token}: " +
                            $"Current={e.CurrentDrawdown:F2}, Limit={e.MaxDrawdownLimit:F2}, " +
-                           $"AmountToRecover={e.AmountToBeRecovered:F2}");
+                           $"AmountToRecover={e.AmountToBeRecovered:F2}, IsInRecoveryMode={e.IsInRecoveryMode}");
             }
 
-            // Enter hierarchy mode if not already in it
+            // DO NOT automatically enter hierarchy mode from root-level recovery
+            // Hierarchy should only be used when already in hierarchy mode and a level needs deeper nesting
+            // Root-level recovery uses standard martingale progression
             if (!IsHierarchyMode)
             {
-                logger.Info("Entering hierarchy mode due to max drawdown exceeded");
-                EnterHierarchyMode(client);
+                // At root level - let standard recovery mode handle this with martingale
+                logger.Info($"Max drawdown exceeded at root level - continuing with standard recovery mode (no hierarchy escalation)");
+                return;
             }
-            else if (client == hierarchyClient && hierarchyNavigator != null)
+            
+            // Already in hierarchy mode - this level exceeded its max drawdown
+            // Create a deeper nested level
+            if (client == hierarchyClient && hierarchyNavigator != null)
             {
-                // Already in hierarchy mode - this level exceeded its max drawdown
-                // Create a deeper nested level
                 var currentNode = hierarchyNavigator.CurrentLevel;
                 if (currentNode != null)
                 {
@@ -1257,6 +1268,35 @@ namespace FxWorth
                                 $"IsRecovery={e.IsInRecoveryMode}, DynamicStake={e.DynamicStake:F2}");
                 }
             }
+        }
+        
+        /// <summary>
+        /// Re-subscribes TokenStorage event handlers to a client's TradingParameters.
+        /// Called when hierarchy level transitions occur to ensure events are properly wired.
+        /// </summary>
+        public void ResubscribeToTradingParameters(AuthClient client)
+        {
+            if (client?.TradingParameters == null)
+            {
+                logger.Warn("Cannot resubscribe - client or TradingParameters is null");
+                return;
+            }
+            
+            var tp = client.TradingParameters;
+            
+            // Unsubscribe first to avoid duplicate subscriptions
+            tp.TakeProfitReached -= OnTakeProfitReached;
+            tp.MaxDrawdownExceeded -= OnMaxDrawdownExceeded;
+            tp.RecoveryStateChanged -= OnRecoveryStateChanged;
+            tp.TradeProcessed -= OnTradeProcessed;
+            
+            // Resubscribe
+            tp.TakeProfitReached += OnTakeProfitReached;
+            tp.MaxDrawdownExceeded += OnMaxDrawdownExceeded;
+            tp.RecoveryStateChanged += OnRecoveryStateChanged;
+            tp.TradeProcessed += OnTradeProcessed;
+            
+            logger.Debug($"Resubscribed TokenStorage event handlers to TradingParameters (TakeProfit: {tp.TakeProfit:F2})");
         }
 
         /// Event handler triggered when a trade update is received from a managed `AuthClient` instance.

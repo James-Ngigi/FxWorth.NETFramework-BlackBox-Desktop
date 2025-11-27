@@ -24,6 +24,7 @@ namespace FxWorth.Hierarchy
         private readonly PhaseParameters phase1Params;
         private readonly PhaseParameters phase2Params;
         private readonly TokenStorage storage;
+        private readonly TokenStorage tokenStorage;
         private readonly int maxHierarchyDepth;
         private readonly int defaultLevelsPerLayer;
         private readonly Dictionary<int, CustomLayerConfig> customLayerConfigs;
@@ -69,6 +70,7 @@ namespace FxWorth.Hierarchy
             this.phase1Params = phase1 ?? throw new ArgumentNullException(nameof(phase1));
             this.phase2Params = phase2 ?? throw new ArgumentNullException(nameof(phase2));
             this.storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            this.tokenStorage = storage;
             this.maxHierarchyDepth = baseTradingParams.MaxHierarchyDepth;
             this.defaultLevelsPerLayer = baseTradingParams.HierarchyLevels;
             this.customLayerConfigs = customLayerConfigs ?? new Dictionary<int, CustomLayerConfig>();
@@ -260,6 +262,10 @@ namespace FxWorth.Hierarchy
             // KEY FIX: Assign this node's TradingParameters to the client
             // Parent nodes keep their TradingParameters intact!
             client.TradingParameters = targetNode.TradingParams;
+            
+            // CRITICAL: Re-subscribe TokenStorage event handlers to the new level's TradingParameters
+            // This ensures TokenStorage can handle level transitions
+            tokenStorage?.ResubscribeToTradingParameters(client);
             
             logger.Info($"Client assigned to level {levelId} - TakeProfit: ${targetNode.TradingParams.TakeProfit:F2}, " +
                        $"CurrentProfit: ${targetNode.TradingParams.TotalProfit:F2}, Path: {targetNode.GetTreePosition()}");
