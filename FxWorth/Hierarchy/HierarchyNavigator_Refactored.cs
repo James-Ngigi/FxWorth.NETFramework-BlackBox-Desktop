@@ -180,6 +180,13 @@ namespace FxWorth.Hierarchy
                 return;
             }
             
+            // Prevent duplicate processing
+            if (node.IsCompleted)
+            {
+                logger.Warn($"Level {node.LevelId} already marked as completed - ignoring duplicate TakeProfitReached event");
+                return;
+            }
+            
             logger.Info($"Level {node.LevelId} reached profit target: {e.TotalProfit:F2}/{e.TargetProfit:F2}");
             node.MarkCompleted();
         }
@@ -458,6 +465,11 @@ namespace FxWorth.Hierarchy
             {
                 // Try to create next sibling
                 nextSibling = CreateNextSiblingLevel(currentActiveNode);
+                
+                if (nextSibling == null)
+                {
+                    logger.Info($"No more siblings available for {currentActiveNode.LevelId} - will navigate to parent");
+                }
             }
             
             if (nextSibling != null)

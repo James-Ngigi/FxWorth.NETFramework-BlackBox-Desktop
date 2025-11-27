@@ -1113,6 +1113,16 @@ namespace FxWorth
                 // Try to move to the next level in the hierarchy
                 if (hierarchyNavigator != null && hierarchyNavigator.MoveToNextLevel(client))
                 {                    
+                    // Unsubscribe from old level's events to prevent duplicate processing
+                    if (tradingParameters != null)
+                    {
+                        tradingParameters.TakeProfitReached -= OnTakeProfitReached;
+                        tradingParameters.MaxDrawdownExceeded -= OnMaxDrawdownExceeded;
+                        tradingParameters.RecoveryStateChanged -= OnRecoveryStateChanged;
+                        tradingParameters.TradeProcessed -= OnTradeProcessed;
+                        logger.Debug($"Unsubscribed from old TradingParameters events after level transition");
+                    }
+                    
                     // Check if we've exited hierarchy mode (returned to root level)
                     if (hierarchyNavigator.CurrentLevelId == "0" || !hierarchyNavigator.IsInHierarchyMode)
                     {
