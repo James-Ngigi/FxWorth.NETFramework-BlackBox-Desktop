@@ -1253,7 +1253,7 @@
             this.Trade_Logs_GRBX.Size = new System.Drawing.Size(446, 936);
             this.Trade_Logs_GRBX.TabIndex = 2;
             this.Trade_Logs_GRBX.TabStop = false;
-            this.Trade_Logs_GRBX.Text = "Trade table report";
+            this.Trade_Logs_GRBX.Text = "Trade table report ⮯";
             // 
             // Internet_conection_LBL
             // 

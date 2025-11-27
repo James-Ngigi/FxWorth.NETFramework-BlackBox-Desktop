@@ -1,4 +1,4 @@
-using FxApi;
+﻿using FxApi;
 using FxApi.Connection;
 using FxWorth.Hierarchy;
 using Newtonsoft.Json;
@@ -317,28 +317,28 @@ namespace FxWorth
 
         private void InitializeDeltaLabels()
         {
-            // Create ?1 label
+            // Create Delta1 label
             _delta1Label = new Label();
             _delta1Label.Name = "Delta1Label";
             _delta1Label.AutoSize = true;
             _delta1Label.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
             _delta1Label.Location = new Point(10, 20);
-            _delta1Label.Text = "?1: 0.00%";
+            _delta1Label.Text = "D1: 0.00%";
             _delta1Label.ForeColor = Color.Black;
             Trade_Logs_GRBX.Controls.Add(_delta1Label);
 
-            // Create ?2 label  
+            // Create Delta2 label  
             _delta2Label = new Label();
             _delta2Label.Name = "Delta2Label";
             _delta2Label.AutoSize = true;
             _delta2Label.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
             _delta2Label.Location = new Point(150, 20);
-            _delta2Label.Text = "?2: 0.00%";
+            _delta2Label.Text = "D2: 0.00%";
             _delta2Label.ForeColor = Color.Black;
             Trade_Logs_GRBX.Controls.Add(_delta2Label);
 
             // Update GroupBox header to remove delta values
-            Trade_Logs_GRBX.Text = "Trade table report ?";
+            Trade_Logs_GRBX.Text = "Trade table report ⮯";
         }
 
         private void UpdateDeltaLabels()
@@ -352,12 +352,12 @@ namespace FxWorth
             double roc1Threshold = (double)ROC1.Value;
             double roc2Threshold = (double)ROC2.Value;
 
-            // Update ?1 label and color
+            // Update Delta1 label and color
             if (!double.IsNaN(currentROC1))
             {
-                _delta1Label.Text = string.Format("?1: {0:N2}%", currentROC1);
+                _delta1Label.Text = string.Format("D1: {0:N2}%", currentROC1);
                 
-                // ?1 goes green when below ROC1 threshold, red when above
+                // Delta1 goes green when below ROC1 threshold, red when above
                 if (currentROC1 < roc1Threshold)
                 {
                     // The further below the threshold, the greener it gets
@@ -375,16 +375,16 @@ namespace FxWorth
             }
             else
             {
-                _delta1Label.Text = "?1: ---%";
+                _delta1Label.Text = "D1: ---%";
                 _delta1Label.ForeColor = Color.Gray;
             }
 
-            // Update ?2 label and color
+            // Update Delta2 label and color
             if (!double.IsNaN(currentROC2))
             {
-                _delta2Label.Text = string.Format("?2: {0:N2}%", currentROC2);
+                _delta2Label.Text = string.Format("D2: {0:N2}%", currentROC2);
                 
-                // ?2 goes green when above ROC2 threshold, red when below
+                // Delta2 goes green when above ROC2 threshold, red when below
                 if (currentROC2 > roc2Threshold)
                 {
                     // The further above the threshold, the greener it gets
@@ -402,7 +402,7 @@ namespace FxWorth
             }
             else
             {
-                _delta2Label.Text = "?2: ---%";
+                _delta2Label.Text = "D2: ---%";
                 _delta2Label.ForeColor = Color.Gray;
             }
         }
