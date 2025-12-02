@@ -408,10 +408,24 @@ namespace FxWorth.Hierarchy
             // EXCESS PROFIT SCENARIO: Children recovered so much that parent is already satisfied
             if (remainingNeeded <= 0)
             {
-                logger.Info($"EXCESS PROFIT: Parent level {parentNode.LevelId} already satisfied by children");
+                logger.Info($"EXCESS PROFIT: Parent level {parentNode.LevelId} already satisfied by children (remaining: {remainingNeeded:F2})");
                 parentNode.MarkCompleted();
+
+                // CRITICAL: Properly transition currentActiveNode from child to parent
+                string childLevelId = currentActiveNode.LevelId;
                 
-                // Skip this parent and move to its next sibling or grandparent
+                // Deactivate current child node
+                if (currentActiveNode != null && currentActiveNode != parentNode)
+                {
+                    currentActiveNode.Deactivate();
+                    logger.Debug($"Deactivated child level {childLevelId}");
+                }
+                
+                // Set parent as current active node (but don't activate for trading since it's completed)
+                currentActiveNode = parentNode;
+                logger.Info($"Transitioning navigation context: {childLevelId} → {parentNode.LevelId} (parent completed by children)");
+                
+                // Now navigate from the completed parent to its next sibling or grandparent
                 return MoveToNextLevel(client);
             }
             
@@ -463,7 +477,9 @@ namespace FxWorth.Hierarchy
                 return false;
             }
             
-            logger.Info($"Moving from completed level {currentActiveNode.LevelId}");
+            // Capture level ID before any state changes for consistent logging
+            string levelBeingLeft = currentActiveNode.LevelId;
+            logger.Info($"Moving from completed level {levelBeingLeft}");
             
             // Try next sibling first (horizontal move within layer)
             var nextSibling = currentActiveNode.GetNextSibling();
@@ -480,7 +496,7 @@ namespace FxWorth.Hierarchy
             
             if (nextSibling != null)
             {
-                logger.Info($"Moving to next sibling: {nextSibling.LevelId}");
+                logger.Info($"Successfully found/created next sibling: {nextSibling.LevelId}");
                 
                 // Ensure sibling has TradingParameters
                 if (nextSibling.TradingParams == null)
@@ -491,11 +507,12 @@ namespace FxWorth.Hierarchy
                 }
                 
                 AssignClientToLevel(nextSibling.LevelId, client);
+                logger.Info($"Level transition complete: {levelBeingLeft} → {nextSibling.LevelId}");
                 return true;
             }
             
             // No sibling, climb up to parent
-            logger.Info("No more siblings, climbing up to parent");
+            logger.Info($"No more siblings for {levelBeingLeft}, climbing up to parent");
             return NavigateToParentLevel(client);
         }
         
