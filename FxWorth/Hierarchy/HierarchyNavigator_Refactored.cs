@@ -432,10 +432,14 @@ namespace FxWorth.Hierarchy
             // Update parent's TakeProfit to remaining amount
             parentNode.TradingParams.TakeProfit = remainingNeeded;
             
-            // Reset recovery state (children did the recovery work)
+            // CRITICAL: Reset recovery state completely (children did the recovery work)
             parentNode.TradingParams.IsRecoveryMode = false;
             parentNode.TradingParams.AmountToBeRecoverd = 0;
             parentNode.TradingParams.DynamicStake = parentNode.TradingParams.Stake;
+            parentNode.TradingParams.RecoveryResults.Clear(); // Clear accumulated losses!
+            parentNode.TradingParams.TempBarrier = 0; // Force recalibration
+            
+            logger.Info($"Reset parent {parentNode.LevelId} recovery state: Stake={parentNode.TradingParams.Stake:F2}, RecoveryCleared=True");
             
             // Activate parent node
             AssignClientToLevel(parentNode.LevelId, client);
@@ -542,6 +546,22 @@ namespace FxWorth.Hierarchy
             decimal amountPerLevel = Math.Round(amountToBeRecovered / levelCount, 2);
             
             string nestedLevelId = $"{currentActiveNode.LevelId}.1";
+            
+            // Check if this child already exists (prevent duplicates)
+            var existingChild = FindNodeById(nestedLevelId);
+            if (existingChild != null)
+            {
+                // If existing child is completed, don't reuse it - this level is overdrawn
+                if (existingChild.IsCompleted)
+                {
+                    // Don't create duplicate - let parent continue or handle externally
+                    return;
+                }
+                
+                // Reuse existing incomplete child
+                NavigateToChildLevel(client, nestedLevelId);
+                return;
+            }
             
             logger.Info($"Creating nested level {nestedLevelId} under {currentActiveNode.LevelId} " +
                        $"for amount {amountPerLevel:F2}");
