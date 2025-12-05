@@ -59,7 +59,6 @@ namespace FxWorth
             mainForm.customLayerConfigs[config.LayerNumber] = config;
 
             this.DialogResult = DialogResult.OK;
-            this.Close();
         }
     }
 }
