@@ -38,8 +38,10 @@ namespace FxWorth.Hierarchy
         // ===== STATUS =====
         public bool IsCompleted { get; set; }             // Has this level reached its profit target?
         public bool IsActive { get; set; }                // Is this level currently being traded?
+        public bool IsAbandoned { get; set; }             // Was this level abandoned due to max depth/constraints?
         public DateTime CreatedAt { get; set; }           // When was this node created?
         public DateTime? CompletedAt { get; set; }        // When did this level complete?
+        public DateTime? AbandonedAt { get; set; }        // When was this level abandoned?
         
         // ===== NAVIGATION HELPERS =====
         public bool IsRoot => Parent == null;
@@ -63,6 +65,7 @@ namespace FxWorth.Hierarchy
             Children = new List<LevelNode>();
             IsCompleted = false;
             IsActive = false;
+            IsAbandoned = false;
             CreatedAt = DateTime.Now;
             
             // Parse level ID to extract depth, layer, and level number
@@ -167,6 +170,21 @@ namespace FxWorth.Hierarchy
             var duration = CompletedAt.Value - CreatedAt;
             logger.Info($"Level {LevelId} marked as completed (Duration: {duration.TotalMinutes:F2} minutes, " +
                        $"TotalProfit: {TradingParams?.TotalProfit:F2})");
+        }
+        
+        /// <summary>
+        /// Marks this level as abandoned (e.g., due to max depth constraints)
+        /// </summary>
+        public void MarkAbandoned()
+        {
+            IsAbandoned = true;
+            AbandonedAt = DateTime.Now;
+            IsActive = false;
+            
+            var duration = DateTime.Now - CreatedAt;
+            var lossAmount = TradingParams?.AmountToBeRecoverd ?? 0m;
+            logger.Warn($"Level {LevelId} marked as abandoned (Duration: {duration.TotalMinutes:F2} minutes, " +
+                       $"Loss: ${lossAmount:F2}, TotalProfit: {TradingParams?.TotalProfit:F2})");
         }
         
         /// <summary>

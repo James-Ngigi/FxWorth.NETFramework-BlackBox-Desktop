@@ -1212,7 +1212,18 @@ namespace FxWorth
                     else
                     {
                         logger.Warn($"Cannot create nested level from {currentNode.LevelId} - max hierarchy depth reached");
-                        // Let the level continue trading with higher risk
+                        
+                        // FIXED: Accept losses and move on to next level instead of continuing to trade
+                        bool handledMaxDepth = hierarchyNavigator.HandleMaxDrawdownAtMaxDepth(client);
+                        
+                        if (handledMaxDepth)
+                        {
+                            logger.Info($"Successfully handled max depth scenario by moving to next available level");
+                        }
+                        else
+                        {
+                            logger.Error($"Failed to handle max depth scenario - no alternative level available");
+                        }
                     }
                 }
             }

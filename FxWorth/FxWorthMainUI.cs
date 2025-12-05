@@ -538,31 +538,8 @@ namespace FxWorth
                                     storage.SetHierarchyLevelTradingParameters(client);
                                     logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
                                 }
-                                else if (exceedsDrawdown && !canCreateNestedLevel)
-                                {
-                                    logger.Warn($"Level {currentLevel.LevelId} exceeds max drawdown (${currentAmountToBeRecovered:F2} > ${maxDrawdown:F2}) but cannot create nested level - would exceed maximum hierarchy depth {storage.MaxHierarchyDepth}. Attempting to move to next level or parent.");
-                                    
-                                    // Try to handle the max drawdown situation by moving to appropriate next level
-                                    string previousLevelId = storage.hierarchyNavigator.CurrentLevelId;
-                                    bool handledSuccessfully = storage.hierarchyNavigator.MoveToNextLevel(client);
-                                    
-                                    if (handledSuccessfully && storage.hierarchyNavigator.CurrentLevelId != previousLevelId)
-                                    {
-                                        if (storage.hierarchyNavigator.CurrentLevelId == "0")
-                                        {
-                                            logger.Info("Moved to root level due to depth limits and hierarchy completion.");
-                                        }
-                                        else
-                                        {
-                                            storage.SetHierarchyLevelTradingParameters(client);
-                                            logger.Info($"Successfully moved to level {storage.hierarchyNavigator.CurrentLevelId} due to depth limits and max drawdown exceeded.");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        logger.Info($"Cannot move to alternative level - staying in {currentLevel.LevelId} with higher risk due to depth and level constraints.");
-                                    }
-                                }
+                                // REMOVED: Duplicate max drawdown handling - now handled by event-driven architecture in TokenStorage.OnMaxDrawdownExceeded()
+                                // The event-driven approach in TokenStorage properly calls hierarchyNavigator.HandleMaxDrawdownAtMaxDepth()
                             }
                         }
                     }

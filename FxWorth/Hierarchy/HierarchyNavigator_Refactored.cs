@@ -464,8 +464,9 @@ namespace FxWorth.Hierarchy
         }
         
         /// <summary>
-        /// Moves to the next level after current level completes
+        /// Moves to the next level after current level completes or is abandoned
         /// Implements the navigation logic based on hierarchy rules
+        /// UPDATED: Now supports moving from incomplete levels (e.g., when abandoned due to max depth)
         /// </summary>
         public bool MoveToNextLevel(AuthClient client)
         {
@@ -475,7 +476,8 @@ namespace FxWorth.Hierarchy
                 return false;
             }
             
-            if (!currentActiveNode.IsCompleted)
+            // Allow moving if level is completed OR abandoned (no longer require completion)
+            if (!currentActiveNode.IsCompleted && !currentActiveNode.IsAbandoned)
             {
                 logger.Info($"Level {currentActiveNode.LevelId} not completed yet");
                 return false;
@@ -518,6 +520,78 @@ namespace FxWorth.Hierarchy
             // No sibling, climb up to parent
             logger.Info($"No more siblings for {levelBeingLeft}, climbing up to parent");
             return NavigateToParentLevel(client);
+        }
+        
+        /// <summary>
+        /// Handles the scenario where max drawdown is exceeded but max depth prevents nesting
+        /// Strategy: Accept losses and move on to next available level
+        /// </summary>
+        public bool HandleMaxDrawdownAtMaxDepth(AuthClient client)
+        {
+            if (currentActiveNode == null || currentActiveNode.IsRoot)
+            {
+                logger.Error("Cannot handle max depth scenario from root");
+                return false;
+            }
+            
+            logger.Warn($"Level {currentActiveNode.LevelId} exceeded max drawdown but cannot nest (max depth {maxHierarchyDepth} reached) - accepting losses and moving on");
+            
+            // Mark current level as abandoned
+            currentActiveNode.MarkAbandoned();
+            
+            var abandonedLevelId = currentActiveNode.LevelId;
+            var lossAmount = currentActiveNode.TradingParams?.AmountToBeRecoverd ?? 0m;
+            
+            logger.Info($"Level {abandonedLevelId} abandoned with loss of ${lossAmount:F2}");
+            
+            // Try to move to next sibling first
+            var nextSibling = currentActiveNode.GetNextSibling();
+            if (nextSibling == null)
+            {
+                // Try to create next sibling
+                nextSibling = CreateNextSiblingLevel(currentActiveNode);
+            }
+            
+            if (nextSibling != null)
+            {
+                // Move to next sibling level (horizontal move)
+                logger.Info($"Moving to next sibling level {nextSibling.LevelId} after abandoning {abandonedLevelId}");
+                
+                if (nextSibling.TradingParams == null)
+                {
+                    nextSibling.TradingParams = CreateTradingParametersForNode(
+                        nextSibling, 
+                        currentActiveNode.TradingParams);
+                }
+                
+                AssignClientToLevel(nextSibling.LevelId, client);
+                logger.Info($"Successfully moved to sibling {nextSibling.LevelId} after abandoning {abandonedLevelId}");
+                return true;
+            }
+            
+            // No sibling available - try to move to parent level
+            if (currentActiveNode.Parent != null && !currentActiveNode.Parent.IsRoot)
+            {
+                logger.Info($"No siblings available for {abandonedLevelId} - attempting to move to parent {currentActiveNode.Parent.LevelId}");
+                bool movedToParent = NavigateToParentLevel(client);
+                
+                if (movedToParent)
+                {
+                    logger.Info($"Successfully moved to parent after abandoning {abandonedLevelId}");
+                    return true;
+                }
+            }
+            
+            // No sibling and no parent - exit hierarchy mode (return to root)
+            logger.Info($"No siblings or parent available for {abandonedLevelId} - exiting hierarchy mode");
+            bool exitedToRoot = NavigateToRoot(client);
+            
+            if (exitedToRoot)
+            {
+                logger.Info($"Exited hierarchy mode to root after abandoning {abandonedLevelId}");
+            }
+            
+            return exitedToRoot;
         }
         
         /// <summary>
