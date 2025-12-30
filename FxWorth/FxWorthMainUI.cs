@@ -12,7 +12,6 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using static FxApi.AuthClient;
-using static FxWorth.Hierarchy.HierarchyNavigator;
 using FxBackendClient;
 using System.Threading.Tasks;
 using System.Globalization;
@@ -83,7 +82,6 @@ namespace FxWorth
         private TimeSpan noInternetDelay = TimeSpan.FromSeconds(12);
         private PhaseParameters phase1Parameters;
         private PhaseParameters phase2Parameters;
-        private HierarchyNavigator hierarchyNavigator;
         private BackendApiService _backendApiService;
         private bool _isOperatorLoggedIn = false;
         private string _backendApiUrl = "https://fxworth-api-backend.onrender.com"; // or "http://localhost:8080";
@@ -319,28 +317,28 @@ namespace FxWorth
 
         private void InitializeDeltaLabels()
         {
-            // Create Δ1 label
+            // Create Delta1 label
             _delta1Label = new Label();
             _delta1Label.Name = "Delta1Label";
             _delta1Label.AutoSize = true;
             _delta1Label.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
             _delta1Label.Location = new Point(10, 20);
-            _delta1Label.Text = "Δ1: 0.00%";
+            _delta1Label.Text = "D1: 0.00%";
             _delta1Label.ForeColor = Color.Black;
             Trade_Logs_GRBX.Controls.Add(_delta1Label);
 
-            // Create Δ2 label  
+            // Create Delta2 label  
             _delta2Label = new Label();
             _delta2Label.Name = "Delta2Label";
             _delta2Label.AutoSize = true;
             _delta2Label.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
             _delta2Label.Location = new Point(150, 20);
-            _delta2Label.Text = "Δ2: 0.00%";
+            _delta2Label.Text = "D2: 0.00%";
             _delta2Label.ForeColor = Color.Black;
             Trade_Logs_GRBX.Controls.Add(_delta2Label);
 
             // Update GroupBox header to remove delta values
-            Trade_Logs_GRBX.Text = "Trade table report ⤵";
+            Trade_Logs_GRBX.Text = "Trade table report ⮯";
         }
 
         private void UpdateDeltaLabels()
@@ -354,12 +352,12 @@ namespace FxWorth
             double roc1Threshold = (double)ROC1.Value;
             double roc2Threshold = (double)ROC2.Value;
 
-            // Update Δ1 label and color
+            // Update Delta1 label and color
             if (!double.IsNaN(currentROC1))
             {
-                _delta1Label.Text = string.Format("Δ1: {0:N2}%", currentROC1);
+                _delta1Label.Text = string.Format("D1: {0:N2}%", currentROC1);
                 
-                // Δ1 goes green when below ROC1 threshold, red when above
+                // Delta1 goes green when below ROC1 threshold, red when above
                 if (currentROC1 < roc1Threshold)
                 {
                     // The further below the threshold, the greener it gets
@@ -377,16 +375,16 @@ namespace FxWorth
             }
             else
             {
-                _delta1Label.Text = "Δ1: ---%";
+                _delta1Label.Text = "D1: ---%";
                 _delta1Label.ForeColor = Color.Gray;
             }
 
-            // Update Δ2 label and color
+            // Update Delta2 label and color
             if (!double.IsNaN(currentROC2))
             {
-                _delta2Label.Text = string.Format("Δ2: {0:N2}%", currentROC2);
+                _delta2Label.Text = string.Format("D2: {0:N2}%", currentROC2);
                 
-                // Δ2 goes green when above ROC2 threshold, red when below
+                // Delta2 goes green when above ROC2 threshold, red when below
                 if (currentROC2 > roc2Threshold)
                 {
                     // The further above the threshold, the greener it gets
@@ -404,7 +402,7 @@ namespace FxWorth
             }
             else
             {
-                _delta2Label.Text = "Δ2: ---%";
+                _delta2Label.Text = "D2: ---%";
                 _delta2Label.ForeColor = Color.Gray;
             }
         }
@@ -445,7 +443,7 @@ namespace FxWorth
 
                     if (client != null)
                     {
-                        HierarchyLevel currentLevel = storage.hierarchyNavigator.GetCurrentLevel();                        
+                        HierarchyLevel currentLevel = storage.hierarchyNavigator?.GetCurrentLevel();
                         
                         if (currentLevel != null)
                         {
@@ -454,33 +452,33 @@ namespace FxWorth
                             // Ensure client has properly initialized trading parameters for this hierarchy level
                             if (client.TradingParameters == null)
                             {
-                                logger.Info($"Initializing trading parameters for hierarchy level {storage.hierarchyNavigator.currentLevelId}");
+                                logger.Info($"Initializing trading parameters for hierarchy level {storage.hierarchyNavigator.CurrentLevelId}");
                                 storage.SetHierarchyLevelTradingParameters(client);
                             }
                               
                             if (client.TradingParameters != null && !client.TradingParameters.IsRecoveryMode)
                             {
                                 // Store the current level ID before attempting to move
-                                string previousLevelId = storage.hierarchyNavigator.currentLevelId;
+                                string previousLevelId = storage.hierarchyNavigator.CurrentLevelId;
                                 
                                 // Attempt to move to next level
                                 storage.hierarchyNavigator.MoveToNextLevel(client);
 
                                 // Only log and proceed with parameter loading if the level actually changed
-                                if (storage.hierarchyNavigator.currentLevelId != previousLevelId)
+                                if (storage.hierarchyNavigator.CurrentLevelId != previousLevelId)
                                 {
-                                    if (storage.hierarchyNavigator.currentLevelId == "0")
+                                    if (storage.hierarchyNavigator.CurrentLevelId == "0")
                                     {
                                         logger.Info("Returned to root level trading.");
                                     }                                    else
                                     {
                                         storage.SetHierarchyLevelTradingParameters(client);
-                                        logger.Info($"Successfully moved to next level: {storage.hierarchyNavigator.currentLevelId}");
+                                        logger.Info($"Successfully moved to next level: {storage.hierarchyNavigator.CurrentLevelId}");
                                     }
                                 }                                else
                                 {
                                     // If the level didn't change, continue trading in current level
-                                    logger.Info($"Trading in level {storage.hierarchyNavigator.currentLevelId}");
+                                    logger.Info($"Trading in level {storage.hierarchyNavigator.CurrentLevelId}");
                                 }                            }                            else
                             {
                                 // Ensure TradingParameters are still valid in recovery mode
@@ -534,38 +532,14 @@ namespace FxWorth
                                     }
                                     
                                     // Use the new CreateNestedLevel method for proper nested level creation
-                                    storage.hierarchyNavigator.CreateNestedLevel(currentLevel.LevelId, client, currentLevel.AmountToRecover, client.TradingParameters, storage.customLayerConfigs, initialStakeForNextLayer);
+                                    storage.hierarchyNavigator.CreateNestedLevel(client, currentLevel.AmountToRecover, client.TradingParameters);
                                     string nextLevelId = $"{currentLevel.LevelId}.1";
-                                    storage.hierarchyNavigator.currentLevelId = nextLevelId;
                                     storage.hierarchyNavigator.AssignClientToLevel(nextLevelId, client);
                                     storage.SetHierarchyLevelTradingParameters(client);
                                     logger.Info($"Created new layer {nextLayer} and moved to level: {nextLevelId}");
                                 }
-                                else if (exceedsDrawdown && !canCreateNestedLevel)
-                                {
-                                    logger.Warn($"Level {currentLevel.LevelId} exceeds max drawdown (${currentAmountToBeRecovered:F2} > ${maxDrawdown:F2}) but cannot create nested level - would exceed maximum hierarchy depth {storage.MaxHierarchyDepth}. Attempting to move to next level or parent.");
-                                    
-                                    // Try to handle the max drawdown situation by moving to appropriate next level
-                                    string previousLevelId = storage.hierarchyNavigator.currentLevelId;
-                                    bool handledSuccessfully = storage.hierarchyNavigator.HandleMaxDrawdownExceeded(client, currentLevel.LevelId);
-                                    
-                                    if (handledSuccessfully && storage.hierarchyNavigator.currentLevelId != previousLevelId)
-                                    {
-                                        if (storage.hierarchyNavigator.currentLevelId == "0")
-                                        {
-                                            logger.Info("Moved to root level due to depth limits and hierarchy completion.");
-                                        }
-                                        else
-                                        {
-                                            storage.SetHierarchyLevelTradingParameters(client);
-                                            logger.Info($"Successfully moved to level {storage.hierarchyNavigator.currentLevelId} due to depth limits and max drawdown exceeded.");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        logger.Info($"Cannot move to alternative level - staying in {currentLevel.LevelId} with higher risk due to depth and level constraints.");
-                                    }
-                                }
+                                // REMOVED: Duplicate max drawdown handling - now handled by event-driven architecture in TokenStorage.OnMaxDrawdownExceeded()
+                                // The event-driven approach in TokenStorage properly calls hierarchyNavigator.HandleMaxDrawdownAtMaxDepth()
                             }
                         }
                     }
@@ -1169,7 +1143,6 @@ namespace FxWorth
 
             storage.SetHierarchyParameters(phase1Parameters, phase2Parameters, customLayerConfigs);
             storage.InitialStakeLayer1 = initialStakeLayer1;
-            hierarchyNavigator = new HierarchyNavigator(parameters.AmountToBeRecoverd, parameters, phase1Parameters, phase2Parameters, customLayerConfigs, storage.InitialStakeLayer1, storage);
 
             storage.SetTradingParameters(parameters);
             storage.StartAll();
@@ -1655,6 +1628,7 @@ namespace FxWorth
             return new TradingParameters()
             {
                 Barrier = Barrier_Offset_TXT.Value,
+                DesiredReturnPercent = Barrier_Offset_TXT.Value,
                 Symbol = storage.MarketDataClient.GetInstrument(Choose_Asset_CMBX.Text),
                 Duration = (int)Duration_TXT.Value,
                 DurationType = Duration0_CMBX.Text,

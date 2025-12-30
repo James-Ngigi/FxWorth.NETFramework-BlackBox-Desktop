@@ -282,7 +282,9 @@
     <Compile Include="FxWorthMainUI.Designer.cs">
       <DependentUpon>FxWorthMainUI.cs</DependentUpon>
     </Compile>
-    <Compile Include="6-Hierarchy_Navigator.cs" />
+    <Compile Include="Hierarchy\HierarchyLevel.cs" />
+    <Compile Include="Hierarchy\HierarchyNavigator_Refactored.cs" />
+    <Compile Include="Hierarchy\LevelNode.cs" />
     <Compile Include="Layer Configuration.cs">
       <SubType>Form</SubType>
     </Compile>
